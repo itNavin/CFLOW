@@ -1,19 +1,12 @@
-import "./globals.css"; // keep this!
-import type { Metadata } from "next";
+import "./globals.css";
+import type { ReactNode } from "react";
 
-export const metadata: Metadata = {
-  title: "My App",
-  description: "Using DB Heavent font globally",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="min-h-screen bg-[#f5f6fa] font-dbheavent">
+          {children}
+      </body>
     </html>
   );
 }
