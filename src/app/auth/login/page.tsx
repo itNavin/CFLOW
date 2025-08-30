@@ -2,27 +2,42 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { LoginAPI } from "@/api/auth/login";
+import { setAuthToken, setUserRole } from "@/util/cookies";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [studentId, setStudentId] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+   function isValidEmail(v: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
 
-    if (!studentId.trim() || !password) {
-      setErr("Please enter Student ID and Password.");
+    if (!email.trim() || !password) {
+      setErr("Please enter Email and Password.");
+      return;
+    }
+    if (!isValidEmail(email)) {
+      setErr("Please enter a valid email address.");
       return;
     }
 
     setLoading(true);
     try {
-      await new Promise((r) => setTimeout(r, 700));
+      const response = await LoginAPI(email, password)
+      if (response.status != 200) {
+        throw new Error(response.data.message)
+      }
+      setAuthToken(response.data.token)
+      setUserRole(response.data.user.role)
       router.push("/course");
     } catch (e: any) {
       setErr(e?.message || "Login failed");
@@ -41,9 +56,9 @@ export default function LoginPage() {
           <form onSubmit={onSubmit} className="mt-8 space-y-5">
             <input
               type="text"
-              value={studentId}
-              onChange={(e) => setStudentId(e.target.value)}
-              placeholder="Student ID"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email Address"
               autoComplete="username"
               className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 text-sm outline-none focus:border-neutral-400"
             />
