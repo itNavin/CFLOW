@@ -1,5 +1,5 @@
 //http://localhost:8000/dashboard/course/:courseId
-export namespace dashboard{
+export namespace Dashboard{
     export type Dashboard = {
         courses: courses[];
         totals: totals[];
