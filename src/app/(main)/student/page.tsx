@@ -1,11 +1,38 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, CheckCircle2 } from "lucide-react";
 
+type Course = {
+  id: number;
+  name: string;
+  program: "CS" | "DSI";   
+  description?: string; 
+};
 
 export default function StudentDashboard() {
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  useEffect(() => {
+    // Get selected course from localStorage
+    const courseData = localStorage.getItem('selectedCourse');
+    if (courseData) {
+      try {
+        const course = JSON.parse(courseData);
+        setSelectedCourse(course);
+      } catch (err) {
+        console.error('Error parsing course data:', err);
+      }
+    }
+  }, []);
+
+  // Use selected course data or fallback to default
+  const courseInfo = selectedCourse || {
+    name: "CSC498-CSC499[2026]",
+    description: "This class for CS",
+    program: "CS" as const
+  };
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
 
@@ -16,9 +43,9 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              <InfoRow label="Class Name" value="CSC498-CSC499[2026]" />
-              <InfoRow label="Description" value="This class for CS" />
-              <InfoRow label="Program Type" value="CS" />
+              <InfoRow label="Class Name" value={courseInfo.name} />
+              <InfoRow label="Description" value={courseInfo.description || "No description available"} />
+              <InfoRow label="Program Type" value={courseInfo.program} />
               <InfoRow label="Created Date" value="06/09/2025" />
               <InfoRow label="Created By" value="Thanatat Wongabut" />
             </section>
