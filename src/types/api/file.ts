@@ -6,11 +6,11 @@ export namespace File {
         name: string;
         filepath: string;
         uploadAt: string;
-        uploadById: number;
+        createdById: number;
         courseId: number;
         announcementId: number | null;
-        uploadBy: uploadBy[];
-        course: course[];
+        createdBy: uploadBy;
+        course: course;
     }
 }
 
