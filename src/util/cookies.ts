@@ -17,3 +17,11 @@ export const getUserRole = () => {
     const role = Cookies.get("Role")
     return role
 }
+
+export const removeAuthToken = () => {
+    Cookies.remove("authToken")
+}
+
+export const removeUserRole = () => {
+    Cookies.remove("Role")
+}
