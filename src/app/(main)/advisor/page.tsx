@@ -1,9 +1,16 @@
 // src/app/(main)/advisor/page.tsx
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, CheckCircle2 } from "lucide-react";
+
+type Course = {
+  id: number;
+  name: string;
+  program: "CS" | "DSI";   
+  description?: string; 
+};
 
 /* ----------------------------- MOCK DATA ONLY ----------------------------- */
 export const advisorMock = {
@@ -89,6 +96,21 @@ export const advisorMock = {
 
 /* ------------------------------- PAGE (MOCK) ------------------------------ */
 export default function Page() {
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+
+  useEffect(() => {
+    // Get selected course from localStorage
+    const courseData = localStorage.getItem('selectedCourse');
+    if (courseData) {
+      try {
+        const course = JSON.parse(courseData);
+        setSelectedCourse(course);
+      } catch (err) {
+        console.error('Error parsing course data:', err);
+      }
+    }
+  }, []);
+
   const {
     advisor,
     course,
@@ -98,6 +120,15 @@ export default function Page() {
     alerts,
     groups,
   } = advisorMock;
+
+  // Use selected course data or fallback to mock data
+  const courseInfo = selectedCourse ? {
+    code: selectedCourse.name,
+    description: selectedCourse.description || "No description available",
+    program: selectedCourse.program,
+    createdAt: "06/09/2025", // Keep mock data for now
+    createdBy: "Thanatat Wongabut", // Keep mock data for now
+  } : course;
 
   const responsibleGroups = groups.filter((g) => g.advisorId === advisor.id);
   const total = submissionsBreakdown.reduce((s, i) => s + i.value, 0);
@@ -116,11 +147,11 @@ export default function Page() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              <InfoRow label="Class Name" value={course.code} />
-              <InfoRow label="Description" value={course.description} />
-              <InfoRow label="Program Type" value={course.program} />
-              <InfoRow label="Created Date" value={course.createdAt} />
-              <InfoRow label="Created By" value={course.createdBy} />
+              <InfoRow label="Class Name" value={courseInfo.code} />
+              <InfoRow label="Description" value={courseInfo.description} />
+              <InfoRow label="Program Type" value={courseInfo.program} />
+              <InfoRow label="Created Date" value={courseInfo.createdAt} />
+              <InfoRow label="Created By" value={courseInfo.createdBy} />
             </section>
 
             {/* Dashboard */}

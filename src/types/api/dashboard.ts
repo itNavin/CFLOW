@@ -1,22 +1,22 @@
 //http://localhost:8000/dashboard/course/:courseId
 export namespace Dashboard{
     export type Dashboard = {
-        courses: courses[];
-        totals: totals[];
-        submissions: submissions[];
+        course: course;
+        totals: totals;
+        submissions: submissions;
     }
 }
 
-type courses = {
+type course = {
     id: number;
     name: string;
     description: string;
     program: "CS" | "DSI";
     createdAt: string;
-    createBy: createdById[];
+    createdBy: createdBy;
 }
 
-type createdById = {
+type createdBy = {
     id: number;
     fullName: string;
     email: string;
@@ -30,10 +30,10 @@ type totals = {
 }
 type submissions = {
     totalPairs: number;
-    StatusCount: StatusCount[];
+    statusCounts: statusCounts;
 }
 
-type StatusCount = {
+type statusCounts = {
     NOT_SUBMITTED: number;
     SUBMITTED: number;
     REJECTED: number;
