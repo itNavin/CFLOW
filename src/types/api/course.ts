@@ -6,6 +6,10 @@ export namespace getCourse{
     }
 }
 
+export namespace getAllCourse{
+  export type AllCourse = Course[];
+}
+
 type myCourseUser = {
   id: number;
   email: string;
@@ -17,12 +21,12 @@ type myCourseUser = {
 };
 
 type courses = {
-    course: course;
+    course: Course;
     groupsAsMember: group[];
     groupsAsAdvisor: group[];
 }
 
-type course = {
+export type Course = {
   id: number;
   name: string;
   description: string;
@@ -59,7 +63,7 @@ type file = {
 };
 
 type extras = {
-    createdClasses : course,
+    createdClasses : Course,
     createdAnnouncement : announcement,
     uploadedFiles : file
 }

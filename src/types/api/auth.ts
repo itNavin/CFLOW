@@ -9,6 +9,6 @@ export namespace AuthPayload {
 type loginUserType = {
   id: number;
   email: string;
-  role: "STUDENT" | "ADVISOR" | "ADMIN";
+  role: "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
   name: string;
 };

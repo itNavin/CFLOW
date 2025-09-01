@@ -1,8 +1,16 @@
 "use client";
 
+import { removeAuthToken, removeUserRole } from "@/util/cookies";
+import { useRouter } from "next/navigation";
 import React from "react";
 
 export default function ProfilePage() {
+  const navigator = useRouter()
+  const handleLogout = () => {
+    removeAuthToken()
+    removeUserRole()
+    navigator.replace("/auth/login")
+  }
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
       <h2 className="text-2xl font-semibold mb-6">Profile</h2>
@@ -23,7 +31,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="mt-8">
-        <button className="px-4 py-2 bg-gradient-to-r from-red-500 to-black text-white rounded shadow hover:opacity-90">
+        <button onClick={handleLogout} className="px-4 py-2 bg-gradient-to-r from-red-500 to-black text-white rounded shadow hover:opacity-90">
           Log out
         </button>
       </div>
