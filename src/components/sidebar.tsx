@@ -22,87 +22,6 @@ const normalizeRole = (val: unknown): UserRole | null => {
   return map[s] ?? null;
 };
 
-// read role from localStorage
-// const readRoleFromLocalStorage = (): UserRole | null => {
-//   if (typeof window === "undefined") return null;
-//   try {
-//     const userData = localStorage.getItem("userData");
-//     if (!userData) return null;
-//     const user = JSON.parse(userData);
-
-//     const candidates = [
-//       user?.role,
-//       user?.role?.name,
-//       user?.user?.role,
-//       user?.user?.role?.name,
-//     ];
-
-//     for (const c of candidates) {
-//       const norm = normalizeRole(c);
-//       if (norm) return norm;
-//     }
-//   } catch (e) {
-//     console.error("Error getting user role:", e);
-//   }
-//   return null;
-// };
-
-// project name for student
-// const getProjectName = (): string => {
-//   try {
-//     const courseApiData = localStorage.getItem("courseApiResponse");
-//     if (courseApiData) {
-//       const response = JSON.parse(courseApiData);
-//       if (response.courses && response.courses.length > 0) {
-//         for (const courseItem of response.courses) {
-//           if (courseItem.groupsAsMember?.length > 0) {
-//             const group = courseItem.groupsAsMember[0];
-//             if (group.projectName) return group.projectName;
-//           }
-//         }
-//       }
-//     }
-//     const courseData = localStorage.getItem("selectedCourse");
-//     if (courseData) {
-//       const course = JSON.parse(courseData);
-//       return course.name || "Dashboard";
-//     }
-//   } catch (err) {
-//     console.error("Error getting project name:", err);
-//   }
-//   return "Dashboard";
-// };
-// const { courseId } = useParams<{ courseId: string  }>();
-// const id = Number(courseId);
-// const getMenuItems = (role: UserRole | null) => {
-//   switch (role) {
-//     case "STUDENT":
-//       return [
-//         { name: getProjectName(), href: "/student" },
-//         { name: "Announcements", href: "/announcements" },
-//         { name: "Files", href: "/files" },
-//         { name: "Assignments", href: "/assignments/student" },
-//       ];
-//     case "ADVISOR":
-//       return [
-//         { name: "Advisor", href: "/advisor" },
-//         { name: "Announcements", href: "/announcements" },
-//         { name: "Files", href: "/files" },
-//         { name: "Assignments", href: "/assignments/advisor" },
-//       ];
-//     case "ADMIN":
-//     case "SUPER_ADMIN":
-//       return [
-//         { name: "Admin", href: "/admin" },
-//         { name: "Announcements", href: `/announcements/${courseId}` },
-//         { name: "Files", href: "/files" },
-//         { name: "Assignments", href: "/assignments" },
-//       ];
-//     default:
-//       return [];
-//   }
-// };
-
 type MenuItems = {
   name: string;
   href: string;
@@ -110,30 +29,52 @@ type MenuItems = {
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [projectName, setProjectName] = useState<myProject.MyProject>();
+  const [project, setProject] = useState<myProject.MyProject | null>(null);
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [menuItems, setMenuItems] = useState<MenuItems>([]);
   const courseId = useSearchParams().get("courseId") || "";
   const id = Number(courseId);
+
+  // useEffect(() => {
+  //   (async () => {
+  //     if (!courseId) {
+  //       setProjectName(null);
+  //       return;
+  //     }
+  //     try {
+  //       const id = Number(courseId);
+  //       if (Number.isFinite(id)) {
+  //         const { data } = await getMyProjectByCourseAPI(id);
+  //         setProjectName(data ?? null);
+  //       } else {
+  //         setProjectName(null);
+  //       }
+  //     } catch {
+  //       setProjectName(null);
+  //     }
+  //   })();
+  // }, [courseId]);
 
   const fetchProjectName = async () => {
     try {
       if (!courseId) return;
       const id = Number(courseId);
       const response = await getMyProjectByCourseAPI(id);
-      setProjectName(response.data);
+      console.log("Project response:", response.data);
+      setProject(response.data);
+      console.log("Project name:", response.data.group.projectName);
     } catch (error) {}
   };
-
+  // console.log("User Role:", userRole);
   const getMenuItems = (role: UserRole): MenuItems => {
     switch (role) {
       case "STUDENT": {
-        if (projectName === undefined) {
-          console.log("projectName is undefined");
+        if (project === undefined) {
+           console.log("projectName is undefined");
           return [];
         }
         return [
-          { name: projectName.projectname, href: "/student" },
+          { name: project?.group.projectName ?? "Unknown", href: "/student" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
           { name: "Assignments", href: "/assignments/student" },
@@ -167,8 +108,6 @@ export default function Sidebar() {
 
   useEffect(() => {
     setUserRole(getUserRole());
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userRole]);
 
   // useEffect(() => {
@@ -187,9 +126,10 @@ export default function Sidebar() {
       return;
     }
     setMenuItems(getMenuItems(userRole as UserRole));
-  }, [userRole]);
+  }, [userRole, project]);
 
   if (menuItems.length === 0) {
+    console.log("No menu items, hiding sidebar"); // Debug log
     return null;
   }
 

@@ -41,7 +41,6 @@ export default function AdvisorTab() {
         }
 
         const { data } = await getAdvisorMemberAPI(courseId);
-        // data is already getAdvisorMember.AdvisorMember (advisorMember[])
         setRows(data || []);
       } catch (e: any) {
         setError(e?.message || "Failed to load advisors");
@@ -70,9 +69,10 @@ export default function AdvisorTab() {
         r.user?.prefix?.toLowerCase().includes(q) ||
         r.user?.name?.toLowerCase().includes(q) ||
         r.user?.surname?.toLowerCase().includes(q) ||
-        r.user?.email?.toLowerCase().includes(q)
-        // Note: projects is advisorProject[] but backend doesn't return fields yet
-        // When backend returns project names, add: || r.projects.some((p) => p.name?.toLowerCase().includes(q))
+        r.user?.email?.toLowerCase().includes(q) ||
+        r.projects.some((p) => p.projectName?.toLowerCase().includes(q))
+      // Note: projects is advisorProject[] but backend doesn't return fields yet
+      // When backend returns project names, add: || r.projects.some((p) => p.name?.toLowerCase().includes(q))
     );
   }, [query, rows]);
 
@@ -164,11 +164,11 @@ export default function AdvisorTab() {
               {filtered.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="py-3 pl-4 align-top">
-                    <input 
-                      type="checkbox" 
-                      checked={!!(r.id != null && selected[r.id])} 
-                      onChange={() => r.id != null && toggleOne(r.id)} 
-                      className="accent-[#326295]" 
+                    <input
+                      type="checkbox"
+                      checked={!!(r.id != null && selected[r.id])}
+                      onChange={() => r.id != null && toggleOne(r.id)}
+                      className="accent-[#326295]"
                     />
                   </td>
                   <td className="py-3 align-top text-gray-900 text-lg">{r.user?.prefix || "-"}</td>
@@ -177,17 +177,17 @@ export default function AdvisorTab() {
                   </td>
                   <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
-                    {r.projects.length ? (
+                    {(r.projects ?? []).length ? (
                       <ol className="list-decimal ml-4 space-y-0.5">
-                        {r.projects.map((p, i) => (
-                          <li key={i}>
-                            {/* Backend doesn't return project fields yet, show placeholder */}
-                            Project {i + 1}
-                          </li>
+                        {(r.projects ?? []).map((p, i) => (
+                          <li key={p.id ?? `${r.id}-${i}`}>{p.projectName || "(untitled)"}</li>
                         ))}
                       </ol>
-                    ) : <span className="text-gray-400">-</span>}
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
+
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
                     <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
                     <button className="text-red-500 hover:underline text-lg">Delete</button>
@@ -215,7 +215,7 @@ export default function AdvisorTab() {
             // Create a proper advisorMember object structure
             const courseId = readCourseId();
             if (!courseId) return;
-            
+
             const newAdvisor: getAdvisorMember.AdvisorMember[0] = {
               id: Date.now(), // temporary ID for optimistic update
               courseId,
@@ -231,7 +231,7 @@ export default function AdvisorTab() {
               },
               projects: [], // empty array as backend doesn't return project fields yet
             };
-            
+
             setRows((prev) => [newAdvisor, ...prev]);
             setOpenCreate(false);
           }}
@@ -311,12 +311,12 @@ function CreateAdvisorModal({
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
             <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">Cancel</button>
             <button
-              onClick={() => onSave({ 
-                prefix: prefix.trim(), 
-                name: name.trim(), 
+              onClick={() => onSave({
+                prefix: prefix.trim(),
+                name: name.trim(),
                 surname: surname.trim(),
-                email: email.trim(), 
-                projects: parseProjects(projectsText) 
+                email: email.trim(),
+                projects: parseProjects(projectsText)
               })}
               disabled={!canSave}
               className="rounded px-5 py-2 text-white disabled:opacity-60 shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"

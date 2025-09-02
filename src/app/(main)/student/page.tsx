@@ -1,38 +1,66 @@
 "use client";
-
+import { useSearchParams } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, CheckCircle2 } from "lucide-react";
+import { getDashboardData } from "@/api/dashboard/getDashboard";
+import { Dashboard } from "@/types/api/dashboard";
 
-type Course = {
-  id: number;
-  name: string;
-  program: "CS" | "DSI";   
-  description?: string; 
-};
+export function formatUploadAt(
+  iso: string,
+  locale: string = "en-GB" // change to "th-TH" for Thai
+) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // fallback if bad input
+
+  return d.toLocaleString(locale, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",    
+    timeZone: "Asia/Bangkok", // convert from Z (UTC) → Bangkok (UTC+7)
+  });
+}
 
 export default function StudentDashboard() {
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const courseId = useSearchParams().get("courseId") || "";
+
+  const toDateOrNull = (v: unknown): Date | null => {
+    if (!v) return null;
+    const d = new Date(v as any);
+    return isNaN(d.getTime()) ? null : d;
+  };
+
+  // const formatShortDate = (dateInput: Date | null | undefined): string => {
+  //   if (!dateInput) return "Unknown";
+  //   return dateInput.toLocaleDateString("en-US");
+  // };
+
+  const fetchDashboardData = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getDashboardData(id);
+      // console.log("Response:", response.data);
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    }
+  };
 
   useEffect(() => {
-    // Get selected course from localStorage
-    const courseData = localStorage.getItem('selectedCourse');
-    if (courseData) {
-      try {
-        const course = JSON.parse(courseData);
-        setSelectedCourse(course);
-      } catch (err) {
-        console.error('Error parsing course data:', err);
-      }
-    }
-  }, []);
+    fetchDashboardData();
+  }, [courseId]);
 
-  // Use selected course data or fallback to default
-  const courseInfo = selectedCourse || {
-    name: "CSC498-CSC499[2026]",
-    description: "This class for CS",
-    program: "CS" as const
-  };
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
 
@@ -43,11 +71,11 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              <InfoRow label="Class Name" value={courseInfo.name} />
-              <InfoRow label="Description" value={courseInfo.description || "No description available"} />
-              <InfoRow label="Program Type" value={courseInfo.program} />
-              <InfoRow label="Created Date" value="06/09/2025" />
-              <InfoRow label="Created By" value="Thanatat Wongabut" />
+              <InfoRow label="Class Name" value={dashboard?.course.name ?? "Unknown"} />
+              <InfoRow label="Description" value={dashboard?.course.description || "No description available"} />
+              <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
+              <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
+              <InfoRow label="Created By" value={dashboard?.course.createdBy.fullName ?? "Unknown"} />
             </section>
 
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
@@ -69,12 +97,11 @@ export default function StudentDashboard() {
                   <Donut percent={100} label="Submissions" total="3 Totals" />
                 </div>
                 <ul className="space-y-2 text-lg">
-                  <LegendItem color="#6b7280" text="Not Submitted: 0 (0%)" />
-                  <LegendItem color="#1d4ed8" text="Submitted: 0 (0%)" />
-                  <LegendItem color="#ef4444" text="Missed: 0 (0%)" />
-                  <LegendItem color="#f59e0b" text="Rejected: 0 (0%)" />
-                  <LegendItem color="#10b981" text="Approved with Feedback: 0 (0%)" />
-                  <LegendItem color="#16a34a" text="Final: 3 (100%)" />
+                  <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard?.submissions.statusCounts.NOT_SUBMITTED}`}/>
+                  <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard?.submissions.statusCounts.SUBMITTED}`} />
+                  <LegendItem color="#ef4444" text={`Rejected: ${dashboard?.submissions.statusCounts.REJECTED}`} />
+                  <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard?.submissions.statusCounts.APPROVED_WITH_FEEDBACK}`} />
+                  <LegendItem color="#16a34a" text={`Final: ${dashboard?.submissions.statusCounts.FINAL}`} />
                 </ul>
               </div>
 
@@ -109,10 +136,10 @@ export default function StudentDashboard() {
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Summary</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-              <DT label="Total Students" value="59" />
-              <DT label="Total Advisors" value="12" />
-              <DT label="Total Groups" value="20" />
-              <DT label="Total Assignments" value="3" />
+              <DT label="Total Students" value={(dashboard?.totals.students ?? 0).toString()} />
+              <DT label="Total Advisors" value={(dashboard?.totals.advisors ?? 0).toString()} />
+              <DT label="Total Groups" value={(dashboard?.totals.groups ?? 0).toString()} />
+              <DT label="Total Assignments" value={(dashboard?.totals.assignments ?? 0).toString()} />
             </dl>
           </section>
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
