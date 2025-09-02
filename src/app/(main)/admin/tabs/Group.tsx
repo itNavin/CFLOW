@@ -1,104 +1,60 @@
-// app/(main)/groups/page.tsx
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Plus, Download, Pencil, X } from "lucide-react";
-
-/* --------------------------------- TYPES --------------------------------- */
-export type Member = { studentId: string; name: string };
-export type Group = {
-  id: string;
-  groupNo: string;
-  name: string; // card header (usually product title or project title)
-  projectTitle: string;
-  productTitle: string;
-  members: Member[];
-  advisor: string;     // e.g. "65130500255 Dr. Vithida ..."
-  coAdvisor?: string;  // same format or plain name
-};
-
-/* ------------------------------- MOCK DATA ------------------------------- */
-const GROUPS: Group[] = [
-  {
-    id: "g1",
-    groupNo: "0001",
-    name: "Twomandown",
-    projectTitle: "HelloHello",
-    productTitle: "Twomandown",
-    members: [
-      { studentId: "65130500211", name: "Navin Dansakul" },
-      { studentId: "65130500241", name: "Mananchai Chankhuong" },
-      { studentId: "65130500299", name: "Cristiano Ronaldo" },
-    ],
-    advisor: "65130500255 Dr. Vithida Chongsuphasiddhi",
-  },
-  {
-    id: "g2",
-    groupNo: "0002",
-    name: "StickerYeah",
-    projectTitle: "Sticker Line Creation System",
-    productTitle: "StickerYeah",
-    members: [
-      { studentId: "65130500212", name: "Lamine Yamal" },
-      { studentId: "65130500213", name: "Lionel Messi" },
-      { studentId: "65130500214", name: "Rafael Leao" },
-    ],
-    advisor: "65130500255 Dr. Vithida Chongsuphasiddhi",
-  },
-  {
-    id: "g3",
-    groupNo: "0003",
-    name: "SecureDocs",
-    projectTitle: "HelloHello",
-    productTitle: "SecureDocs",
-    members: [
-      { studentId: "65130500271", name: "Harry Maguire" },
-      { studentId: "65130500272", name: "Marcus Rashford" },
-      { studentId: "65130500273", name: "Antony Santos" },
-    ],
-    advisor: "65130500255 Dr. Vithida Chongsuphasiddhi",
-    coAdvisor: "65130500256 Dr. Chonlameth Apninkanondt",
-  },
-];
+import { getAllGroupAPI } from "@/api/group/getAllGroup";
+import { getGroup } from "@/types/api/group";
+import { User } from "@/types/api/user";
+import { getUserById } from "@/api/user/getUserById";
 
 /* ------------------------------- PAGE LIST ------------------------------- */
 export default function GroupTab() {
-  const [rows, setRows] = useState<Group[]>(GROUPS);
+  const courseId = useSearchParams().get("courseId") || "";
+  const [error, setError] = useState<string | null>(null);
+  const [group, setGroup] = useState<getGroup.GroupList>([]);
   const [query, setQuery] = useState("");
   const [openCreate, setOpenCreate] = useState(false);
-  const [editTarget, setEditTarget] = useState<Group | null>(null);
+  const [editTarget, setEditTarget] = useState<getGroup.Group | null>(null);
+
+  const fetchGroup = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getAllGroupAPI(id);
+      // console.log("Response:", response.data);
+      setGroup(response.data);
+    } catch (error) { }
+  };
+
+  useEffect(() => {
+    fetchGroup();
+  }, [courseId]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((g) =>
-      [
-        g.groupNo,
-        g.name,
-        g.projectTitle,
-        g.productTitle,
-        g.advisor,
-        g.coAdvisor ?? "",
-        ...g.members.flatMap((m) => [m.studentId, m.name]),
-      ]
+    if (!q) return group;
+    return group.filter(g =>
+      [g.codeNumber, g.projectName, g.productName, g.company]
+        .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(q)
     );
-  }, [query, rows]);
+  }, [group, query]);
 
-  const nextGroupNo = useMemo(() => {
-    const max = rows.reduce((m, r) => Math.max(m, parseInt(r.groupNo, 10)), 0);
-    return String((max || 0) + 1).padStart(4, "0");
-  }, [rows]);
-
-  const handleCreate = (g: Omit<Group, "id" | "groupNo">) => {
-    setRows((prev) => [
-      { id: `g${Date.now()}`, groupNo: nextGroupNo, ...g },
-      ...prev,
-    ]);
-    setOpenCreate(false);
-  };
+  // const handleCreate = (g: Omit<getGroup.Group, "id" | "codeNumber">) => {
+  //   setRows((prev) => [
+  //     { id: `g${Date.now()}`, codeNumber: nextGroupNo, ...g },
+  //     ...prev,
+  //   ]);
+  //   setOpenCreate(false);
+  // };
 
   return (
     <section className="min-h-[60vh]">
@@ -132,45 +88,48 @@ export default function GroupTab() {
       </div>
 
       <div className="space-y-5">
-        {filtered.map((g) => (
+        {group.map((data) => (
           <article
-            key={g.id}
+            key={data.id}
             className="relative rounded-lg border bg-white p-5 shadow-sm"
           >
             <button
               title="Edit"
               className="absolute right-3 top-3 inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50"
-              onClick={() => setEditTarget(g)}
+              onClick={() => setEditTarget(data)}
             >
               <Pencil className="h-4 w-4" />
             </button>
 
-            <h3 className="font-semibold text-xl text-gray-800 mb-2">{g.name}</h3>
+            <h3 className="font-semibold text-xl text-gray-800 mb-2">{data.projectName}</h3>
 
             <dl className="text-sm leading-6 text-gray-700">
               <div className="grid grid-cols-[110px_1fr]">
                 <dt className="text-gray-900 text-xl">ID :</dt>
-                <dd className="text-xl">{g.groupNo}</dd>
+                <dd className="text-xl">{data.codeNumber}</dd>
               </div>
               <div className="grid grid-cols-[110px_1fr]">
                 <dt className="text-gray-900 text-xl">Project Title :</dt>
-                <dd className="text-xl">{g.projectTitle}</dd>
+                <dd className="text-xl">{data.projectName}</dd>
               </div>
               <div className="grid grid-cols-[110px_1fr]">
                 <dt className="text-gray-900 text-xl">Product Title :</dt>
-                <dd className="text-xl">{g.productTitle}</dd>
+                <dd className="text-xl">{data.productName}</dd>
               </div>
 
               <div className="grid grid-cols-[110px_1fr]">
                 <dt className="text-gray-900 text-xl">Member :</dt>
                 <dd>
                   <ul className="list-none space-y-1 text-xl">
-                    {g.members.map((m) => (
-                      <li key={m.studentId}>
+                    {data.members.map((members) => (
+                      <li key={members.id}>
                         <span className="text-gray-900 text-xl mr-2">
-                          {m.studentId}
+                          {members.courseMember.user.id}
                         </span>
-                        {m.name}
+                        <span className="text-gray-900 text-xl mr-2">
+                          {members.courseMember.user.name}
+                        </span>
+                        {members.courseMember.user.surname}
                       </li>
                     ))}
                   </ul>
@@ -179,13 +138,19 @@ export default function GroupTab() {
 
               <div className="grid grid-cols-[110px_1fr]">
                 <dt className="text-gray-900 text-xl">Advisor :</dt>
-                <dd className="text-xl">{g.advisor}</dd>
+                <dd className="text-xl">
+                  {data.advisors[0]?.courseMember.id}
+                  <span className="text-gray-900 text-xl ml-2 mr-2">
+                    {data.advisors[0]?.courseMember.user.name}
+                  </span>
+                  {data.advisors[0]?.courseMember.user.surname}
+                </dd>
               </div>
 
-              {g.coAdvisor && (
+              {data.advisors[1] && (
                 <div className="grid grid-cols-[110px_1fr]">
                   <dt className="text-gray-900 text-xl">Co-Advisor :</dt>
-                  <dd className="text-xl">{g.coAdvisor}</dd>
+                  <dd className="text-xl">{data.advisors[1]?.courseMember.user.name}</dd>
                 </div>
               )}
             </dl>
@@ -230,7 +195,7 @@ function CreateGroupModal({
 }: {
   nextGroupNo: string;
   onCancel: () => void;
-  onSave: (g: Omit<Group, "id" | "groupNo">) => void;
+  onSave: (g: Omit<Group, "id" | "codeNumber">) => void;
 }) {
   const [projectTitle, setProjectTitle] = useState("");
   const [productTitle, setProductTitle] = useState("");

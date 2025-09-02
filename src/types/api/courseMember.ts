@@ -34,7 +34,10 @@ type advisorMember = {
 };
 
 type advisorProject = {
-  // backend not returning fields yet → add later
+  id: number;
+  projectName: string;
+  productName: string | null;
+  company: string | null;
 };
 
 /** ---------- Student (Course) Member ---------- **/

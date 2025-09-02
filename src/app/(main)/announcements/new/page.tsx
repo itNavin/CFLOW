@@ -3,22 +3,31 @@
 import React, { useState } from "react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css"; // Make sure this is imported
+import 'react-quill';
+import { ArrowLeft } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import Link from "@tiptap/extension-link";
 
 export default function NewAnnouncement() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [descriptionHTML, setDescriptionHTML] = useState("");
   const [title, setTitle] = useState("");
+  const router = useRouter();
 
   // Basic formatting handler
-  const format = (command: string) => {
-    document.execCommand(command, false);
-  };
+  // const format = (command: string) => {
+  //   document.execCommand(command, false);
+  // };
 
   return (
     <div className="flex min-h-screen font-dbheavent">
       <div className="flex-1 p-6 bg-white">
         <div className="text-xl font-semibold mb-6 flex items-center gap-3">
-          <button className="text-lg">&larr;</button>
+          <button onClick={() => router.back()} className="text-lg">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
           Create New Announcement
         </div>
 
@@ -44,11 +53,12 @@ export default function NewAnnouncement() {
             </label>
 
             {/* Toolbar */}
-            <div className="flex gap-2 mb-2">
+            {/* <div className="flex gap-2 mb-2">
               <button type="button" onClick={() => format("bold")} className="px-2 py-1 border rounded">B</button>
               <button type="button" onClick={() => format("italic")} className="px-2 py-1 border rounded">I</button>
               <button type="button" onClick={() => format("insertUnorderedList")} className="px-2 py-1 border rounded">•</button>
-            </div>
+            </div> */}
+            
 
             {/* Rich Text Editor */}
             <div
@@ -66,7 +76,9 @@ export default function NewAnnouncement() {
               mode="single"
               selected={date}
               onSelect={setDate}
-              className="border rounded shadow mt-2"
+              className="border rounded shadow mt-2 inline-block"
+              showOutsideDays
+              weekStartsOn={0}
             />
           </div>
         </form>
