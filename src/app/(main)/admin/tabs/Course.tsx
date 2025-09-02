@@ -14,8 +14,8 @@ export default function CourseTab() {
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  console.log("Dashboard data:", dashboardData);
-  console.log("Status counts:", dashboardData?.submissions.statusCounts.FINAL);
+  // console.log("Dashboard data:", dashboardData);
+  // console.log("Status counts:", dashboardData?.submissions.statusCounts.FINAL);
 
   // helpers
   const toDateOrNull = (v: unknown): Date | null => {
@@ -47,7 +47,7 @@ export default function CourseTab() {
 
         setDashboardLoading(true);
         const res = await getDashboardData(courseId);
-        console.log("Response data:", res.data);
+        // console.log("Response data:", res.data);
         setDashboardData(res.data as Dashboard.Dashboard);
       } catch (e: any) {
         console.error("Error loading dashboard:", e?.response?.status, e?.response?.data || e);
@@ -68,8 +68,8 @@ export default function CourseTab() {
 
   // Build display info purely from API data
   const courseInfo = dashboardData?.course ?? null;
-  console.log("Course info:", courseInfo);
-  console.log("fullname:", courseInfo?.createdBy.fullName);
+  // console.log("Course info:", courseInfo);
+  // console.log("fullname:", courseInfo?.createdBy.fullName);
   const displayInfo = courseInfo
     ? {
         name: courseInfo.name ?? "Unknown",
