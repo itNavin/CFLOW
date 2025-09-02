@@ -3,64 +3,87 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X } from "lucide-react";
-
-export type Student = {
-  id: string;
-  studentId: string;
-  name: string;
-  email: string;
-  projectName?: string;
-  productName?: string;
-};
-
-const DATA: Student[] = [
-  { id: "s1", studentId: "65130500211", name: "Navin Dansakul", email: "Navin.dans@mail.kmutt.ac.th", projectName: "Capstone Report Submission System", productName: "Twomandown" },
-  { id: "s2", studentId: "65130500241", name: "Mananchai Chankhuong", email: "Mananchai.chan@mail.kmutt.ac.th", projectName: "Capstone Report Submission System", productName: "Twomandown" },
-  { id: "s3", studentId: "65130500280", name: "Thanapat Thanatawee", email: "Thanapat.than@mail.kmutt.ac.th", projectName: "Capstone Report Submission System", productName: "Boklane" },
-  { id: "s4", studentId: "65130500299", name: "Cristiano Ronaldo", email: "Cristiano.ronaldo@mail.kmutt.ac.th", projectName: "Capstone Report Submission System", productName: "SecureDocs" },
-];
+import { getStudentMemberAPI } from "@/api/courseMember/getStudentMember";
+import { getStudentMember } from "@/types/api/courseMember";
 
 export default function StudentTab() {
-  // use state so we can add new students
-  const [rows, setRows] = useState<Student[]>(DATA);
+  const [rows, setRows] = useState<getStudentMember.StudentMember>([]);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
   const [openCreate, setOpenCreate] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const readCourseId = (): number | null => {
+    try {
+      const raw = localStorage.getItem("selectedCourse");
+      if (!raw) return null;
+      const c = JSON.parse(raw);
+      return typeof c?.id === "number" ? c.id : null;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const courseId = readCourseId();
+        if (!courseId) {
+          throw new Error("No course selected. Please select a course first.");
+        }
+
+        const { data } = await getStudentMemberAPI(courseId);
+        // data: getStudentMember.StudentMember = studentMember[]
+        setRows(data || []);
+      } catch (e: any) {
+        console.error("Error fetching students:", e);
+        setError(e?.message || "Failed to load students");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, []);
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // attach + log (same behavior as advisor page)
     console.log("Selected file:", file.name, file.type, file.size);
-    e.target.value = ""; // reset so same file triggers again
+    e.target.value = "";
   };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
     return rows.filter((r) =>
-      [r.studentId, r.name, r.email, r.projectName ?? "", r.productName ?? ""]
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
+      r.user?.id?.toString().includes(q) ||
+      r.user?.name?.toLowerCase().includes(q) ||
+      r.user?.email?.toLowerCase().includes(q) ||
+      r.groupMembers?.[0]?.group?.projectName?.toLowerCase().includes(q) ||
+      r.groupMembers?.[0]?.group?.productName?.toLowerCase().includes(q)
     );
-  }, [query, rows]);
+  }, [query, rows]);  
 
-  const allChecked = filtered.length > 0 && filtered.every((r) => selected[r.id]);
+  const allChecked = filtered.length > 0 && filtered.every((r) => r.id != null && selected[r.id]);
   const someChecked = filtered.some((r) => selected[r.id]) && !allChecked;
 
   const toggleAll = () => {
     if (allChecked) return setSelected({});
-    const next: Record<string, boolean> = { ...selected };
+    const next: Record<number, boolean> = {};
     filtered.forEach((r) => (next[r.id] = true));
     setSelected(next);
   };
 
-  const toggleOne = (id: string) =>
+  const toggleOne = (id: number) =>
     setSelected((s) => ({ ...s, [id]: !s[id] }));
 
   return (
@@ -91,7 +114,6 @@ export default function StudentTab() {
             Download template
           </button>
 
-          {/* hidden file input like advisor page */}
           <input
             ref={fileInputRef}
             type="file"
@@ -113,71 +135,116 @@ export default function StudentTab() {
       </div>
 
       <div className="overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-900 border-b">
-              <th className="w-10 py-3 pl-4">
-                <input
-                  aria-label="Select all"
-                  type="checkbox"
-                  checked={allChecked}
-                  ref={(el) => { if (el) el.indeterminate = someChecked; }}
-                  onChange={toggleAll}
-                  className="accent-[#326295] cursor-pointer"
-                />
-              </th>
-              <th className="py-3 text-xl">Student ID</th>
-              <th className="py-3 text-xl">Name</th>
-              <th className="py-3 text-xl">Mail</th>
-              <th className="py-3 text-xl">Project name</th>
-              <th className="py-3 text-xl">Product name</th>
-              <th className="py-3 pr-4 text-right text-xl">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td className="py-3 pl-4 align-top">
+        {loading ? (
+          <div className="p-6 text-center text-gray-600 text-lg">Loading students...</div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-600 text-lg">{error}</div>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-900 border-b">
+                <th className="w-10 py-3 pl-4">
                   <input
-                    aria-label={`Select ${r.name}`}
+                    aria-label="Select all"
                     type="checkbox"
-                    checked={!!selected[r.id]}
-                    onChange={() => toggleOne(r.id)}
+                    checked={allChecked}
+                    ref={(el) => { if (el) el.indeterminate = someChecked; }}
+                    onChange={toggleAll}
                     className="accent-[#326295] cursor-pointer"
                   />
-                </td>
-                <td className="py-3 align-top text-gray-900 text-lg whitespace-nowrap">{r.studentId}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.name}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.email}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.projectName || <span className="text-gray-400">-</span>}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.productName || <span className="text-gray-400">-</span>}</td>
-                <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                  <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
-                  <button onClick={() => alert(`TODO: delete ${r.name}`)} className="text-red-500 hover:underline text-lg">Delete</button>
-                </td>
+                </th>
+                <th className="py-3 text-xl">Student ID</th>
+                <th className="py-3 text-xl">Name</th>
+                <th className="py-3 text-xl">Mail</th>
+                <th className="py-3 text-xl">Project name</th>
+                <th className="py-3 text-xl">Product name</th>
+                <th className="py-3 pr-4 text-right text-xl">Actions</th>
               </tr>
-            ))}
+            </thead>
 
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="py-8 text-center text-gray-500 text-lg">No students found.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-3 pl-4 align-top">
+                    <input
+                      aria-label={`Select ${r.user?.name || 'student'}`}
+                      type="checkbox"
+                      checked={!!selected[r.id]}
+                      onChange={() => toggleOne(r.id)}
+                      className="accent-[#326295] cursor-pointer"
+                    />
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg whitespace-nowrap">{r.user?.id || "-"}</td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {[r.user?.name, r.user?.surname].filter(Boolean).join(" ") || "-"}
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || "-"}</td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {r.groupMembers?.[0]?.group?.projectName || <span className="text-gray-400">-</span>}
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {r.groupMembers?.[0]?.group?.productName || <span className="text-gray-400">-</span>}
+                  </td>
+                  <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
+                    <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
+                    <button onClick={() => alert(`TODO: delete ${r.user?.name || 'student'}`)} className="text-red-500 hover:underline text-lg">Delete</button>
+                  </td>
+                </tr>
+              ))}
+
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-gray-500 text-lg">No students found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
         <div>{Object.values(selected).filter(Boolean).length} selected</div>
       </div>
 
-      {/* Add Student Modal */}
       {openCreate && (
         <CreateStudentModal
           onCancel={() => setOpenCreate(false)}
           onSave={(s) => {
-            setRows((prev) => [{ ...s, id: `s_${Date.now()}` }, ...prev]);
+            // Create a proper studentMember object structure
+            const courseId = readCourseId();
+            if (!courseId) return;
+            
+            const newStudent: getStudentMember.StudentMember[0] = {
+              id: Date.now(), // temporary ID for optimistic update
+              courseId,
+              userId: Date.now(), // temporary user ID
+              user: {
+                id: Date.now(),
+                email: s.email,
+                passwordHash: "", // not needed for display
+                prefix: "", // can be added to form later if needed
+                name: s.name,
+                surname: s.surname,
+                role: "STUDENT" as const,
+                createdAt: new Date().toISOString(),
+              },
+              groupMembers: s.projectName || s.productName ? [{
+                id: Date.now(),
+                workRole: "",
+                courseMemberId: Date.now(),
+                groupId: Date.now(),
+                group: {
+                  id: Date.now(),
+                  courseId,
+                  codeNumber: s.studentId,
+                  projectName: s.projectName || "",
+                  productName: s.productName || null,
+                  company: null,
+                }
+              }] : [],
+            };
+            
+            setRows((prev) => [newStudent, ...prev]);
             setOpenCreate(false);
           }}
         />
@@ -193,10 +260,11 @@ function CreateStudentModal({
   onSave,
 }: {
   onCancel: () => void;
-  onSave: (s: Omit<Student, "id">) => void;
+  onSave: (s: StudentFormData) => void;
 }) {
   const [studentId, setStudentId] = useState("");
   const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [projectName, setProjectName] = useState("");
   const [productName, setProductName] = useState("");
@@ -204,9 +272,9 @@ function CreateStudentModal({
   const canSave =
     studentId.trim().length > 0 &&
     name.trim().length > 0 &&
+    surname.trim().length > 0 &&
     email.trim().length > 0;
 
-  // close on Esc & outside click
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
@@ -223,8 +291,9 @@ function CreateStudentModal({
 
   const handleSave = () => {
     onSave({
-      studentId: studentId.trim(),
+      studentId: studentId.trim() || "-",
       name: name.trim(),
+      surname: surname.trim(),
       email: email.trim(),
       projectName: projectName.trim() || undefined,
       productName: productName.trim() || undefined,
@@ -236,7 +305,6 @@ function CreateStudentModal({
       <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50" />
       <div className="fixed inset-0 z-50 grid place-items-center p-4">
         <div ref={panelRef} className="w-full max-w-xl rounded-2xl border bg-white shadow-xl">
-          {/* header */}
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-2xl font-semibold">Create Student</h2>
             <button onClick={onCancel} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
@@ -244,7 +312,6 @@ function CreateStudentModal({
             </button>
           </div>
 
-          {/* body */}
           <div className="px-6 py-5 space-y-4">
             <Field label="Student ID" required>
               <input
@@ -259,7 +326,16 @@ function CreateStudentModal({
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="John"
+                className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+              />
+            </Field>
+
+            <Field label="Surname" required>
+              <input
+                value={surname}
+                onChange={(e) => setSurname(e.target.value)}
+                placeholder="Doe"
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
               />
             </Field>
@@ -293,7 +369,6 @@ function CreateStudentModal({
             </Field>
           </div>
 
-          {/* footer */}
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
             <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">
               Cancel
