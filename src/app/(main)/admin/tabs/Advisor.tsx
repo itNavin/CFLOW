@@ -3,35 +3,61 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X } from "lucide-react";
+import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
+import { getAdvisorMember } from "@/types/api/courseMember";
 
-type Advisor = {
-  id: string;
-  prefix: string;
-  name: string;
-  email: string;
-  projects: string[];
-};
-
-const DATA: Advisor[] = [
-  { id: "a1", prefix: "Asst.Prof.Dr.", name: "Chonlameth Apnikanondt", email: "Chonlamethapn@mail.kmutt.ac.th", projects: ["Spacezoo", "Location Smart System"] },
-  { id: "a2", prefix: "Asst.Prof.Dr.", name: "Vithida Chongsuphajaisiddhi", email: "Vithidach@mail.kmutt.ac.th", projects: ["Capstone Report Submission System"] },
-  { id: "a3", prefix: "Asst.Prof.Dr.", name: "Tuul Triyason", email: "Tuultri@mail.kmutt.ac.th", projects: ["Grab food application"] },
-  { id: "a4", prefix: "Asst.Prof.Dr.", name: "Worarut Krathu", email: "Worarut@mail.kmutt.ac.th", projects: [] },
-];
 
 export default function AdvisorTab() {
-  const [rows, setRows] = useState<Advisor[]>(DATA);         // ← use rows, not DATA
+  const [rows, setRows] = useState<getAdvisorMember.AdvisorMember>([]);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [openCreate, setOpenCreate] = useState(false);        // ← modal state
+  const [openCreate, setOpenCreate] = useState(false);
+
+  // derive courseId from localStorage.selectedCourse
+  const readCourseId = (): number | null => {
+    try {
+      const raw = localStorage.getItem("selectedCourse");
+      if (!raw) return null;
+      const c = JSON.parse(raw);
+      return typeof c?.id === "number" ? c.id : null;
+    } catch {
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        let courseId = readCourseId();
+        if (!courseId) {
+          // fallback: if the admin lands here directly, you can default to the first course or show an error
+          throw new Error("No course selected. Please select a course first.");
+        }
+
+        const { data } = await getAdvisorMemberAPI(courseId);
+        // data is already getAdvisorMember.AdvisorMember (advisorMember[])
+        setRows(data || []);
+      } catch (e: any) {
+        setError(e?.message || "Failed to load advisors");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetch();
+  }, []);
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    // keep as-is (just attach)
     console.log("Selected file:", file.name, file.type, file.size);
     e.target.value = "";
   };
@@ -41,25 +67,31 @@ export default function AdvisorTab() {
     if (!q) return rows;
     return rows.filter(
       (r) =>
-        r.prefix.toLowerCase().includes(q) ||
-        r.name.toLowerCase().includes(q) ||
-        r.email.toLowerCase().includes(q) ||
-        r.projects.some((p) => p.toLowerCase().includes(q))
+        r.user?.prefix?.toLowerCase().includes(q) ||
+        r.user?.name?.toLowerCase().includes(q) ||
+        r.user?.surname?.toLowerCase().includes(q) ||
+        r.user?.email?.toLowerCase().includes(q)
+        // Note: projects is advisorProject[] but backend doesn't return fields yet
+        // When backend returns project names, add: || r.projects.some((p) => p.name?.toLowerCase().includes(q))
     );
   }, [query, rows]);
 
-  const allChecked = filtered.length > 0 && filtered.every((a) => selected[a.id]);
+  const allChecked = filtered.length > 0 && filtered.every((a) => a.id != null && selected[a.id]);
 
   const toggleAll = () => {
     if (allChecked) setSelected({});
     else {
-      const next: Record<string, boolean> = {};
-      filtered.forEach((r) => (next[r.id] = true));
+      const next: Record<number, boolean> = {};
+      filtered.forEach((r) => {
+        if (r.id != null) {
+          next[r.id] = true;
+        }
+      });
       setSelected(next);
     }
   };
 
-  const toggleOne = (id: string) =>
+  const toggleOne = (id: number) =>
     setSelected((s) => ({ ...s, [id]: !s[id] }));
 
   return (
@@ -68,7 +100,7 @@ export default function AdvisorTab() {
         <div className="flex gap-3">
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
-            onClick={() => setOpenCreate(true)}                    // ← open modal
+            onClick={() => setOpenCreate(true)}
           >
             <Plus className="w-4 h-4" />
             Add
@@ -87,7 +119,6 @@ export default function AdvisorTab() {
             Download template
           </button>
 
-          {/* hidden file input */}
           <input
             ref={fileInputRef}
             type="file"
@@ -109,50 +140,68 @@ export default function AdvisorTab() {
       </div>
 
       <div className="overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="text-left text-gray-900 border-b">
-              <th className="w-10 py-3 pl-4">
-                <input type="checkbox" checked={allChecked} onChange={toggleAll} className="accent-[#326295]" />
-              </th>
-              <th className="py-3 text-xl">Prefix</th>
-              <th className="py-3 text-xl">Name</th>
-              <th className="py-3 text-xl">Mail</th>
-              <th className="py-3 text-xl">Project name</th>
-              <th className="py-3 pr-4 text-right text-xl">Actions</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {filtered.map((r) => (
-              <tr key={r.id} className="border-t">
-                <td className="py-3 pl-4 align-top">
-                  <input type="checkbox" checked={!!selected[r.id]} onChange={() => toggleOne(r.id)} className="accent-[#326295]" />
-                </td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.prefix}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.name}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">{r.email}</td>
-                <td className="py-3 align-top text-gray-900 text-lg">
-                  {r.projects.length ? (
-                    <ol className="list-decimal ml-4 space-y-0.5">
-                      {r.projects.map((p, i) => <li key={i}>{p}</li>)}
-                    </ol>
-                  ) : <span className="text-gray-400">-</span>}
-                </td>
-                <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                  <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
-                  <button className="text-red-500 hover:underline text-lg">Delete</button>
-                </td>
+        {loading ? (
+          <div className="p-6 text-center text-gray-600 text-lg">Loading advisors...</div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-600 text-lg">
+            {error}
+          </div>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-900 border-b">
+                <th className="w-10 py-3 pl-4">
+                  <input type="checkbox" checked={allChecked} onChange={toggleAll} className="accent-[#326295]" />
+                </th>
+                <th className="py-3 text-xl">Prefix</th>
+                <th className="py-3 text-xl">Name</th>
+                <th className="py-3 text-xl">Mail</th>
+                <th className="py-3 text-xl">Project name</th>
+                <th className="py-3 pr-4 text-right text-xl">Actions</th>
               </tr>
-            ))}
-
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={6} className="py-8 text-center text-gray-500 text-lg">No advisors found.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((r) => (
+                <tr key={r.id} className="border-t">
+                  <td className="py-3 pl-4 align-top">
+                    <input 
+                      type="checkbox" 
+                      checked={!!(r.id != null && selected[r.id])} 
+                      onChange={() => r.id != null && toggleOne(r.id)} 
+                      className="accent-[#326295]" 
+                    />
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.prefix || "-"}</td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {[r.user?.name, r.user?.surname].filter(Boolean).join(" ") || "-"}
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || "-"}</td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {r.projects.length ? (
+                      <ol className="list-decimal ml-4 space-y-0.5">
+                        {r.projects.map((p, i) => (
+                          <li key={i}>
+                            {/* Backend doesn't return project fields yet, show placeholder */}
+                            Project {i + 1}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : <span className="text-gray-400">-</span>}
+                  </td>
+                  <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
+                    <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
+                    <button className="text-red-500 hover:underline text-lg">Delete</button>
+                  </td>
+                </tr>
+              ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="py-8 text-center text-gray-500 text-lg">No advisors found.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
@@ -163,7 +212,27 @@ export default function AdvisorTab() {
         <CreateAdvisorModal
           onCancel={() => setOpenCreate(false)}
           onSave={(a) => {
-            setRows((prev) => [{ ...a, id: `a_${Date.now()}` }, ...prev]);   // ← add to list
+            // Create a proper advisorMember object structure
+            const courseId = readCourseId();
+            if (!courseId) return;
+            
+            const newAdvisor: getAdvisorMember.AdvisorMember[0] = {
+              id: Date.now(), // temporary ID for optimistic update
+              courseId,
+              user: {
+                id: Date.now(),
+                email: a.email,
+                passwordHash: "", // not needed for display
+                prefix: a.prefix,
+                name: a.name,
+                surname: a.surname,
+                role: "ADVISOR" as const,
+                createdAt: new Date().toISOString(),
+              },
+              projects: [], // empty array as backend doesn't return project fields yet
+            };
+            
+            setRows((prev) => [newAdvisor, ...prev]);
             setOpenCreate(false);
           }}
         />
@@ -178,16 +247,16 @@ function CreateAdvisorModal({
   onSave,
 }: {
   onCancel: () => void;
-  onSave: (a: Omit<Advisor, "id">) => void;
+  onSave: (a: AdvisorFormData) => void;
 }) {
   const [prefix, setPrefix] = useState("Asst.Prof.Dr.");
   const [name, setName] = useState("");
+  const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [projectsText, setProjectsText] = useState("");
 
-  const canSave = name.trim() && email.trim();
+  const canSave = name.trim() && surname.trim() && email.trim();
 
-  // close on Esc & outside click
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
@@ -223,7 +292,11 @@ function CreateAdvisorModal({
             </Field>
 
             <Field label="Name" required>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane Doe" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
+            </Field>
+
+            <Field label="Surname" required>
+              <input value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Doe" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
             </Field>
 
             <Field label="Email" required>
@@ -238,7 +311,13 @@ function CreateAdvisorModal({
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
             <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">Cancel</button>
             <button
-              onClick={() => onSave({ prefix: prefix.trim(), name: name.trim(), email: email.trim(), projects: parseProjects(projectsText) })}
+              onClick={() => onSave({ 
+                prefix: prefix.trim(), 
+                name: name.trim(), 
+                surname: surname.trim(),
+                email: email.trim(), 
+                projects: parseProjects(projectsText) 
+              })}
               disabled={!canSave}
               className="rounded px-5 py-2 text-white disabled:opacity-60 shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
             >
