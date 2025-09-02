@@ -57,7 +57,7 @@ export default function CoursePage() {
         break;
       case "ADMIN":
       case "SUPER_ADMIN":
-        router.push("/admin");
+        router.push(`/course/admin/${course.id}`);
         break;
       default:
         console.error("Unknown user role:", userRole);
