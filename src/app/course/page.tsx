@@ -44,25 +44,19 @@ export default function CoursePage() {
     }
   };
 
-  // ------------------------ Navigation --------------------------- //
   const handleCourseClick = (course: Course) => {
     if (!userRole) return;
 
-    switch (userRole) {
-      case "STUDENT":
-        router.push("/student");
-        break;
-      case "ADVISOR":
-        router.push("/advisor");
-        break;
-      case "ADMIN":
-      case "SUPER_ADMIN":
-        router.push(`/course/admin/${course.id}`);
-        break;
-      default:
-        console.error("Unknown user role:", userRole);
-    }
+    const base =
+      userRole === "ADMIN" || userRole === "SUPER_ADMIN"
+        ? "/admin"
+        : userRole === "ADVISOR"
+          ? "/advisor"
+          : "/student";
+
+    router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
   };
+
 
   const handleAddCourse = (newCourse: Omit<Course, "createdById" | "createdAt">) => {
     // Call API to add course
