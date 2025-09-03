@@ -18,6 +18,11 @@ export const getUserRole = () => {
     return role
 }
 
+export const getUserId = () => {
+    const userId = Cookies.get("userId")
+    return userId
+}
+
 export const removeAuthToken = () => {
     Cookies.remove("authToken")
 }

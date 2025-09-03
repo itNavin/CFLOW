@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
+import Feedback from "../feedback";
+import Version from "../version";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
@@ -12,6 +14,7 @@ export default function AssignmentDetailPage() {
   const assignment = {
     title: `A04_V01: Chapters 4-5`,
     dueDate: "30/04/2025 9:00 PM",
+    endDate: "30/04/2025 11:59 PM",
     description:
       "You are required to submit your combined report for Chapters 4 to 5 as part of your capstone project progress. This submission will be reviewed by your advisor, who will provide feedback and indicate whether revisions are required.",
     chapters: ["Chapter4", "Chapter5"],
@@ -51,7 +54,8 @@ export default function AssignmentDetailPage() {
       </div>
 
       <p className="text-lg text-gray-600 font-medium">
-        <strong>Due date</strong> {assignment.dueDate}
+        <strong className="mr-2">Due date</strong> {assignment.dueDate}
+        <strong>End date</strong> {assignment.endDate}
       </p>
 
       <p className="text-lg text-gray-700">{assignment.description}</p>
@@ -115,6 +119,61 @@ export default function AssignmentDetailPage() {
           </div>
         </div>
       ))}
+
+      <Feedback
+        workFile={{
+          name: "G0001_A01_V01.pdf",
+          href: "/files/G0001_A01_V01.pdf", // or your API file link
+        }}
+        onSubmit={async (data) => {
+          console.log("Feedback submitted:", data);
+          // You can send this to backend here with fetch/axios
+        }}
+      />
+
+      <Version
+        versionLabel="Version 01"
+        statusText="Not Approved"
+        statusVariant="not_approved"
+        feedback={[
+          {
+            chapter: "Chapter 4",
+            title: "System Design and Implementation",
+            comments: [
+              "Good overview of the system components, but the architecture diagram needs clearer labeling and descriptions.",
+              "The implementation section is too brief — consider expanding on key technologies and how they were integrated.",
+              "Please add brief justifications for design decisions (e.g., why certain frameworks or patterns were used).",
+            ],
+            files: [{ name: "Vithida_G0001_Chapter4_V01.pdf", href: "#" }],
+          },
+          {
+            chapter: "Chapter 5",
+            title: "Testing and Evaluation",
+            comments: [
+              "Well-structured and clearly presented.",
+              "The test cases, results, and analysis are sufficient — no major revisions needed.",
+            ],
+            files: [], // empty to show "-"
+          },
+        ]}
+        workDescription="Submitted Chapters 4–5 with system design, implementation, and testing results. Ready for your review."
+        work={[
+          {
+            chapter: "Chapter4",
+            files: [
+              { name: "G0001_Chapter4_V01.pdf", href: "#" },
+              { name: "G0001_Chapter4_V01.docx", href: "#" },
+            ],
+          },
+          {
+            chapter: "Chapter5",
+            files: [
+              { name: "G0001_Chapter5_V01.pdf", href: "#" },
+              { name: "G0001_Chapter5_V01.docx", href: "#" },
+            ],
+          },
+        ]}
+      />
 
       <div className="flex justify-end mt-6">
         <button className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow">

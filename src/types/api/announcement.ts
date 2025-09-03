@@ -13,7 +13,21 @@ export namespace Announcement {
     }
 }
 
-type file = {
+export namespace createAnnouncement {
+    export type createAnnouncementPayload = {
+        id: number;
+        courseId: number;
+        name: string;
+        description: string;
+        createdAt: string;
+        schedule: string;
+        createById: number;
+        files: file[];
+        createdBy: createById;
+    }
+}
+
+export type file = {
     id: number;
     name: string;
     filepath: string;

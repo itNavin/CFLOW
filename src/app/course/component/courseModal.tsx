@@ -10,11 +10,12 @@ export const CourseModal = ({
     mode: "create" | "edit";
     initial?: Course;
     onClose: () => void;
-    onSubmit: (c: Omit<Course, "id" | "createdAt" | "createdById">) => void;
+    onSubmit: (c: Omit<Course, "id" | "createdAt" | "createdById">) => void | Promise<void>;
 }) => {
     const [program, setProgram] = useState<"CS" | "DSI">(initial?.program ?? "CS");
     const [name, setName] = useState<string>(initial?.name ?? "");
     const [description, setDescription] = useState<string>(initial?.description ?? "");
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const canSubmit = name.trim().length > 0 && !!program;
 
@@ -32,6 +33,23 @@ export const CourseModal = ({
         };
     }, [onClose]);
 
+    const handleSubmit = async () => {
+        if (!canSubmit) return;
+        
+        setIsSubmitting(true);
+        try {
+            await onSubmit({
+                name: name.trim(),
+                program,
+                description: description.trim(),
+            });
+        } catch (error) {
+            // Error handling is done in the parent component
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
     return (
         <>
             <div className="fixed inset-0 bg-black/40 z-40" />
@@ -114,16 +132,10 @@ export const CourseModal = ({
                     <div className="px-6 py-4 border-t flex justify-end">
                         <button
                             disabled={!canSubmit}
-                            onClick={() =>
-                                onSubmit({
-                                    name: name.trim(),
-                                    program,
-                                    description: description.trim(),
-                                })
-                            }
+                            onClick={handleSubmit}
                             className="rounded px-6 py-2 text-white shadow disabled:opacity-60 bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320]"
                         >
-                            {mode === "create" ? "Create" : "Save"}
+                            {isSubmitting ? (mode === "create" ? "Creating..." : "Saving...") : (mode === "create" ? "Create" : "Save")}
                         </button>
                     </div>
                 </div>
