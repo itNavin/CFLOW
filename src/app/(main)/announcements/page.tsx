@@ -29,7 +29,9 @@ export default function AnnouncementPage() {
       const response = await getAllAnnouncementByCourseIdAPI(id);
       // console.log("Response:", response.data);
       setAnnouncements(response.data);
-    } catch (error) {}
+    } catch (error) {
+      console.error("Error fetching announcements:", error);
+    }
   };
 
   useEffect(() => {

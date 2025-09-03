@@ -1,45 +1,103 @@
 "use client";
-
 import React, { useRef } from "react";
 import { MoreHorizontal, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { getAllFileByCourseIdAPI } from "@/api/file/getAllFileByCourseId";
+import { createFileByCourseIdAPI } from "@/api/file/createFileByCourseId";
+import { File } from "@/types/api/file";
+import { getUserRole } from "@/util/cookies";
+import { userRole } from "@/types/api/userRole";
 
-const files = [
-  {
-    name: "PDFfile.pdf",
-    modified: "4/18/2025",
-    modifiedBy: "Thanatat Wongabut",
-  },
-  {
-    name: "PDFfileonetwothreefourfivesixseveneightnineteen.pdf",
-    modified: "4/18/2025",
-    modifiedBy: "Thanatat Wongabut",
-  },
-  {
-    name: "222PDFfile222.pdf",
-    modified: "4/21/2025",
-    modifiedBy: "Thanatat Wongabut",
-  },
-  {
-    name: "222fileonetwothreefourfivesixseveneightnineteneleven.pdf",
-    modified: "4/21/2025",
-    modifiedBy: "Thanatat Wongabut",
-  },
-];
+export function formatUploadAt(
+  iso: string,
+  locale: string = "en-GB" // change to "th-TH" for Thai
+) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // fallback if bad input
+
+  return d.toLocaleString(locale, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Bangkok", // convert from Z (UTC) → Bangkok (UTC+7)
+  });
+}
+export type CreateFilePayload = {
+  name: string;
+  filepath: string;
+  uploadById: number;
+};
 
 export default function FilePage() {
+  const role = getUserRole();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [userRole, setUserRole] = useState<userRole.UserRole | null>(null);
+  const [roleReady, setRoleReady] = useState(false);
 
-  const handleUploadClick = () => {
-    fileInputRef.current?.click(); 
+  useEffect(() => {
+    let cancelled = false;
+    Promise.resolve(role)
+      .then((r) => {
+        if (!cancelled) setUserRole((role ?? null) as userRole.UserRole | null);
+      })
+      .finally(() => {
+        if (!cancelled) setRoleReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const canUpload =
+    role === "ADMIN" || role === "ADVISOR" || role === "SUPER_ADMIN";
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    const id = Number(courseId);
+    console.log("Selected files:", selectedFiles);
+    
+     try {
+      const created = await Promise.all(
+        Array.from(selectedFiles || []).map(async (f) => {
+          const res = await createFileByCourseIdAPI(id);
+          return res.data; // ApiFile.File
+        })
+      );
+     } catch (error) {
+      
+     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = e.target.files;
-    if (selectedFiles) {
-      console.log("Selected files:", selectedFiles);
-      // TODO: Handle actual upload logic here
+  const courseId = useSearchParams().get("courseId") || "";
+  const [files, setFiles] = useState<File.File[]>([]);
+  console.log("files:", files);
+
+  const fetchFiles = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        return;
+      }
+
+      const response = await getAllFileByCourseIdAPI(id);
+      setFiles(response.data);
+    } catch (error) {
+      console.error("Error fetching files:", error);
     }
   };
+
+  useEffect(() => {
+    fetchFiles();
+  }, [courseId]);
 
   return (
     <main className="min-h-screen bg-white p-6 pb-28 font-dbheavent">
@@ -66,10 +124,10 @@ export default function FilePage() {
                   <MoreHorizontal className="ml-auto w-4 h-4 text-gray-500 cursor-pointer" />
                 </td>
                 <td className="text-xl py-3 px-4 text-gray-700">
-                  {file.modified}
+                  {formatUploadAt(file.uploadAt)}
                 </td>
                 <td className="text-xl py-3 px-4 text-gray-700">
-                  {file.modifiedBy}
+                  {file.createdBy.name} {file.createdBy.surname}
                 </td>
               </tr>
             ))}
