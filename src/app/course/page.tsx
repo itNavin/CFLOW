@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar";
 import { getCourseAPI } from "@/api/course/getCourse";
@@ -8,8 +8,25 @@ import { getAllCourseAPI } from "@/api/course/getAllCourse";
 import { getUserRole } from "@/util/cookies";
 import { Course } from "@/types/api/course";
 import { CourseModal } from "./component/courseModal";
+import { createCourse } from "@/types/api/course";
+import { createCourseAPI } from "@/api/course/createCourse";
 
-// ---------------------------- Page ------------------------------- //
+// tiny helpers
+const asArray = <T = any>(data: any, key?: string): T[] => {
+  if (Array.isArray(data)) return data as T[];
+  if (key && Array.isArray(data?.[key])) return data[key] as T[];
+  return [];
+};
+
+const pickArray = <T = any>(res: any, key?: string): T[] => {
+  const candidates = [res?.data, res?.data?.data, res]; // support {data:{...}}, {data:[]}, or bare array
+  for (const base of candidates) {
+    const arr = asArray<T>(base, key);
+    if (arr.length) return arr;
+  }
+  return [];
+};
+
 export default function CoursePage() {
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
@@ -20,59 +37,107 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // ------------------------ Data Fetching ------------------------ //
-  const fetchCourses = async () => {
-    if (userRole === undefined) return;
+  // resolve role once on mount
+  useEffect(() => {
+    setUserRole(getUserRole()); // "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN" | undefined
+  }, []);
+
+  const fetchCourses = useCallback(async () => {
+    if (userRole === undefined) return; // wait until role resolved
+
     try {
       setLoading(true);
       setError(null);
 
-      console.log(userRole);
-
       if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
-        const response = await getAllCourseAPI(); // GET /course
-        setCourses(response.data);
+        const res = await getAllCourseAPI(); // GET /course
+        // accept: { courses: [...] } or [...]
+        const list = pickArray<Course>(res, "courses");
+        setCourses(list);
       } else {
-        const response = await getCourseAPI(); // GET /course/my-courses
-        setCourses(response.data.courses.map(c => c.course));
+        const res = await getCourseAPI(); // GET /course/my-courses
+        // accept: { courses: [{course: {...}}, ...] } or maybe just [...]
+        const memberships = pickArray<any>(res, "courses");
+        const list: Course[] = memberships
+          .map((m) => m?.course ?? m) // if backend already returns pure Course, still works
+          .filter(Boolean);
+        setCourses(list);
       }
-    } catch (err) {
-      console.error("Error fetching courses:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch courses");
+    } catch (err: any) {
+      console.error("Error fetching courses:", err?.response?.status, err?.response?.data || err);
+      setError(
+        err?.response?.status
+          ? `Failed to fetch courses (HTTP ${err.response.status})`
+          : err instanceof Error
+          ? err.message
+          : "Failed to fetch courses"
+      );
     } finally {
       setLoading(false);
     }
-  };
+  }, [userRole]);
+
+  useEffect(() => {
+    if (userRole !== undefined) {
+      fetchCourses();
+    }
+  }, [userRole, fetchCourses]);
 
   const handleCourseClick = (course: Course) => {
     if (!userRole) return;
-
     const base =
       userRole === "ADMIN" || userRole === "SUPER_ADMIN"
         ? "/admin"
         : userRole === "ADVISOR"
-          ? "/advisor"
-          : "/student";
-
+        ? "/advisor"
+        : "/student";
     router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
   };
 
+  // ...existing code...
 
-  const handleAddCourse = (newCourse: Omit<Course, "createdById" | "createdAt">) => {
-    // Call API to add course
-    console.log(newCourse);
-  };
+const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "createdAt">) => {
+  try {
+    setLoading(true);
+    setError(null);
 
-  useEffect(() => {
-    setUserRole(getUserRole());
-    fetchCourses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userRole]);
+    // Call the actual API
+    const response = await createCourseAPI(
+      payload.program, 
+      payload.name, 
+      payload.description || null
+    );
+    await fetchCourses();
+
+    setOpenCreate(false);
+  } catch (err: any) {
+    console.error("Error creating course:", err);
+    setError(
+      err?.response?.status
+        ? `Failed to create course (HTTP ${err.response.status})`
+        : err instanceof Error
+        ? err.message
+        : "Failed to create course"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+// ...existing code...
+
+{openCreate && (
+  <CourseModal
+    mode="create"
+    onClose={() => setOpenCreate(false)}
+    onSubmit={handleCreateCourse}
+  />
+)}
+
+// ...existing code...
 
   // -------------------- Menu (three-dots) UI --------------------- //
-  const toggleMenu = (id: number) => {
-    setOpenMenuId((prev) => (prev === id ? null : id));
-  };
+  const toggleMenu = (id: number) => setOpenMenuId((prev) => (prev === id ? null : id));
 
   const closeMenusOnOutsideClickRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -88,11 +153,10 @@ export default function CoursePage() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
-  if (userRole == undefined) {
+  if (userRole === undefined) {
     return <div>Loading...</div>;
   }
 
-  // ---------------------------- UI ------------------------------- //
   return (
     <>
       <Navbar />
@@ -191,22 +255,7 @@ export default function CoursePage() {
         <CourseModal
           mode="create"
           onClose={() => setOpenCreate(false)}
-          onSubmit={async (payload) => {
-            try {
-              // For now, just add locally - replace with real create API if needed
-              const newCourse: Omit<Course, "createdById" | "createdAt"> = {
-                id: Date.now(), // temporary client ID
-                name: payload.name,
-                program: payload.program,
-                description: payload.description,
-              };
-              handleAddCourse(newCourse);
-              setOpenCreate(false);
-            } catch (err) {
-              console.error("Error creating course:", err);
-              setError("Failed to create course");
-            }
-          }}
+          onSubmit={handleCreateCourse}
         />
       )}
 
@@ -217,7 +266,6 @@ export default function CoursePage() {
           onClose={() => setEditing(null)}
           onSubmit={async (payload) => {
             try {
-              // For now, just update locally - replace with real update API if needed
               setCourses((prev) =>
                 prev.map((c) => (c.id === editing.id ? { ...c, ...payload } : c))
               );

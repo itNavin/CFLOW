@@ -77,7 +77,7 @@ export default function AnnouncementPage() {
       ))}
 
       <Link
-        href="/announcements/new"
+        href={`/announcements/new?courseId=${courseId}`}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
                    bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
                    hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]

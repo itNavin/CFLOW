@@ -10,6 +10,17 @@ export namespace getAllCourse{
   export type AllCourse = Course[];
 }
 
+export namespace createCourse {
+  export type CreateCoursePayload = {
+    id: number;
+    name: string;
+    description?: string | null;
+    program: "CS" | "DSI";
+    createdById: number;
+    createdAt: string;
+  };
+}
+
 type myCourseUser = {
   id: number;
   email: string;
