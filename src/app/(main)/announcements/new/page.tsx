@@ -7,6 +7,10 @@ import { ArrowLeft, Clock } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createAnnouncementByCourseIdAPI } from "@/api/announcement/createAnnouncementByCourseId";
 import { FileUpload } from "@/components/uploadFile";
+import { getUserId } from "@/util/cookies";
+import { uploadCourseFile } from "@/types/api/storage";
+import { uploadCourseFileAPI } from "@/api/storage/uploadCourseFile";
+import { uploadAnnouncementFileAPI } from "@/api/storage/uploadAnnouncementFile";
 
 export default function NewAnnouncement() {
   const [date, setDate] = useState<Date | undefined>(new Date());
@@ -18,7 +22,8 @@ export default function NewAnnouncement() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isScheduled, setIsScheduled] = useState(false); // Add scheduling toggle
-  
+  const [userId, setUserId] = useState<number>(1);
+
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -31,17 +36,16 @@ export default function NewAnnouncement() {
 
   const handleFilesChange = (files: File[]) => {
     setSelectedFiles(files);
-    console.log("Selected files:", files);
   };
 
   // Combine date and time into a single Date object
   const getScheduledDateTime = (): Date => {
     if (!date) return new Date();
-    
+
     const [hours, minutes] = time.split(':').map(Number);
     const scheduledDate = new Date(date);
     scheduledDate.setHours(hours, minutes, 0, 0);
-    
+
     return scheduledDate;
   };
 
@@ -66,7 +70,7 @@ export default function NewAnnouncement() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!title.trim() || !description.trim()) {
       setError("Please fill in all required fields");
       return;
@@ -86,7 +90,7 @@ export default function NewAnnouncement() {
     if (isScheduled) {
       const scheduledDateTime = getScheduledDateTime();
       const now = new Date();
-      
+
       if (scheduledDateTime <= now) {
         setError("Scheduled time must be in the future");
         return;
@@ -103,9 +107,9 @@ export default function NewAnnouncement() {
       }
 
       // Format the date to match your API expectations
-      const scheduleDate = isScheduled 
+      const scheduleDate = isScheduled
         ? getScheduledDateTime().toISOString()
-        : new Date().toISOString(); // Post immediately
+        : null; // Send null for immediate posting
 
       // Convert File objects to the file type expected by your API
       // const fileData = selectedFiles.map((file, index) => ({
@@ -118,24 +122,32 @@ export default function NewAnnouncement() {
       // }));
 
       // Call the API
-      await createAnnouncementByCourseIdAPI(
+      const newAnnouncement = await createAnnouncementByCourseIdAPI(
         courseIdNumber,
         title.trim(),
         description.trim(),
         scheduleDate,
       );
 
+      const uploadFileResult = await uploadAnnouncementFileAPI(
+        courseIdNumber,
+        newAnnouncement.data.id,
+        selectedFiles
+      );
+
+      console.log("Uploaded files:", uploadFileResult);
+
       console.log("Announcement created successfully!");
       console.log("Scheduled for:", scheduleDate);
-      
+
       // Navigate back to announcements page with courseId
       router.push(`/announcements?courseId=${courseId}`);
-      
+
     } catch (err: any) {
       console.error("Error creating announcement:", err);
       setError(
-        err?.response?.data?.message || 
-        err?.message || 
+        err?.response?.data?.message ||
+        err?.message ||
         "Failed to create announcement"
       );
     } finally {
@@ -143,11 +155,11 @@ export default function NewAnnouncement() {
     }
   };
 
-  const canSubmit = title.trim().length > 0 && 
-                   description.trim().length > 0 && 
-                   courseId && 
-                   (!isScheduled || (date && time)) &&
-                   !isSubmitting;
+  const canSubmit = title.trim().length > 0 &&
+    description.trim().length > 0 &&
+    courseId &&
+    (!isScheduled || (date && time)) &&
+    !isSubmitting;
 
   return (
     <div className="flex min-h-screen font-dbheavent">
@@ -226,7 +238,7 @@ export default function NewAnnouncement() {
             <label className="block font-medium mb-3">
               Post Timing
             </label>
-            
+
             {/* Toggle between immediate and scheduled */}
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
@@ -299,7 +311,7 @@ export default function NewAnnouncement() {
                             ))}
                           </select>
                         </div>
-                        
+
                         {/* Quick time buttons */}
                         <div className="flex flex-wrap gap-2">
                           <button
@@ -366,10 +378,10 @@ export default function NewAnnouncement() {
               className="bg-[#326295] text-white px-6 py-2 rounded shadow hover:bg-[#28517c] transition disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={!canSubmit}
             >
-              {isSubmitting 
-                ? "Creating..." 
-                : isScheduled 
-                  ? "Schedule Announcement" 
+              {isSubmitting
+                ? "Creating..."
+                : isScheduled
+                  ? "Schedule Announcement"
                   : "Post Announcement"
               }
             </button>

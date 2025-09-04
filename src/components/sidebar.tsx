@@ -8,16 +8,16 @@ import { getUserRole } from "@/util/cookies";
 import { myProject } from "@/types/api/myProject";
 import { getMyProjectByCourseAPI } from "@/api/projectName/getMyProjectByCourse";
 
-type UserRole = "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
+type UserRole = "student" | "lecturer" | "staff" | "super_admin";
 
 const normalizeRole = (val: unknown): UserRole | null => {
   if (!val) return null;
   const s = String(val).toUpperCase();
   const map: Record<string, UserRole> = {
-    STUDENT: "STUDENT",
-    ADVISOR: "ADVISOR",
-    ADMIN: "ADMIN",
-    SUPER_ADMIN: "SUPER_ADMIN",
+    STUDENT: "student",
+    LECTURER: "lecturer",
+    STAFF: "staff",
+    SUPER_ADMIN: "super_admin",
   };
   return map[s] ?? null;
 };
@@ -68,29 +68,29 @@ export default function Sidebar() {
   // console.log("User Role:", userRole);
   const getMenuItems = (role: UserRole): MenuItems => {
     switch (role) {
-      case "STUDENT": {
+      case "student": {
         if (project === undefined) {
            console.log("projectName is undefined");
           return [];
         }
         return [
-          { name: project?.group.projectName ?? "Unknown", href: "/student" },
+          { name: project?.group?.projectName ?? "Unknown", href: "/student" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
           { name: "Assignments", href: "/assignments/student" },
         ];
       }
-      case "ADVISOR":
+      case "lecturer":
         return [
-          { name: "Advisor", href: "/advisor" },
+          { name: "Lecturer", href: "/advisor" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
-          { name: "Assignments", href: "/assignments/advisor" },
+          { name: "Assignments", href: "/assignments/lecturer" },
         ];
-      case "ADMIN":
-      case "SUPER_ADMIN":
+      case "staff":
+      case "super_admin":
         return [
-          { name: "Admin", href: `/admin` },
+          { name: "Staff", href: `/admin` },
           {
             name: "Announcements",
             href: `/announcements`,

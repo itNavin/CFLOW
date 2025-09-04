@@ -14,6 +14,7 @@ export default function CourseTab() {
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const courseId = searchParams.get("courseId") || "";
   // console.log("Dashboard data:", dashboardData);
   // console.log("Status counts:", dashboardData?.submissions.statusCounts.FINAL);
 
@@ -76,7 +77,7 @@ export default function CourseTab() {
         description: courseInfo.description ?? "No description available",
         program: courseInfo.program ?? "Unknown",
         createdAt: toDateOrNull((courseInfo as any).createdAt), // Date | null
-        createdBy: courseInfo?.createdBy.fullName ?? "Unknown",
+        createdBy: courseInfo?.createdBy.name ?? "Unknown",
           // (courseInfo as any)?.createBy?.fullName
           //   ? (courseInfo as any).createBy.fullName
           //   : "Unknown",
@@ -189,17 +190,17 @@ export default function CourseTab() {
           <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
           <ul className="space-y-2 text-[#326295] text-lg">
             <li>
-              <Link href="/assignments/new" className="hover:underline inline-flex items-center gap-2">
+              <Link href={`/assignments/new?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
                 <FilePlus2 className="w-5 h-5" /> Create Assignment
               </Link>
             </li>
             <li>
-              <Link href="/announcements/new" className="hover:underline inline-flex items-center gap-2">
+              <Link href={`/announcements/new?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
                 <Megaphone className="w-5 h-5" /> Create Announcement
               </Link>
             </li>
             <li>
-              <Link href="/files/new" className="hover:underline inline-flex items-center gap-2">
+              <Link href={`/files/?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
                 <Upload className="w-5 h-5" /> Upload File
               </Link>
             </li>

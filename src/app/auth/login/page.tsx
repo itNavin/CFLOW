@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoginAPI } from "@/api/auth/login";
 import { setAuthToken, setUserRole } from "@/util/cookies";
+import { startTokenRefresh } from "@/util/TokenRefreshInterval";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,20 +14,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-   function isValidEmail(v: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  }
-
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
 
     if (!email.trim() || !password) {
       setErr("Please enter Email and Password.");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      setErr("Please enter a valid email address.");
       return;
     }
 
@@ -38,6 +31,7 @@ export default function LoginPage() {
       }
       setAuthToken(response.data.token)
       setUserRole(response.data.user.role)
+      startTokenRefresh();
       router.push("/course");
     } catch (e: any) {
       setErr(e?.message || "Login failed");

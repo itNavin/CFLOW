@@ -4,136 +4,58 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, CheckCircle2 } from "lucide-react";
+import { getDashboardData } from "@/api/dashboard/getDashboard";
+import { Dashboard } from "@/types/api/dashboard";
+import { useSearchParams } from "next/navigation";
 
-type Course = {
-  id: number;
-  name: string;
-  program: "CS" | "DSI";   
-  description?: string; 
-};
+export function formatUploadAt(
+  iso: string,
+  locale: string = "en-GB" // change to "th-TH" for Thai
+) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // fallback if bad input
 
-/* ----------------------------- MOCK DATA ONLY ----------------------------- */
-export const advisorMock = {
-  advisor: {
-    id: "advisor-001",
-    name: "Dr. Vithida Chongsuphajaisiddhi",
-  },
-  course: {
-    code: "CSC498-CSC499[2026]",
-    description: "This class for CS",
-    program: "CS",
-    createdAt: "06/09/2025",
-    createdBy: "Thanatat Wongabut",
-  },
-  counts: {
-    totalStudents: 59,
-    totalAdvisors: 12,
-    totalGroups: 20,
-    totalAssignments: 3,
-  },
-  submissionsBreakdown: [
-    { label: "Not Submitted", value: 0, color: "#6b7280" },
-    { label: "Submitted", value: 0, color: "#1d4ed8" },
-    { label: "Missed", value: 0, color: "#ef4444" },
-    { label: "Rejected", value: 0, color: "#f59e0b" },
-    { label: "Approved with Feedback", value: 0, color: "#10b981" },
-    { label: "Final", value: 6, color: "#16a34a" },
-  ],
-  assignments: [
-    { id: "1", title: "Assignment 1" },
-    { id: "2", title: "Assignment 2" },
-    { id: "3", title: "Assignment 3" },
-  ],
-  alerts: [
-    {
-      id: "a1",
-      title: "5 groups missed the submission for Assignment 1",
-      desc: "",
-      date: "01/04/2025, 08:00 AM",
-    },
-    {
-      id: "a2",
-      title: "Announcement Posted",
-      desc: "New announcement posted by Thanatat Wongabut",
-      date: "01/04/2025, 09:00 AM",
-    },
-  ],
-  groups: [
-    {
-      id: "0001",
-      projectTitle: "Hellohello system",
-      productTitle: "Twomandown",
-      members: [
-        "65130500211 Navin Dansaikul",
-        "65130500241 Mananchai Chankhuong",
-        "65130500299 Cristiano Ronaldo",
-      ],
-      advisorId: "advisor-001",
-      advisor: "Dr. Vithida Chongsuphajaisiddhi",
-    },
-    {
-      id: "0002",
-      projectTitle: "GPS system",
-      productTitle: "BokLare",
-      members: [
-        "65130500212 Lamine Yamal",
-        "65130500213 Lionel Messi",
-        "65130500214 Rafael Leao",
-      ],
-      advisorId: "advisor-001",
-      advisor: "Dr. Vithida Chongsuphajaisiddhi",
-    },
-    {
-      id: "9999",
-      projectTitle: "Other group (not mine)",
-      productTitle: "-",
-      members: ["1 Someone Else"],
-      advisorId: "advisor-999",
-      advisor: "Other Advisor",
-    },
-  ],
-};
+  return d.toLocaleString(locale, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    timeZone: "Asia/Bangkok", // convert from Z (UTC) → Bangkok (UTC+7)
+  });
+}
 
-/* ------------------------------- PAGE (MOCK) ------------------------------ */
 export default function Page() {
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
+  // const responsibleGroups = groups.filter((g) => g.advisorId === advisor.id);
+  // const total = submissionsBreakdown.reduce((s, i) => s + i.value, 0);
+  // const final = submissionsBreakdown.find((i) => i.label === "Final")?.value ?? 0;
+  // const percent = total ? Math.round((final / total) * 100) : 0;
+  const [loading, setLoading] = useState(true);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const courseId = useSearchParams().get("courseId") || "";
+
+  const fetchDashboardData = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getDashboardData(id);
+      // console.log("Response:", response.data);
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    }
+  };
+
 
   useEffect(() => {
-    // Get selected course from localStorage
-    const courseData = localStorage.getItem('selectedCourse');
-    if (courseData) {
-      try {
-        const course = JSON.parse(courseData);
-        setSelectedCourse(course);
-      } catch (err) {
-        console.error('Error parsing course data:', err);
-      }
-    }
-  }, []);
-
-  const {
-    advisor,
-    course,
-    counts,
-    submissionsBreakdown,
-    assignments,
-    alerts,
-    groups,
-  } = advisorMock;
-
-  // Use selected course data or fallback to mock data
-  const courseInfo = selectedCourse ? {
-    code: selectedCourse.name,
-    description: selectedCourse.description || "No description available",
-    program: selectedCourse.program,
-    createdAt: "06/09/2025", // Keep mock data for now
-    createdBy: "Thanatat Wongabut", // Keep mock data for now
-  } : course;
-
-  const responsibleGroups = groups.filter((g) => g.advisorId === advisor.id);
-  const total = submissionsBreakdown.reduce((s, i) => s + i.value, 0);
-  const final = submissionsBreakdown.find((i) => i.label === "Final")?.value ?? 0;
-  const percent = total ? Math.round((final / total) * 100) : 0;
+    fetchDashboardData();
+  }, [courseId]);
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
@@ -147,11 +69,11 @@ export default function Page() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              <InfoRow label="Class Name" value={courseInfo.code} />
-              <InfoRow label="Description" value={courseInfo.description} />
-              <InfoRow label="Program Type" value={courseInfo.program} />
-              <InfoRow label="Created Date" value={courseInfo.createdAt} />
-              <InfoRow label="Created By" value={courseInfo.createdBy} />
+              <InfoRow label="Class Name" value={dashboard?.course.name ?? "Unknown"} />
+              <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
+              <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
+              <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
+              <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
             </section>
 
             {/* Dashboard */}
@@ -171,18 +93,14 @@ export default function Page() {
 
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="flex items-center justify-center">
-                  <Donut percent={percent} label="Submissions" total={`${total} Totals`} />
+                  <Donut percent={100} label="Submissions" total="3 Totals" />
                 </div>
                 <ul className="space-y-2 text-lg">
-                  {submissionsBreakdown.map((i) => (
-                    <LegendItem
-                      key={i.label}
-                      color={i.color}
-                      text={`${i.label}: ${i.value} (${
-                        total === 0 ? 0 : Math.round((i.value / total) * 100)
-                      }%)`}
-                    />
-                  ))}
+                  <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard?.submissions.statusCounts.NOT_SUBMITTED}`} />
+                  <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard?.submissions.statusCounts.SUBMITTED}`} />
+                  <LegendItem color="#ef4444" text={`Rejected: ${dashboard?.submissions.statusCounts.REJECTED}`} />
+                  <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard?.submissions.statusCounts.APPROVED_WITH_FEEDBACK}`} />
+                  <LegendItem color="#16a34a" text={`Final: ${dashboard?.submissions.statusCounts.FINAL}`} />
                 </ul>
               </div>
 
@@ -198,15 +116,18 @@ export default function Page() {
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Alerts</h2>
             <div className="divide-y">
-              {alerts.map((a) => (
-                <AlertRow
-                  key={a.id}
-                  icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
-                  title={a.title}
-                  desc={a.desc ?? ""}
-                  date={a.date}
-                />
-              ))}
+              <AlertRow
+                icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
+                title="Assignment Approved"
+                desc="Assignment 3 has been marked as final. No further action is required."
+                date="01/04/2025, 09:00 AM"
+              />
+              <AlertRow
+                icon={<span className="text-xl">📨</span>}
+                title="Announcement Posted"
+                desc="New announcement posted by Thanatat Wongabut"
+                date="01/04/2025, 09:00 AM"
+              />
             </div>
           </section>
         </div>
@@ -217,10 +138,10 @@ export default function Page() {
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Summary</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-              <DT label="Total Students" value={String(counts.totalStudents)} />
-              <DT label="Total Advisors" value={String(counts.totalAdvisors)} />
-              <DT label="Total Groups" value={String(counts.totalGroups)} />
-              <DT label="Total Assignments" value={String(counts.totalAssignments)} />
+              <DT label="Total Students" value={(dashboard?.totals.students ?? 0).toString()} />
+              <DT label="Total Advisors" value={(dashboard?.totals.advisors ?? 0).toString()} />
+              <DT label="Total Groups" value={(dashboard?.totals.groups ?? 0).toString()} />
+              <DT label="Total Assignments" value={(dashboard?.totals.assignments ?? 0).toString()} />
             </dl>
           </section>
 
@@ -228,13 +149,28 @@ export default function Page() {
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
-              {assignments.map((a) => (
+              {/* {assignments.map((a) => (
                 <li key={a.id}>
                   <Link href="#" className="inline-flex items-center gap-2 hover:underline text-lg">
                     {a.title}
                   </Link>
                 </li>
-              ))}
+              ))} */}
+              <li>
+                <Link href="/assignments/1" className="inline-flex items-center gap-2 hover:underline text-lg">
+                  Assignment 1
+                </Link>
+              </li>
+              <li>
+                <Link href="/assignments/2" className="inline-flex items-center gap-2 hover:underline text-lg">
+                  Assignment 2
+                </Link>
+              </li>
+              <li>
+                <Link href="/assignments/3" className="inline-flex items-center gap-2 hover:underline text-lg">
+                  Assignment 3
+                </Link>
+              </li>
             </ul>
           </section>
 
@@ -244,7 +180,7 @@ export default function Page() {
               <h2 className="text-2xl font-semibold text-gray-900">Group Information</h2>
             </div>
 
-            {responsibleGroups.length === 0 ? (
+            {/* {responsibleGroups.length === 0 ? (
               <div className="text-lg text-gray-500">No assigned groups</div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
@@ -272,7 +208,21 @@ export default function Page() {
                   </div>
                 ))}
               </div>
-            )}
+            )} */}
+            <GroupInformationCard
+            data={{
+              id: "0001",
+              projectTitle: "Hellohello system",
+              productTitle: "Twomandown",
+              members: [
+                "65130500211 Navin Dansaikul",
+                "65130500241 Mananchai Chankhoung",
+                "65130500299 Cristiano Ronaldo",
+              ],
+              advisor: "Dr. Vithida Chongsuphajaisiddhi",
+            }}
+            onEdit={() => console.log("Edit group")}
+          />
           </section>
         </div>
       </div>
@@ -370,5 +320,49 @@ function AlertRow({
       </div>
       <div className="text-lg text-gray-500">{date}</div>
     </div>
+  );
+}
+
+function GroupInformationCard({
+  data,
+  onEdit,
+}: {
+  data: {
+    id: string;
+    projectTitle: string;
+    productTitle: string;
+    members: string[];
+    advisor: string;
+  };
+  onEdit?: () => void;
+}) {
+  return (
+    <section className="bg-white rounded-[20px] border border-gray-200 shadow-sm p-6">
+      <div className="flex items-center justify-between mb-4">
+        <Field label="ID" value={data.id} />
+        <button
+          onClick={onEdit}
+          className="p-2 rounded-md hover:bg-gray-100"
+          aria-label="Edit group"
+        >
+          <Pencil className="h-5 w-5 text-gray-700" />
+        </button>
+      </div>
+
+      <div className="space-y-4 text-gray-900">
+        <Field label="Project Title" value={data.projectTitle} />
+        <Field label="Product Title" value={data.productTitle} />
+
+        <Field label="Member">
+          <ul className="space-y-1 text-lg">
+            {data.members.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        </Field>
+
+        <Field label="Advisor" value={data.advisor} />
+      </div>
+    </section>
   );
 }

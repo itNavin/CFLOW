@@ -18,7 +18,7 @@ type course = {
 
 type createdBy = {
     id: number;
-    fullName: string;
+    name: string;
     email: string;
 }
 
