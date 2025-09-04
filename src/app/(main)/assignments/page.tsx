@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Plus } from "lucide-react";
 
 type Assignment = {
   id: number;
@@ -47,6 +49,8 @@ const submittedAssignments: Assignment[] = [
 
 export default function AssignmentPage() {
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
+  const courseId = useSearchParams().get("courseId") || "";
+
 
   const getCardStyle = (status: Assignment["status"]) => {
     switch (status) {
@@ -80,21 +84,19 @@ export default function AssignmentPage() {
     <main className="min-h-screen bg-white p-6 font-dbheavent">
       <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
         <button
-          className={`pb-2 ${
-            activeTab === "open"
+          className={`pb-2 ${activeTab === "open"
               ? "border-b-2 border-black text-black"
               : "text-gray-500"
-          }`}
+            }`}
           onClick={() => setActiveTab("open")}
         >
           Open Tasks
         </button>
         <button
-          className={`pb-2 ${
-            activeTab === "submitted"
+          className={`pb-2 ${activeTab === "submitted"
               ? "border-b-2 border-black text-black"
               : "text-gray-500"
-          }`}
+            }`}
           onClick={() => setActiveTab("submitted")}
         >
           Submitted
@@ -142,6 +144,16 @@ export default function AssignmentPage() {
           </div>
         ))}
       </div>
+      <Link
+        href={`/assignments/new?courseId=${courseId}`}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
+                   bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
+                   hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                   active:scale-[0.98] transition"
+      >
+        <Plus className="h-5 w-5" />
+        <span className="hidden sm:inline">Add New Assignments</span>
+      </Link>
     </main>
   );
 }
