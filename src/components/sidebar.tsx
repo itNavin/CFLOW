@@ -63,21 +63,21 @@ export default function Sidebar() {
       console.log("Project response:", response.data);
       setProject(response.data);
       console.log("Project name:", response.data.group.projectName);
-    } catch (error) {}
+    } catch (error) { }
   };
   // console.log("User Role:", userRole);
   const getMenuItems = (role: UserRole): MenuItems => {
     switch (role) {
       case "student": {
         if (project === undefined) {
-           console.log("projectName is undefined");
+          console.log("projectName is undefined");
           return [];
         }
         return [
           { name: project?.group?.projectName ?? "Unknown", href: "/student" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
-          { name: "Assignments", href: "/assignments/student" },
+          { name: "Assignments", href: "/assignments" },
         ];
       }
       case "lecturer":
@@ -85,16 +85,13 @@ export default function Sidebar() {
           { name: "Lecturer", href: "/advisor" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
-          { name: "Assignments", href: "/assignments/lecturer" },
+          { name: "Assignments", href: "/assignments" },
         ];
       case "staff":
       case "super_admin":
         return [
           { name: "Staff", href: `/admin` },
-          {
-            name: "Announcements",
-            href: `/announcements`,
-          },
+          { name: "Announcements", href: `/announcements` },
           { name: "Files", href: `/files` },
           { name: "Assignments", href: `/assignments` },
         ];
@@ -143,11 +140,10 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={`${item.href}?courseId=${id}`}
-              className={`px-6 py-3 text-2xl font-semibold transition ${
-                isActive
+              className={`px-6 py-3 text-2xl font-semibold transition ${isActive
                   ? "bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white"
                   : "text-black hover:bg-gray-100"
-              }`}
+                }`}
             >
               {item.name}
             </Link>
