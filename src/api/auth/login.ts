@@ -3,10 +3,10 @@ import { Axios } from "@/util/AxiosInstance";
 
 export const LoginAPI = async (email: string, password: string) => {
   const body = {
-    email: email,
-    passwordHash: password,
+    username: email,
+    password: password,
   };
-  const response = Axios.post<AuthPayload.Login>("/login", body);
+  const response = Axios.post<AuthPayload.Login>("/auth/login", body);
 
-  return response
+  return response;
 };

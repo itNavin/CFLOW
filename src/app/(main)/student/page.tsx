@@ -75,7 +75,7 @@ export default function StudentDashboard() {
               <InfoRow label="Description" value={dashboard?.course.description || "No description available"} />
               <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
               <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
-              <InfoRow label="Created By" value={dashboard?.course.createdBy.fullName ?? "Unknown"} />
+              <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
             </section>
 
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">

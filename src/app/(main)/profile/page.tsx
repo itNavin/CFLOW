@@ -1,6 +1,7 @@
 "use client";
 
 import { removeAuthToken, removeUserRole } from "@/util/cookies";
+import { stopTokenRefresh } from "@/util/TokenRefreshInterval";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -9,6 +10,7 @@ export default function ProfilePage() {
   const handleLogout = () => {
     removeAuthToken()
     removeUserRole()
+    stopTokenRefresh()
     navigator.replace("/auth/login")
   }
   return (

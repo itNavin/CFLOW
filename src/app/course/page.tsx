@@ -49,7 +49,7 @@ export default function CoursePage() {
       setLoading(true);
       setError(null);
 
-      if (userRole === "ADMIN" || userRole === "SUPER_ADMIN") {
+      if (userRole === "staff" || userRole === "SUPER_ADMIN") {
         const res = await getAllCourseAPI(); // GET /course
         // accept: { courses: [...] } or [...]
         const list = pickArray<Course>(res, "courses");
@@ -86,9 +86,9 @@ export default function CoursePage() {
   const handleCourseClick = (course: Course) => {
     if (!userRole) return;
     const base =
-      userRole === "ADMIN" || userRole === "SUPER_ADMIN"
+      userRole === "staff" || userRole === "SUPER_ADMIN"
         ? "/admin"
-        : userRole === "ADVISOR"
+        : userRole === "lecturer"
         ? "/advisor"
         : "/student";
     router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
@@ -164,7 +164,7 @@ const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[30px] font-medium text-black">Courses</h2>
 
-          {(userRole === "ADMIN" || userRole === "SUPER_ADMIN") && (
+          {(userRole === "staff" || userRole === "SUPER_ADMIN") && (
             <button
               onClick={() => setOpenCreate(true)}
               className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
