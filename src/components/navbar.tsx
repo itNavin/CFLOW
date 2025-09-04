@@ -1,21 +1,70 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import Image from "next/image";
 import { Bell, Home, User } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import NotificationPopup from "./notification"; // adjust path as needed
+import { getCourse, Course } from "@/types/api/course";
+import { getCourseAPI } from "@/api/course/getCourse";
+import { getUserRole } from "@/util/cookies";
 
 export default function Navbar() {
+  const searchParams = useSearchParams();
+  const courseId = searchParams.get("courseId");
+
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
+  const [userRole, setUserRole] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [courseData, setCourseData] = useState<getCourse.Course | null>(null);
+
+  const fetchCourses = useCallback(async () => {
+    if (userRole === undefined || !courseId) return;
+
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await getCourseAPI();
+      console.log("Course API response:", res.data);
+
+      setCourseData(res.data);
+    } catch (err: any) {
+      console.error("Error fetching courses:", err);
+      setError("Failed to fetch courses");
+    } finally {
+      setLoading(false);
+    }
+
+  }, [userRole, courseId]);
+
+  useEffect(() => {
+    const role = getUserRole();
+    setUserRole(role);
+  }, []);
+
+  useEffect(() => {
+    if (userRole) {
+      fetchCourses();
+    }
+  }, [userRole, fetchCourses, courseId]);
 
   return (
     <>
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
         <div className="flex items-center gap-4">
           <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={230} height={40} />
-          <span className="text-4xl font-semibold">CSC498-CSC499[2026]</span>
+          {courseId && (
+            <span className="text-4xl font-semibold">
+              {loading ? "Loading..." :
+                error ? "Error loading course" :
+                  courseData?.courses && courseData.courses.length > 0
+                    ? courseData.courses.find(c => c.course.id.toString() === courseId)?.course.name || "Course Not Found"
+                    : "No Courses Available"}
+            </span>
+          )}
         </div>
 
         <div className="flex items-center gap-6">
