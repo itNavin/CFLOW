@@ -3,8 +3,8 @@
 import React, { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import Feedback from "../feedback";
-import Version from "../version";
+import Feedback from "../../../../components/feedback";
+import Version from "../../../../components/version";
 
 export default function AssignmentDetailPage() {
   const params = useParams();
