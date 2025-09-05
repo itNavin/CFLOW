@@ -1,58 +1,110 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
+import { getAssignmentByOpenTaskandSubmittedAPI } from "@/api/assignment/getAllAssignments";
+import type { getAllAssignments } from "@/types/api/assignment";
 
-type Assignment = {
+type CardAssignment = {
   id: number;
   title: string;
-  dueDate: string;
+  dueDate: string; // e.g., "9:00 PM"
   status: "missed" | "upcoming" | "submitted" | "approved";
-  dateGroup: string;
+  dateGroup: string; // e.g., "20 April"
 };
-
-const assignments: Assignment[] = [
-  {
-    id: 1,
-    title: "A03_V01: Introduction & Requirements",
-    dueDate: "9:00 PM",
-    status: "missed",
-    dateGroup: "20 April",
-  },
-  {
-    id: 2,
-    title: "A04_V01: Chapters 4-5",
-    dueDate: "9:00 PM",
-    status: "upcoming",
-    dateGroup: "30 April",
-  },
-];
-
-const submittedAssignments: Assignment[] = [
-  {
-    id: 4,
-    title: "A02_V01: Feasibility Study",
-    dueDate: "9:00 PM",
-    status: "submitted",
-    dateGroup: "10 April",
-  },
-  {
-    id: 5,
-    title: "A01_V01: Project Proposal",
-    dueDate: "9:00 PM",
-    status: "approved",
-    dateGroup: "1 April",
-  },
-];
 
 export default function AssignmentPage() {
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
   const courseId = useSearchParams().get("courseId") || "";
+  const groupId = useSearchParams().get("groupId") || "";
 
+  const [data, setData] =
+    useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const getCardStyle = (status: Assignment["status"]) => {
+  // ---- helpers: date picking + formatting ----
+  const pickRelevantDateISO = (a: {
+    dueDate: string | null;
+    endDate: string;
+    schedule: string | null;
+  }) => a.dueDate ?? a.schedule ?? a.endDate;
+
+  const formatDateGroup = (iso: string) =>
+    new Date(iso).toLocaleDateString(undefined, {
+      day: "numeric",
+      month: "long",
+    });
+
+  const formatTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString(undefined, {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+
+  const computeOpenStatus = (dueISO: string | null): "missed" | "upcoming" => {
+    if (!dueISO) return "upcoming";
+    return new Date(dueISO).getTime() < Date.now() ? "missed" : "upcoming";
+  };
+
+  // ---- fetch ----
+  const fetchAssignments = async () => {
+    try {
+      if (!courseId || !groupId) return;
+      const cid = Number(courseId);
+      const gid = Number(groupId);
+      if (!Number.isFinite(cid) || !Number.isFinite(gid)) return;
+      setLoading(true);
+      const response = await getAssignmentByOpenTaskandSubmittedAPI(cid, gid);
+      setData(response.data);
+    } catch (e) {
+      console.error("Failed to fetch assignments", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssignments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, groupId]);
+
+  // ---- map backend -> cards ----
+  const openCards: CardAssignment[] = useMemo(() => {
+    if (!data) return [];
+    return data.openTasks.map((a) => {
+      const whenISO = pickRelevantDateISO(a);
+      const dateGroup = formatDateGroup(whenISO);
+      const status = computeOpenStatus(a.dueDate);
+      return {
+        id: a.id,
+        title: a.name,
+        dueDate: formatTime(whenISO),
+        status,
+        dateGroup,
+      };
+    });
+  }, [data]);
+
+  const submittedCards: CardAssignment[] = useMemo(() => {
+    if (!data) return [];
+    return data.submitted.map((a) => {
+      const whenISO = pickRelevantDateISO(a);
+      const dateGroup = formatDateGroup(whenISO);
+      // We don’t have per-submission status in this payload; mark as submitted
+      return {
+        id: a.id,
+        title: a.name,
+        dueDate: formatTime(whenISO),
+        status: "submitted",
+        dateGroup,
+      };
+    });
+  }, [data]);
+
+  // ---- UI helpers ----
+  const getCardStyle = (status: CardAssignment["status"]) => {
     switch (status) {
       case "missed":
         return "bg-red-100 border border-red-300";
@@ -67,16 +119,13 @@ export default function AssignmentPage() {
     }
   };
 
-  const groupedAssignments = (data: Assignment[]) => {
-    return data.reduce((acc: Record<string, Assignment[]>, curr) => {
-      acc[curr.dateGroup] = acc[curr.dateGroup] || [];
-      acc[curr.dateGroup].push(curr);
+  const groupedAssignments = (data: CardAssignment[]) =>
+    data.reduce((acc: Record<string, CardAssignment[]>, curr) => {
+      (acc[curr.dateGroup] ||= []).push(curr);
       return acc;
     }, {});
-  };
 
-  const displayedData =
-    activeTab === "open" ? assignments : submittedAssignments;
+  const displayedData = activeTab === "open" ? openCards : submittedCards;
 
   const grouped = groupedAssignments(displayedData);
 
@@ -84,24 +133,36 @@ export default function AssignmentPage() {
     <main className="min-h-screen bg-white p-6 font-dbheavent">
       <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
         <button
-          className={`pb-2 ${activeTab === "open"
+          className={`pb-2 ${
+            activeTab === "open"
               ? "border-b-2 border-black text-black"
               : "text-gray-500"
-            }`}
+          }`}
           onClick={() => setActiveTab("open")}
         >
-          Open Tasks
+          Open Tasks{data ? ` (${data.counts.open})` : ""}
         </button>
         <button
-          className={`pb-2 ${activeTab === "submitted"
+          className={`pb-2 ${
+            activeTab === "submitted"
               ? "border-b-2 border-black text-black"
               : "text-gray-500"
-            }`}
+          }`}
           onClick={() => setActiveTab("submitted")}
         >
-          Submitted
+          Submitted{data ? ` (${data.counts.submitted})` : ""}
         </button>
       </div>
+
+      {loading && <div className="text-gray-500">Loading assignments…</div>}
+
+      {!loading && displayedData.length === 0 && (
+        <div className="text-gray-500">
+          {activeTab === "open"
+            ? "No open tasks for this group."
+            : "No submitted assignments yet."}
+        </div>
+      )}
 
       <div className="space-y-6">
         {Object.entries(grouped).map(([date, tasks]) => (
@@ -144,6 +205,7 @@ export default function AssignmentPage() {
           </div>
         ))}
       </div>
+
       <Link
         href={`/assignments/new?courseId=${courseId}`}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
@@ -157,13 +219,3 @@ export default function AssignmentPage() {
     </main>
   );
 }
-
-
-// In src/app/(main)/assignments/page.tsx
-// import { redirect } from "next/navigation";
-
-// export default function AssignmentEntry() {
-//   const role = getUserRole(); // mock this or get from session
-//   if (role === "advisor") return redirect("/assignments/advisor");
-//   return redirect("/assignments/student");
-// }
