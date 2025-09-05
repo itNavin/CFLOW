@@ -1,6 +1,6 @@
 "use client";
 import React, { useRef } from "react";
-import { MoreHorizontal, Plus } from "lucide-react";
+import { MoreHorizontal, Plus, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { getAllFileByCourseIdAPI } from "@/api/file/getAllFileByCourseId";
@@ -38,6 +38,8 @@ export default function FilePage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [userRole, setUserRole] = useState<userRole.UserRole | null>(null);
   const [roleReady, setRoleReady] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<number | null>(null);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -62,17 +64,17 @@ export default function FilePage() {
     const selectedFiles = e.target.files;
     const id = Number(courseId);
     console.log("Selected files:", selectedFiles);
-    
-     try {
+
+    try {
       const created = await Promise.all(
         Array.from(selectedFiles || []).map(async (f) => {
           const res = await createFileByCourseIdAPI(id);
           return res.data; // ApiFile.File
         })
       );
-     } catch (error) {
-      
-     }
+    } catch (error) {
+
+    }
   };
 
   const courseId = useSearchParams().get("courseId") || "";
@@ -94,6 +96,30 @@ export default function FilePage() {
       console.error("Error fetching files:", error);
     }
   };
+
+  const handleDownload = (file: File.File) => {
+    alert(`Download clicked for: ${file.name}`);
+    setOpenDropdown(null);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Only close if we're not clicking on a dropdown button
+      const target = event.target as HTMLElement;
+      if (!target.closest('.dropdown-container')) {
+        setOpenDropdown(null);
+      }
+    };
+
+    if (openDropdown !== null) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [openDropdown]);
 
   useEffect(() => {
     fetchFiles();
@@ -117,11 +143,61 @@ export default function FilePage() {
                 className="border-b hover:bg-gray-50 transition-colors"
               >
                 <td className="py-3 px-4 flex items-center gap-2">
-                  <span className="text-yellow-500">📁</span>
+                  <span className="text-yellow-500">📄</span>
                   <span className="text-xl truncate max-w-[400px]">
                     {file.name}
                   </span>
-                  <MoreHorizontal className="ml-auto w-4 h-4 text-gray-500 cursor-pointer" />
+                  <div className="ml-auto relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log(`Clicked dropdown for file ${idx}, current state:`, openDropdown);
+                        setOpenDropdown(openDropdown === idx ? null : idx);
+                      }}
+                      className="p-1 rounded hover:bg-gray-200 transition-colors"
+                      type="button"
+                    >
+                      <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                    </button>
+
+                    {openDropdown === idx && (
+                        <div 
+                          className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[140px]"
+                          style={{ 
+                            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
+                            transform: 'translateY(2px)'
+                          }}
+                        >
+                          <div className="py-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDownload(file);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                              type="button"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download
+                            </button>
+                            {(role === "ADMIN" || role === "ADVISOR" || role === "SUPER_ADMIN") && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  console.log("Delete file:", file.name);
+                                  setOpenDropdown(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                                type="button"
+                              >
+                                <span className="w-4 h-4">🗑️</span>
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                  </div>
                 </td>
                 <td className="text-xl py-3 px-4 text-gray-700">
                   {formatUploadAt(file.uploadAt)}
