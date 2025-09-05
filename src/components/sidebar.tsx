@@ -84,10 +84,10 @@ export default function Sidebar() {
   }, [userRole, project]);
 
   if (menuItems.length === 0) {
-    console.log("No menu items, hiding sidebar"); 
+    console.log("No menu items, hiding sidebar");
     return null;
   }
-  
+
   return (
     <aside className="w-60 h-screen bg-white border-r">
       <nav className="flex flex-col py-6 space-y-2 font-dbheavent">
@@ -97,12 +97,11 @@ export default function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={`${item.href}?courseId=${id}&groupId=${project?.group.id}`}
-              className={`px-6 py-3 text-2xl font-semibold transition ${
-                isActive
+              href={`${item.href}?courseId=${id}${project?.group?.id ? `&groupId=${project.group.id}` : ''}`}
+              className={`px-6 py-3 text-2xl font-semibold transition ${isActive
                   ? "bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white"
                   : "text-black hover:bg-gray-100"
-              }`}
+                }`}
             >
               {item.name}
             </Link>
