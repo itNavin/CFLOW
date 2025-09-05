@@ -5,9 +5,20 @@ import Link from "next/link";
 import { Plus, Upload, Download, Search, X } from "lucide-react";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
 import { getAdvisorMember } from "@/types/api/courseMember";
+import { useSearchParams } from "next/navigation";
 
+// Mock data for available advisors
+const mockAvailableAdvisors = [
+  { id: 1, prefix: "Asst.Prof.Dr.", name: "Jane", surname: "Smith", email: "jane.smith@mail.kmutt.ac.th" },
+  { id: 2, prefix: "Prof.Dr.", name: "John", surname: "Wilson", email: "john.wilson@mail.kmutt.ac.th" },
+  { id: 3, prefix: "Dr.", name: "Sarah", surname: "Johnson", email: "sarah.johnson@mail.kmutt.ac.th" },
+  { id: 4, prefix: "Asst.Prof.", name: "Michael", surname: "Brown", email: "michael.brown@mail.kmutt.ac.th" },
+  { id: 5, prefix: "Prof.", name: "Emily", surname: "Davis", email: "emily.davis@mail.kmutt.ac.th" },
+];
 
 export default function AdvisorTab() {
+  const searchParams = useSearchParams();
+
   const [rows, setRows] = useState<getAdvisorMember.AdvisorMember>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Record<number, boolean>>({});
@@ -15,18 +26,7 @@ export default function AdvisorTab() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
-
-  // derive courseId from localStorage.selectedCourse
-  const readCourseId = (): number | null => {
-    try {
-      const raw = localStorage.getItem("selectedCourse");
-      if (!raw) return null;
-      const c = JSON.parse(raw);
-      return typeof c?.id === "number" ? c.id : null;
-    } catch {
-      return null;
-    }
-  };
+  const courseId = searchParams.get("courseId") || "";
 
   useEffect(() => {
     const fetch = async () => {
@@ -34,13 +34,12 @@ export default function AdvisorTab() {
         setLoading(true);
         setError(null);
 
-        let courseId = readCourseId();
-        if (!courseId) {
-          // fallback: if the admin lands here directly, you can default to the first course or show an error
+        const id = parseInt(courseId);
+        if (!courseId || isNaN(id)) {
           throw new Error("No course selected. Please select a course first.");
         }
 
-        const { data } = await getAdvisorMemberAPI(courseId);
+        const { data } = await getAdvisorMemberAPI(id);
         setRows(data || []);
       } catch (e: any) {
         setError(e?.message || "Failed to load advisors");
@@ -50,7 +49,7 @@ export default function AdvisorTab() {
     };
 
     fetch();
-  }, []);
+  }, [courseId]);
 
   const handleUploadClick = () => fileInputRef.current?.click();
 
@@ -71,8 +70,6 @@ export default function AdvisorTab() {
         r.user?.surname?.toLowerCase().includes(q) ||
         r.user?.email?.toLowerCase().includes(q) ||
         r.projects.some((p) => p.projectName?.toLowerCase().includes(q))
-      // Note: projects is advisorProject[] but backend doesn't return fields yet
-      // When backend returns project names, add: || r.projects.some((p) => p.name?.toLowerCase().includes(q))
     );
   }, [query, rows]);
 
@@ -104,19 +101,6 @@ export default function AdvisorTab() {
           >
             <Plus className="w-4 h-4" />
             Add
-          </button>
-
-          <button
-            onClick={handleUploadClick}
-            className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
-          >
-            <Upload className="w-4 h-4" />
-            Upload excel
-          </button>
-
-          <button className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition">
-            <Download className="w-4 h-4" />
-            Download template
           </button>
 
           <input
@@ -189,7 +173,7 @@ export default function AdvisorTab() {
                   </td>
 
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link>
+                    {/* <Link href="#" className="text-[#326295] hover:underline mr-4 text-lg">Detail</Link> */}
                     <button className="text-red-500 hover:underline text-lg">Delete</button>
                   </td>
                 </tr>
@@ -209,30 +193,30 @@ export default function AdvisorTab() {
       </div>
 
       {openCreate && (
-        <CreateAdvisorModal
+        <AddAdvisorModal
+          availableAdvisors={mockAvailableAdvisors}
           onCancel={() => setOpenCreate(false)}
-          onSave={(a) => {
-            // Create a proper advisorMember object structure
-            const courseId = readCourseId();
-            if (!courseId) return;
+          onSave={(selectedAdvisors) => {
+            const id = parseInt(courseId);
+            if (!courseId || isNaN(id)) return;
 
-            const newAdvisor: getAdvisorMember.AdvisorMember[0] = {
-              id: Date.now(), // temporary ID for optimistic update
-              courseId,
+            const newAdvisors: getAdvisorMember.AdvisorMember = selectedAdvisors.map(advisor => ({
+              id: Date.now() + advisor.id,
+              courseId: id,
               user: {
-                id: Date.now(),
-                email: a.email,
-                passwordHash: "", // not needed for display
-                prefix: a.prefix,
-                name: a.name,
-                surname: a.surname,
+                id: advisor.id,
+                email: advisor.email,
+                passwordHash: "",
+                prefix: advisor.prefix,
+                name: advisor.name,
+                surname: advisor.surname,
                 role: "ADVISOR" as const,
                 createdAt: new Date().toISOString(),
               },
-              projects: [], // empty array as backend doesn't return project fields yet
-            };
+              projects: [],
+            }));
 
-            setRows((prev) => [newAdvisor, ...prev]);
+            setRows((prev) => [...newAdvisors, ...prev]);
             setOpenCreate(false);
           }}
         />
@@ -242,20 +226,52 @@ export default function AdvisorTab() {
 }
 
 /* ------------------------- Add Advisor Modal ------------------------- */
-function CreateAdvisorModal({
+function AddAdvisorModal({
+  availableAdvisors,
   onCancel,
   onSave,
 }: {
+  availableAdvisors: typeof mockAvailableAdvisors;
   onCancel: () => void;
-  onSave: (a: AdvisorFormData) => void;
+  onSave: (advisors: typeof mockAvailableAdvisors) => void;
 }) {
-  const [prefix, setPrefix] = useState("Asst.Prof.Dr.");
-  const [name, setName] = useState("");
-  const [surname, setSurname] = useState("");
-  const [email, setEmail] = useState("");
-  const [projectsText, setProjectsText] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedAdvisors, setSelectedAdvisors] = useState<Record<number, boolean>>({});
 
-  const canSave = name.trim() && surname.trim() && email.trim();
+  const filteredAdvisors = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return availableAdvisors;
+    return availableAdvisors.filter(advisor =>
+      advisor.prefix.toLowerCase().includes(q) ||
+      advisor.name.toLowerCase().includes(q) ||
+      advisor.surname.toLowerCase().includes(q) ||
+      advisor.email.toLowerCase().includes(q)
+    );
+  }, [searchQuery, availableAdvisors]);
+
+  const allSelected = filteredAdvisors.length > 0 && filteredAdvisors.every(a => selectedAdvisors[a.id]);
+  const someSelected = filteredAdvisors.some(a => selectedAdvisors[a.id]) && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedAdvisors({});
+    } else {
+      const newSelected: Record<number, boolean> = {};
+      filteredAdvisors.forEach(a => newSelected[a.id] = true);
+      setSelectedAdvisors(newSelected);
+    }
+  };
+
+  const toggleAdvisor = (id: number) => {
+    setSelectedAdvisors(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const handleSave = () => {
+    const selected = availableAdvisors.filter(a => selectedAdvisors[a.id]);
+    onSave(selected);
+  };
+
+  const selectedCount = Object.values(selectedAdvisors).filter(Boolean).length;
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -271,72 +287,88 @@ function CreateAdvisorModal({
     };
   }, [onCancel]);
 
-  const parseProjects = (t: string) =>
-    t.split(/[\n;,]+/).map((s) => s.trim()).filter(Boolean);
-
   return (
     <>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50" />
       <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div ref={panelRef} className="w-full max-w-xl rounded-2xl border bg-white shadow-xl">
+        <div ref={panelRef} className="w-full max-w-4xl rounded-2xl border bg-white shadow-xl">
           <div className="flex items-center justify-between border-b px-6 py-4">
-            <h2 className="text-2xl font-semibold">Add Advisor</h2>
+            <h2 className="text-2xl font-semibold">Add Advisors</h2>
             <button onClick={onCancel} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
               <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
 
-          <div className="px-6 py-5 space-y-4">
-            <Field label="Prefix">
-              <input value={prefix} onChange={(e) => setPrefix(e.target.value)} placeholder="Asst.Prof.Dr." className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
-            </Field>
+          <div className="px-6 py-4">
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search advisors..."
+                className="w-full pl-9 pr-3 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+              />
+            </div>
 
-            <Field label="Name" required>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Jane" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
-            </Field>
+            <div className="overflow-x-auto rounded border bg-white max-h-96">
+              <table className="min-w-full text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="text-left text-gray-900 border-b">
+                    <th className="w-10 py-3 pl-4">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                        onChange={toggleAll}
+                        className="accent-[#326295] cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3 text-lg">Prefix</th>
+                    <th className="py-3 text-lg">Name</th>
+                    <th className="py-3 text-lg">Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredAdvisors.map((advisor) => (
+                    <tr key={advisor.id} className="border-t hover:bg-gray-50">
+                      <td className="py-3 pl-4">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedAdvisors[advisor.id]}
+                          onChange={() => toggleAdvisor(advisor.id)}
+                          className="accent-[#326295] cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-3 text-gray-900">{advisor.prefix}</td>
+                      <td className="py-3 text-gray-900">{advisor.name} {advisor.surname}</td>
+                      <td className="py-3 text-gray-900">{advisor.email}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-            <Field label="Surname" required>
-              <input value={surname} onChange={(e) => setSurname(e.target.value)} placeholder="Doe" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
-            </Field>
-
-            <Field label="Email" required>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane.doe@mail.kmutt.ac.th" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]" />
-            </Field>
-
-            <Field label="Projects (comma/semicolon/newline)">
-              <textarea value={projectsText} onChange={(e) => setProjectsText(e.target.value)} rows={3} placeholder="Capstone System; DemoProject" className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295] resize-y" />
-            </Field>
+            {selectedCount > 0 && (
+              <div className="mt-3 text-sm text-gray-600">
+                {selectedCount} advisor{selectedCount === 1 ? '' : 's'} selected
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-            <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">Cancel</button>
+            <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">
+              Cancel
+            </button>
             <button
-              onClick={() => onSave({
-                prefix: prefix.trim(),
-                name: name.trim(),
-                surname: surname.trim(),
-                email: email.trim(),
-                projects: parseProjects(projectsText)
-              })}
-              disabled={!canSave}
+              onClick={handleSave}
+              disabled={selectedCount === 0}
               className="rounded px-5 py-2 text-white disabled:opacity-60 shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
             >
-              Save
+              Add {selectedCount} Advisor{selectedCount === 1 ? '' : 's'}
             </button>
           </div>
         </div>
       </div>
     </>
-  );
-}
-
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <div className="mb-1 text-lg font-semibold text-gray-900">
-        {label}{required && <span className="text-red-500 pl-0.5">*</span>}
-      </div>
-      {children}
-    </label>
   );
 }
