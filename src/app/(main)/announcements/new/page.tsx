@@ -71,32 +71,6 @@ export default function NewAnnouncement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim() || !description.trim()) {
-      setError("Please fill in all required fields");
-      return;
-    }
-
-    if (!courseId) {
-      setError("Course ID is missing");
-      return;
-    }
-
-    if (isScheduled && !date) {
-      setError("Please select a schedule date");
-      return;
-    }
-
-    // Validate that scheduled time is in the future
-    if (isScheduled) {
-      const scheduledDateTime = getScheduledDateTime();
-      const now = new Date();
-
-      if (scheduledDateTime <= now) {
-        setError("Scheduled time must be in the future");
-        return;
-      }
-    }
-
     setIsSubmitting(true);
     setError(null);
 
@@ -106,22 +80,11 @@ export default function NewAnnouncement() {
         throw new Error("Invalid course ID");
       }
 
-      // Format the date to match your API expectations
       const scheduleDate = isScheduled
         ? getScheduledDateTime().toISOString()
-        : null; // Send null for immediate posting
+        : null;
 
-      // Convert File objects to the file type expected by your API
-      // const fileData = selectedFiles.map((file, index) => ({
-      //   id: 0,
-      //   name: file.name,
-      //   filepath: "",
-      //   uploadAt: new Date().toISOString(),
-      //   uploadById: 0,
-      //   announcementId: null,
-      // }));
-
-      // Call the API
+      // Create the announcement first
       const newAnnouncement = await createAnnouncementByCourseIdAPI(
         courseIdNumber,
         title.trim(),
@@ -129,16 +92,40 @@ export default function NewAnnouncement() {
         scheduleDate,
       );
 
-      const uploadFileResult = await uploadAnnouncementFileAPI(
-        courseIdNumber,
-        newAnnouncement.data.id,
-        selectedFiles
-      );
+      // Upload files and get file URLs (only if files are selected)
+      let uploadedFiles: uploadCourseFile.uploadCourseFilePayload[] = [];
+      if (selectedFiles.length > 0) {
+        try {
+          uploadedFiles = await uploadAnnouncementFileAPI(
+            courseIdNumber,
+            newAnnouncement.data.id,
+            selectedFiles
+          );
 
-      console.log("Uploaded files:", uploadFileResult);
+          console.log("Uploaded files response:", uploadedFiles);
+
+          // Check the actual structure of your response
+          uploadedFiles.forEach((file, index) => {
+            console.log(`File ${index}:`, file);
+          });
+
+        } catch (fileUploadError: any) {
+          console.error("File upload failed:", fileUploadError);
+
+          // Check if it's a permission error
+          if (fileUploadError?.response?.data?.error?.includes('ADVISOR and ADMIN only')) {
+            setError("You don't have permission to upload files. Only ADVISOR and ADMIN can upload files.");
+          } else {
+            setError("Announcement created but file upload failed: " + (fileUploadError?.response?.data?.error || fileUploadError?.message));
+          }
+
+          // Continue without files instead of failing completely
+        }
+      }
 
       console.log("Announcement created successfully!");
       console.log("Scheduled for:", scheduleDate);
+      console.log("Files attached:", uploadedFiles.length);
 
       // Navigate back to announcements page with courseId
       router.push(`/announcements?courseId=${courseId}`);
