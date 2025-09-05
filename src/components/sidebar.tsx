@@ -10,18 +10,6 @@ import { getMyProjectByCourseAPI } from "@/api/projectName/getMyProjectByCourse"
 
 type UserRole = "student" | "lecturer" | "staff" | "super_admin";
 
-const normalizeRole = (val: unknown): UserRole | null => {
-  if (!val) return null;
-  const s = String(val).toUpperCase();
-  const map: Record<string, UserRole> = {
-    STUDENT: "student",
-    LECTURER: "lecturer",
-    STAFF: "staff",
-    SUPER_ADMIN: "super_admin",
-  };
-  return map[s] ?? null;
-};
-
 type MenuItems = {
   name: string;
   href: string;
@@ -35,26 +23,6 @@ export default function Sidebar() {
   const courseId = useSearchParams().get("courseId") || "";
   const id = Number(courseId);
 
-  // useEffect(() => {
-  //   (async () => {
-  //     if (!courseId) {
-  //       setProjectName(null);
-  //       return;
-  //     }
-  //     try {
-  //       const id = Number(courseId);
-  //       if (Number.isFinite(id)) {
-  //         const { data } = await getMyProjectByCourseAPI(id);
-  //         setProjectName(data ?? null);
-  //       } else {
-  //         setProjectName(null);
-  //       }
-  //     } catch {
-  //       setProjectName(null);
-  //     }
-  //   })();
-  // }, [courseId]);
-
   const fetchProjectName = async () => {
     try {
       if (!courseId) return;
@@ -65,7 +33,7 @@ export default function Sidebar() {
       console.log("Project name:", response.data.group.projectName);
     } catch (error) { }
   };
-  // console.log("User Role:", userRole);
+
   const getMenuItems = (role: UserRole): MenuItems => {
     switch (role) {
       case "student": {
@@ -107,16 +75,6 @@ export default function Sidebar() {
     setUserRole(getUserRole());
   }, [userRole]);
 
-  // useEffect(() => {
-  //   let role = readRoleFromLocalStorage();
-  //   if (!role) {
-  //     if (pathname.startsWith("/student")) role = "STUDENT";
-  //     else if (pathname.startsWith("/advisor")) role = "ADVISOR";
-  //     else if (pathname.startsWith("/admin")) role = "ADMIN";
-  //   }
-  //   setUserRole(role);
-  // }, [pathname]);
-
   useEffect(() => {
     if (!userRole) {
       setMenuItems([]);
@@ -126,10 +84,10 @@ export default function Sidebar() {
   }, [userRole, project]);
 
   if (menuItems.length === 0) {
-    console.log("No menu items, hiding sidebar"); // Debug log
+    console.log("No menu items, hiding sidebar"); 
     return null;
   }
-
+  
   return (
     <aside className="w-60 h-screen bg-white border-r">
       <nav className="flex flex-col py-6 space-y-2 font-dbheavent">
@@ -139,11 +97,12 @@ export default function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={`${item.href}?courseId=${id}`}
-              className={`px-6 py-3 text-2xl font-semibold transition ${isActive
+              href={`${item.href}?courseId=${id}&groupId=${project?.group.id}`}
+              className={`px-6 py-3 text-2xl font-semibold transition ${
+                isActive
                   ? "bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white"
                   : "text-black hover:bg-gray-100"
-                }`}
+              }`}
             >
               {item.name}
             </Link>
