@@ -22,6 +22,8 @@ export default function Sidebar() {
   const [menuItems, setMenuItems] = useState<MenuItems>([]);
   const courseId = useSearchParams().get("courseId") || "";
   const id = Number(courseId);
+  const role = getUserRole();
+  const isStudent = role === "student";
 
   const fetchProjectName = async () => {
     try {
@@ -31,7 +33,7 @@ export default function Sidebar() {
       console.log("Project response:", response.data);
       setProject(response.data);
       console.log("Project name:", response.data.group.projectName);
-    } catch (error) { }
+    } catch (error) {}
   };
 
   const getMenuItems = (role: UserRole): MenuItems => {
@@ -84,20 +86,29 @@ export default function Sidebar() {
   }, [userRole, project]);
 
   if (menuItems.length === 0) {
-    console.log("No menu items, hiding sidebar"); 
+    console.log("No menu items, hiding sidebar");
     return null;
   }
-  
+
   return (
     <aside className="w-60 h-screen bg-white border-r">
       <nav className="flex flex-col py-6 space-y-2 font-dbheavent">
         {menuItems.map((item) => {
+          const linkHref = isStudent
+            ? {
+                pathname: item.href,
+                query: {
+                  courseId: String(id),
+                  groupId: String(project?.group.id ?? ""),
+                },
+              }
+            : { pathname: item.href, query: { courseId: String(id) } };
           const isActive =
             pathname === item.href || pathname.startsWith(item.href + "/");
           return (
             <Link
               key={item.href}
-              href={`${item.href}?courseId=${id}&groupId=${project?.group.id}`}
+              href={linkHref}
               className={`px-6 py-3 text-2xl font-semibold transition ${
                 isActive
                   ? "bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white"
