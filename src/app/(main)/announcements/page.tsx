@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { file } from "@/types/api/announcement";
 import { isCanUpload } from "@/util/RoleHelper";
+import { getUserRole } from "@/util/cookies";
 
 export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<
@@ -18,6 +19,9 @@ export default function AnnouncementPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
   const [canUpload, setCanUpload] = useState(false);
+
+  console.log(getUserRole());
+  
 
   const fetchAnnouncements = async () => {
     try {

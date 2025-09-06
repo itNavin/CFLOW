@@ -6,143 +6,173 @@ import { useSearchParams } from "next/navigation";
 import { Pencil, AlertTriangle, FilePlus2, Megaphone, Upload } from "lucide-react";
 import { getDashboardData } from "@/api/dashboard/getDashboard";
 import type { Dashboard } from "@/types/api/dashboard";
+import { getAllAssignments } from "@/types/api/assignment";
+import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
+import { getGroupInformation } from "@/api/dashboard/getGroupInformation";
+import { getAllGroupAPI } from "@/api/group/getAllGroup";
+import { getGroup } from "@/types/api/group";
+
+export function formatUploadAt(
+  iso: string,
+  locale: string = "en-GB" // change to "th-TH" for Thai
+) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso; // fallback if bad input
+
+  return d.toLocaleString(locale, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    timeZone: "Asia/Bangkok", // convert from Z (UTC) → Bangkok (UTC+7)
+  });
+}
 
 export default function CourseTab() {
   const searchParams = useSearchParams();
 
-  const [dashboardData, setDashboardData] = useState<Dashboard.Dashboard | null>(null);
+  const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [group, setGroup] = useState<getGroup.GroupList>([]);
+  const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
+  const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
+  const [selectedGroupChart, setSelectedGroupChart] = useState<Dashboard.studentInfo | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
   const courseId = searchParams.get("courseId") || "";
 
-  const toDateOrNull = (v: unknown): Date | null => {
-    if (!v) return null;
-    const d = new Date(v as any);
-    return isNaN(d.getTime()) ? null : d;
+  const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const groupId = Number(e.target.value);
+    if (groupId === -1) {
+      // "All Groups" selected
+      setSelectedGroupChart(null);
+      fetchDashboardDataWithQuery({
+        groupId: undefined, // Don't filter by group, show all groups
+        assignmentId: selectedAssignmentChartId || undefined
+      });
+    } else {
+      // Specific group selected
+      const group = groupInfo.find(g => g.id === groupId) || null;
+      setSelectedGroupChart(group);
+      fetchDashboardDataWithQuery({
+        groupId: group ? group.id : undefined,
+        assignmentId: selectedAssignmentChartId || undefined
+      });
+    }
   };
 
-  const formatShortDate = (dateInput: Date | null | undefined): string => {
-    if (!dateInput) return "Unknown";
-    return dateInput.toLocaleDateString("en-US");
+
+  const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const assignmentId = Number(e.target.value);
+    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+
+    if (!isNaN(assignmentId)) {
+      fetchDashboardDataWithQuery({ assignmentId: assignmentId > 0 ? assignmentId : undefined, groupId: selectedGroupChart?.id || undefined });
+    }
+  }
+
+  const fetchGroupInformation = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getGroupInformation(id);
+
+      setGroupInfo(response.data);
+    } catch (error) {
+      console.error("Failed to load group information:", error);
+      setError("Failed to load group information");
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getDashboardData(id);
+
+      // console.log("Response:", response.data);
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    }
+  };
+
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
+    try {
+      if (!courseId) return;
+      setDashboardLoading(true);
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getDashboardData(id, query);
+      console.log("Response with query:", response.data);
+
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
+
+  const fetchAssignments = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getAllAssignmentsAPI(id);
+      console.log("Response:", response.data);
+      setAssignments(response.data);
+    } catch (error) {
+      setError("Failed to load assignments");
+    }
+  };
+
+  const fetchAllGroup = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getAllGroupAPI(id);
+      // console.log("Response:", response.data);
+      setGroup(response.data);
+    } catch (error) { }
   };
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setError(null);
+      await fetchGroupInformation();
+      await fetchDashboardData();
+      await fetchAssignments();
+      await fetchAllGroup();
+      await fetchDashboardDataWithQuery({ groupId: selectedGroupChart ? selectedGroupChart.id ?? undefined : undefined, assignmentId: selectedAssignmentChartId || undefined });
 
-      try {
-        // read from URL: /admin?courseId=2
-        const courseIdParam = searchParams.get("courseId");
-        const courseId = courseIdParam ? Number(courseIdParam) : NaN;
-
-        if (!courseIdParam || Number.isNaN(courseId) || courseId <= 0) {
-          setDashboardData(null);
-          setError("Missing or invalid courseId in the URL.");
-          return;
-        }
-
-        setDashboardLoading(true);
-        const res = await getDashboardData(courseId);
-        // console.log("Response data:", res.data);
-        setDashboardData(res.data as Dashboard.Dashboard);
-      } catch (e: any) {
-        console.error("Error loading dashboard:", e?.response?.status, e?.response?.data || e);
-        setError(
-          e?.response?.status
-            ? `Failed to load dashboard (HTTP ${e.response.status})`
-            : "Failed to load dashboard"
-        );
-        setDashboardData(null);
-      } finally {
-        setDashboardLoading(false);
-        setLoading(false);
-      }
-    };
-
+      setLoading(false);
+    }
     fetchData();
-  }, [searchParams]);
-
-  // Build display info purely from API data
-  const courseInfo = dashboardData?.course ?? null;
-
-  const displayInfo = courseInfo
-    ? {
-      name: courseInfo.name ?? "Unknown",
-      description: courseInfo.description ?? "No description available",
-      program: courseInfo.program ?? "Unknown",
-      createdAt: toDateOrNull((courseInfo as any).createdAt), // Date | null
-      createdBy: courseInfo?.createdBy.name ?? "Unknown",
-      // (courseInfo as any)?.createBy?.fullName
-      //   ? (courseInfo as any).createBy.fullName
-      //   : "Unknown",
-    }
-    : {
-      name: "No course selected",
-      description: "Please select a course",
-      program: "Unknown" as const,
-      createdAt: null as Date | null,
-      createdByName: "Unknown",
-    };
-
-  if (loading) {
-    return <div className="p-6">Loading course information...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="p-6 text-red-600">
-        {error} — add <code>?courseId=&lt;id&gt;</code> to the URL.
-      </div>
-    );
-  }
-
-  const getSubmissionData = () => {
-    if (!dashboardData?.submissions?.statusCounts) {
-      return { segments: [], total: 0, allStatuses: [] };
-    }
-
-    const counts = dashboardData.submissions.statusCounts;
-    const statusConfig = [
-      { key: 'NOT_SUBMITTED', color: '#6b7280', label: 'Not Submitted' },
-      { key: 'SUBMITTED', color: '#1d4ed8', label: 'Submitted' },
-      { key: 'REJECTED', color: '#ef4444', label: 'Rejected' },
-      { key: 'APPROVED_WITH_FEEDBACK', color: '#f59e0b', label: 'Approved with Feedback' },
-      { key: 'FINAL', color: '#16a34a', label: 'Final' }
-    ];
-
-    const total = Object.values(counts).reduce((sum, count) => sum + (count || 0), 0);
-
-    let currentAngle = 0;
-    const segments = statusConfig.map(status => {
-      const count = counts[status.key as keyof typeof counts] || 0;
-      const percentage = total > 0 ? (count / total) * 100 : 0;
-      const angle = total > 0 ? (count / total) * 360 : 0;
-
-      const segment = {
-        ...status,
-        count,
-        percentage: Math.round(percentage),
-        startAngle: currentAngle,
-        endAngle: currentAngle + angle
-      };
-
-      currentAngle += angle;
-      return segment;
-    }).filter(segment => segment.count > 0); // Only segments with data for donut
-
-    // All statuses for legend (including 0 counts)
-    const allStatuses = statusConfig.map(status => ({
-      ...status,
-      count: counts[status.key as keyof typeof counts] || 0,
-      percentage: total > 0 ? Math.round(((counts[status.key as keyof typeof counts] || 0) / total) * 100) : 0
-    }));
-
-    return { segments, total, allStatuses };
-  };
-
-  const submissionData = getSubmissionData();
+  }, [courseId]);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -155,50 +185,70 @@ export default function CourseTab() {
                 <Pencil className="w-4 h-4 text-gray-700" />
               </button>
             </div>
-            <InfoRow label="Class Name" value={displayInfo.name} />
-            <InfoRow label="Description" value={displayInfo.description} />
-            <InfoRow label="Program Type" value={displayInfo.program} />
-            <InfoRow label="Created Date" value={formatShortDate(displayInfo.createdAt)} />
-            <InfoRow label="Created By" value={displayInfo.createdBy} />
+            {dashboard && (
+              <>
+                <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
+                <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
+                <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
+                <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
+                <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
+              </>
+            )}
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-semibold">Dashboard</h2>
-              <div className="flex gap-3">
-                <label className="text-xl text-gray-600">Filter</label>
-                <select className="block border border-gray-300 rounded px-2 py-1 text-lg">
-                  <option>Overall</option>
-                  <option>Upcoming Due Dates</option>
-                  <option>Upcoming End Dates</option>
-                  <option>Custom Filter</option>
+              <div className="flex items-center gap-3">
+                <label className="text-xl text-gray-600">Assignment</label>
+                <select onChange={handleChartAssignmentChange} className="block border border-gray-300 rounded px-2 py-1 text-lg">
+                  <option value={-1}>-- Select Assignment --</option>
+                  {assignments.map((assignment) => (
+                    <option
+                      key={assignment.id}
+                      value={assignment.id}
+                    >
+                      {assignment.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-3">
+                <label className="text-xl text-gray-600">Group</label>
+                <select
+                  onChange={handleChartGroupChange}
+                  className="block border border-gray-300 rounded px-2 py-1 text-lg"
+                  value={selectedGroupChart?.id || -1}
+                >
+                  <option value={-1}>-- Select Group --</option>
+                  {group.map((group) => (
+                    <option
+                      key={group.id}
+                      value={group.id}
+                    >
+                      {group.projectName}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="flex items-center justify-center">
-                <MultiColorDonut
-                  segments={submissionData.segments}
-                  total={submissionData.total}
-                />
+                <Donut percent={100} label="Submissions" total="3 Totals" />
               </div>
               <ul className="space-y-2 text-lg">
-                {submissionData.allStatuses.map(status => (
-                  <LegendItem
-                    key={status.key}
-                    color={status.color}
-                    text={`${status.label}: ${status.count} (${status.percentage}%)`}
-                  />
-                ))}
+                {dashboard && (
+                  <>
+                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED}`} />
+                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED}`} />
+                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED}`} />
+                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK}`} />
+                    <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL}`} />
+                  </>
+                )}
               </ul>
             </div>
-
-            {/* <div className="mt-3">
-              <Link href="#" className="text-lg text-[#326295] hover:underline">
-                More Detail
-              </Link>
-            </div> */}
           </div>
         </div>
 
@@ -225,10 +275,10 @@ export default function CourseTab() {
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-2xl font-semibold mb-4">Summary</h2>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-            <DT label="Total Students" value={dashboardData?.totals.students ?? 0} />
-            <DT label="Total Advisors" value={dashboardData?.totals.advisors ?? 0} />
-            <DT label="Total Groups" value={dashboardData?.totals.groups ?? 0} />
-            <DT label="Total Assignments" value={dashboardData?.totals.assignments ?? 0} />
+            <DT label="Total Students" value={dashboard?.totals.students ?? 0} />
+            <DT label="Total Advisors" value={dashboard?.totals.advisors ?? 0} />
+            <DT label="Total Groups" value={dashboard?.totals.groups ?? 0} />
+            <DT label="Total Assignments" value={dashboard?.totals.assignments ?? 0} />
           </dl>
         </div>
 
@@ -343,6 +393,26 @@ function MultiColorDonut({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function Donut({ percent, label, total }: { percent: number; label: string; total: string }) {
+  const angle = Math.round((percent / 100) * 360);
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="relative w-48 h-48 rounded-full"
+        style={{ background: `conic-gradient(#16a34a ${angle}deg, #e5e7eb 0deg)` }}
+      >
+        <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
+          <div className="text-center">
+            <div className="text-3xl font-bold">{percent}%</div>
+            <div className="text-lg text-gray-500">{label}</div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-2 text-lg text-gray-600">{total}</div>
     </div>
   );
 }
