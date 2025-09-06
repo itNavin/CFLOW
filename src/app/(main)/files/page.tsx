@@ -5,8 +5,9 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { getAllFileByCourseIdAPI } from "@/api/file/getAllFileByCourseId";
 import { createFileByCourseIdAPI } from "@/api/file/createFileByCourseId";
+import { uploadCourseFileAPI } from "@/api/storage/uploadCourseFile";
 import { File } from "@/types/api/file";
-import { getUserRole } from "@/util/cookies";
+import { getUserId, getUserRole } from "@/util/cookies";
 import { userRole } from "@/types/api/userRole";
 import { isCanUpload } from "@/util/RoleHelper";
 
@@ -36,14 +37,14 @@ export type CreateFilePayload = {
 
 export default function FilePage() {
   const role = getUserRole();
+  const userId = getUserId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [userRole, setUserRole] = useState<userRole.UserRole | null>(null);
   const [roleReady, setRoleReady] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<number | null>(null);
   const [canUpload, setCanUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-
-  
   const handleUploadClick = () => fileInputRef.current?.click();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,10 +201,10 @@ export default function FilePage() {
       </div>
 
       {canUpload && (
-        <div className="flex justify-center mt-6">
+        <div className="flex justify-end mt-6">
           <button
             onClick={handleUploadClick}
-            className="inline-flex items-center gap-3 rounded-lg px-6 py-4 shadow-lg
+            className="inline-flex items-center gap-3 rounded-full px-4 py-3 shadow-lg
                        bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg font-medium
                        hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
                        active:scale-[0.98] transition"
@@ -214,7 +215,6 @@ export default function FilePage() {
         </div>
       )}
 
-      {/* File Upload Input (hidden) */}
       <input
         type="file"
         multiple
@@ -222,20 +222,6 @@ export default function FilePage() {
         className="hidden"
         onChange={handleFileChange}
       />
-
-      {/* Floating Upload Button */}
-      {canUpload && (
-        <button
-          onClick={handleUploadClick}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
-                   bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
-                   hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
-                   active:scale-[0.98] transition"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="hidden sm:inline">Add New Files</span>
-        </button>
-      )}
     </main>
   );
 }

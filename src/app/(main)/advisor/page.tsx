@@ -7,6 +7,10 @@ import { Pencil, CheckCircle2 } from "lucide-react";
 import { getDashboardData } from "@/api/dashboard/getDashboard";
 import { Dashboard } from "@/types/api/dashboard";
 import { useSearchParams } from "next/navigation";
+import { getGroupInformation } from "@/api/dashboard/getGroupInformation";
+import { getGroupData } from "@/api/dashboard/getGroupDashboard";
+import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
+import { getAllAssignments } from "@/types/api/assignment";
 
 export function formatUploadAt(
   iso: string,
@@ -26,14 +30,50 @@ export function formatUploadAt(
 
 export default function Page() {
   const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
-  // const responsibleGroups = groups.filter((g) => g.advisorId === advisor.id);
-  // const total = submissionsBreakdown.reduce((s, i) => s + i.value, 0);
-  // const final = submissionsBreakdown.find((i) => i.label === "Final")?.value ?? 0;
-  // const percent = total ? Math.round((final / total) * 100) : 0;
+  const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
+  const [groupDashboard, setGroupDashboard] = useState<Dashboard.Dashboard | null>(null);
+  const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
+  const [selectedGroupChart, setSelectedGroupChart] = useState<Dashboard.studentInfo | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
+
+  const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const groupId = Number(e.target.value);
+    const group = groupInfo.find(g => g.id === groupId) || null;
+    setSelectedGroupChart(group);
+    fetchDashboardDataWithQuery({ groupId: group ? group.id : undefined, assignmentId: selectedAssignmentChartId || undefined });
+
+  }
+
+  const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const assignmentId = Number(e.target.value);
+    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+
+    if (!isNaN(assignmentId)) {
+      fetchDashboardDataWithQuery({ assignmentId: assignmentId > 0 ? assignmentId : undefined, groupId: selectedGroupChart?.id || undefined });
+    }
+  }
+
+  const fetchGroupInformation = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getGroupInformation(id);
+
+      setGroupInfo(response.data);
+    } catch (error) {
+      console.error("Failed to load group information:", error);
+      setError("Failed to load group information");
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -45,6 +85,7 @@ export default function Page() {
         return;
       }
       const response = await getDashboardData(id);
+
       // console.log("Response:", response.data);
       setDashboard(response.data);
     } catch (error) {
@@ -52,9 +93,54 @@ export default function Page() {
     }
   };
 
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
+    try {
+      if (!courseId) return;
+      setDashboardLoading(true);
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getDashboardData(id, query);
+      console.log("Response with query:", response.data);
+
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
+
+  const fetchAssignments = async () => {
+    try {
+      if (!courseId) return;
+
+      const id = Number(courseId);
+      if (Number.isNaN(id)) {
+        setError("Invalid courseId in URL");
+        return;
+      }
+      const response = await getAllAssignmentsAPI(id);
+      console.log("Response:", response.data);
+      setAssignments(response.data);
+    } catch (error) {
+      setError("Failed to load assignments");
+    }
+  };
 
   useEffect(() => {
-    fetchDashboardData();
+    const fetchData = async () => {
+      setLoading(true);
+      await fetchGroupInformation();
+      await fetchDashboardData();
+      await fetchAssignments();
+      await fetchDashboardDataWithQuery({ groupId: selectedGroupChart ? selectedGroupChart.id ?? undefined : undefined, assignmentId: selectedAssignmentChartId || undefined });
+
+      setLoading(false);
+    }
+    fetchData();
   }, [courseId]);
 
   return (
@@ -69,24 +155,46 @@ export default function Page() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              <InfoRow label="Class Name" value={dashboard?.course.name ?? "Unknown"} />
-              <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
-              <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
-              <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
-              <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
+              {dashboard && (
+                <>
+                  <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
+                  <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
+                  <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
+                  <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
+                  <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
+                </>
+              )}
             </section>
 
-            {/* Dashboard */}
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
               <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-semibold">Dashboard</h2>
                 <div className="flex items-center gap-3">
-                  <label className="text-xl text-gray-600">Filter</label>
-                  <select className="block border border-gray-300 rounded px-2 py-1 text-lg">
-                    <option>Overall</option>
-                    <option>Upcoming Due Dates</option>
-                    <option>Upcoming End Dates</option>
-                    <option>Custom Filter</option>
+                  <label className="text-xl text-gray-600">Assignment</label>
+                  <select onChange={handleChartAssignmentChange} className="block border border-gray-300 rounded px-2 py-1 text-lg">
+                    <option value={-1}>-- Select Assignment --</option>
+                    {assignments.map((assignment) => (
+                      <option
+                        key={assignment.id}
+                        value={assignment.id}
+                      >
+                        {assignment.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="text-xl text-gray-600">Group</label>
+                  <select onChange={handleChartGroupChange} className="block border border-gray-300 rounded px-2 py-1 text-lg">
+                    <option value={-1}>-- Select Group --</option>
+                    {groupInfo.map((group) => (
+                      <option
+                        key={group.id}
+                        value={group.id}
+                      >
+                        {group.projectName}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -96,18 +204,16 @@ export default function Page() {
                   <Donut percent={100} label="Submissions" total="3 Totals" />
                 </div>
                 <ul className="space-y-2 text-lg">
-                  <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard?.submissions.statusCounts.NOT_SUBMITTED}`} />
-                  <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard?.submissions.statusCounts.SUBMITTED}`} />
-                  <LegendItem color="#ef4444" text={`Rejected: ${dashboard?.submissions.statusCounts.REJECTED}`} />
-                  <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard?.submissions.statusCounts.APPROVED_WITH_FEEDBACK}`} />
-                  <LegendItem color="#16a34a" text={`Final: ${dashboard?.submissions.statusCounts.FINAL}`} />
+                  {dashboard && (
+                    <>
+                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED}`} />
+                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED}`} />
+                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED}`} />
+                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK}`} />
+                      <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL}`} />
+                    </>
+                  )}
                 </ul>
-              </div>
-
-              <div className="mt-3">
-                <Link href="#" className="text-lg text-[#326295] hover:underline">
-                  More Detail
-                </Link>
               </div>
             </section>
           </div>
@@ -138,14 +244,17 @@ export default function Page() {
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Summary</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-              <DT label="Total Students" value={(dashboard?.totals.students ?? 0).toString()} />
-              <DT label="Total Advisors" value={(dashboard?.totals.advisors ?? 0).toString()} />
-              <DT label="Total Groups" value={(dashboard?.totals.groups ?? 0).toString()} />
-              <DT label="Total Assignments" value={(dashboard?.totals.assignments ?? 0).toString()} />
+              {dashboard && (
+                <>
+                  <DT label="Total Students" value={(dashboard?.totals.students ?? 0).toString()} />
+                  <DT label="Total Advisors" value={(dashboard?.totals.advisors ?? 0).toString()} />
+                  <DT label="Total Groups" value={(dashboard?.totals.groups ?? 0).toString()} />
+                  <DT label="Total Assignments" value={(dashboard?.totals.assignments ?? 0).toString()} />
+                </>
+              )}
             </dl>
           </section>
 
-          {/* Quick Actions */}
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
@@ -179,50 +288,21 @@ export default function Page() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold text-gray-900">Group Information</h2>
             </div>
-
-            {/* {responsibleGroups.length === 0 ? (
-              <div className="text-lg text-gray-500">No assigned groups</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-4">
-                {responsibleGroups.map((g) => (
-                  <div key={g.id} className="rounded-xl border border-gray-200 p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="font-bold text-lg">ID: {g.id}</div>
-                      <button className="p-2 rounded-md hover:bg-gray-100" aria-label="Edit group">
-                        <Pencil className="h-5 w-5 text-gray-700" />
-                      </button>
-                    </div>
-
-                    <div className="mt-3 space-y-2 text-gray-900">
-                      <Field label="Project Title" value={g.projectTitle} />
-                      <Field label="Product Title" value={g.productTitle || "-"} />
-                      <Field label="Member">
-                        <ul className="space-y-1 text-lg">
-                          {g.members.map((m, i) => (
-                            <li key={i}>{m}</li>
-                          ))}
-                        </ul>
-                      </Field>
-                      <Field label="Advisor" value={g.advisor || advisor.name} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )} */}
-            <GroupInformationCard
-            data={{
-              id: "0001",
-              projectTitle: "Hellohello system",
-              productTitle: "Twomandown",
-              members: [
-                "65130500211 Navin Dansaikul",
-                "65130500241 Mananchai Chankhoung",
-                "65130500299 Cristiano Ronaldo",
-              ],
-              advisor: "Dr. Vithida Chongsuphajaisiddhi",
-            }}
-            onEdit={() => console.log("Edit group")}
-          />
+            {groupInfo.map((group, index) => {
+              return <GroupInformationCard
+                key={index}
+                data={{
+                  id: group?.id.toString() || "N/A",
+                  projectTitle: group?.projectName || "-",
+                  productTitle: group?.productName || "-",
+                  members: group?.members?.map(member =>
+                    `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
+                  ) || [],
+                  advisor: group?.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
+                }}
+                onEdit={() => console.log("Edit group")}
+              />
+            })}
           </section>
         </div>
       </div>
@@ -340,13 +420,6 @@ function GroupInformationCard({
     <section className="bg-white rounded-[20px] border border-gray-200 shadow-sm p-6">
       <div className="flex items-center justify-between mb-4">
         <Field label="ID" value={data.id} />
-        <button
-          onClick={onEdit}
-          className="p-2 rounded-md hover:bg-gray-100"
-          aria-label="Edit group"
-        >
-          <Pencil className="h-5 w-5 text-gray-700" />
-        </button>
       </div>
 
       <div className="space-y-4 text-gray-900">

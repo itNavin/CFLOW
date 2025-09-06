@@ -10,6 +10,7 @@ import { Course } from "@/types/api/course";
 import { CourseModal } from "./component/courseModal";
 import { createCourse } from "@/types/api/course";
 import { createCourseAPI } from "@/api/course/createCourse";
+import { isCanUpload } from "@/util/RoleHelper";
 
 // tiny helpers
 const asArray = <T = any>(data: any, key?: string): T[] => {
@@ -36,10 +37,11 @@ export default function CoursePage() {
   const [editing, setEditing] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [canUpload, setCanUpload] = useState(false);
 
-  // resolve role once on mount
   useEffect(() => {
     setUserRole(getUserRole()); // "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN" | undefined
+    setCanUpload(isCanUpload()); // Set canUpload based on user role
   }, []);
 
   const fetchCourses = useCallback(async () => {
@@ -56,7 +58,6 @@ export default function CoursePage() {
         setCourses(list);
       } else {
         const res = await getCourseAPI(); // GET /course/my-courses
-        // accept: { courses: [{course: {...}}, ...] } or maybe just [...]
         const memberships = pickArray<any>(res, "courses");
         const list: Course[] = memberships
           .map((m) => m?.course ?? m) // if backend already returns pure Course, still works
@@ -69,8 +70,8 @@ export default function CoursePage() {
         err?.response?.status
           ? `Failed to fetch courses (HTTP ${err.response.status})`
           : err instanceof Error
-          ? err.message
-          : "Failed to fetch courses"
+            ? err.message
+            : "Failed to fetch courses"
       );
     } finally {
       setLoading(false);
@@ -89,54 +90,49 @@ export default function CoursePage() {
       userRole === "staff" || userRole === "SUPER_ADMIN"
         ? "/admin"
         : userRole === "lecturer"
-        ? "/advisor"
-        : "/student";
+          ? "/advisor"
+          : "/student";
     router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
   };
 
   // ...existing code...
 
-const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "createdAt">) => {
-  try {
-    setLoading(true);
-    setError(null);
+  const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "createdAt">) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-    // Call the actual API
-    const response = await createCourseAPI(
-      payload.program, 
-      payload.name, 
-      payload.description || null
-    );
-    await fetchCourses();
+      // Call the actual API
+      const response = await createCourseAPI(
+        payload.program,
+        payload.name,
+        payload.description || null
+      );
+      await fetchCourses();
 
-    setOpenCreate(false);
-  } catch (err: any) {
-    console.error("Error creating course:", err);
-    setError(
-      err?.response?.status
-        ? `Failed to create course (HTTP ${err.response.status})`
-        : err instanceof Error
-        ? err.message
-        : "Failed to create course"
-    );
-  } finally {
-    setLoading(false);
+      setOpenCreate(false);
+    } catch (err: any) {
+      console.error("Error creating course:", err);
+      setError(
+        err?.response?.status
+          ? `Failed to create course (HTTP ${err.response.status})`
+          : err instanceof Error
+            ? err.message
+            : "Failed to create course"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+  {
+    openCreate && (
+      <CourseModal
+        mode="create"
+        onClose={() => setOpenCreate(false)}
+        onSubmit={handleCreateCourse}
+      />
+    )
   }
-};
-
-// ...existing code...
-
-{openCreate && (
-  <CourseModal
-    mode="create"
-    onClose={() => setOpenCreate(false)}
-    onSubmit={handleCreateCourse}
-  />
-)}
-
-// ...existing code...
-
-  // -------------------- Menu (three-dots) UI --------------------- //
   const toggleMenu = (id: number) => setOpenMenuId((prev) => (prev === id ? null : id));
 
   const closeMenusOnOutsideClickRef = useRef<HTMLDivElement | null>(null);
@@ -164,7 +160,7 @@ const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[30px] font-medium text-black">Courses</h2>
 
-          {(userRole === "staff" || userRole === "SUPER_ADMIN") && (
+          {canUpload && (
             <button
               onClick={() => setOpenCreate(true)}
               className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
@@ -207,16 +203,18 @@ const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "
                   {course.name}
                 </div>
 
-                <button
-                  onClick={() => toggleMenu(course.id)}
-                  className="text-[24px] text-gray-600 hover:text-black px-2"
-                  aria-haspopup="menu"
-                  aria-expanded={openMenuId === course.id}
-                >
-                  &#8230;
-                </button>
+                {canUpload && (
+                  <button
+                    onClick={() => toggleMenu(course.id)}
+                    className="text-[24px] text-gray-600 hover:text-black px-2"
+                    aria-haspopup="menu"
+                    aria-expanded={openMenuId === course.id}
+                  >
+                    &#8230;
+                  </button>
+                )}
 
-                {openMenuId === course.id && (
+                {canUpload && openMenuId === course.id && (
                   <div className="absolute right-4 top-14 bg-white border border-gray-200 rounded-md shadow-md z-10 w-32">
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
