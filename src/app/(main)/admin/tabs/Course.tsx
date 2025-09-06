@@ -15,10 +15,7 @@ export default function CourseTab() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const courseId = searchParams.get("courseId") || "";
-  // console.log("Dashboard data:", dashboardData);
-  // console.log("Status counts:", dashboardData?.submissions.statusCounts.FINAL);
 
-  // helpers
   const toDateOrNull = (v: unknown): Date | null => {
     if (!v) return null;
     const d = new Date(v as any);
@@ -69,26 +66,25 @@ export default function CourseTab() {
 
   // Build display info purely from API data
   const courseInfo = dashboardData?.course ?? null;
-  // console.log("Course info:", courseInfo);
-  // console.log("fullname:", courseInfo?.createdBy.fullName);
+
   const displayInfo = courseInfo
     ? {
-        name: courseInfo.name ?? "Unknown",
-        description: courseInfo.description ?? "No description available",
-        program: courseInfo.program ?? "Unknown",
-        createdAt: toDateOrNull((courseInfo as any).createdAt), // Date | null
-        createdBy: courseInfo?.createdBy.name ?? "Unknown",
-          // (courseInfo as any)?.createBy?.fullName
-          //   ? (courseInfo as any).createBy.fullName
-          //   : "Unknown",
-      }
+      name: courseInfo.name ?? "Unknown",
+      description: courseInfo.description ?? "No description available",
+      program: courseInfo.program ?? "Unknown",
+      createdAt: toDateOrNull((courseInfo as any).createdAt), // Date | null
+      createdBy: courseInfo?.createdBy.name ?? "Unknown",
+      // (courseInfo as any)?.createBy?.fullName
+      //   ? (courseInfo as any).createBy.fullName
+      //   : "Unknown",
+    }
     : {
-        name: "No course selected",
-        description: "Please select a course",
-        program: "Unknown" as const,
-        createdAt: null as Date | null,
-        createdByName: "Unknown",
-      };
+      name: "No course selected",
+      description: "Please select a course",
+      program: "Unknown" as const,
+      createdAt: null as Date | null,
+      createdByName: "Unknown",
+    };
 
   if (loading) {
     return <div className="p-6">Loading course information...</div>;
@@ -101,6 +97,52 @@ export default function CourseTab() {
       </div>
     );
   }
+
+  const getSubmissionData = () => {
+    if (!dashboardData?.submissions?.statusCounts) {
+      return { segments: [], total: 0, allStatuses: [] };
+    }
+
+    const counts = dashboardData.submissions.statusCounts;
+    const statusConfig = [
+      { key: 'NOT_SUBMITTED', color: '#6b7280', label: 'Not Submitted' },
+      { key: 'SUBMITTED', color: '#1d4ed8', label: 'Submitted' },
+      { key: 'REJECTED', color: '#ef4444', label: 'Rejected' },
+      { key: 'APPROVED_WITH_FEEDBACK', color: '#f59e0b', label: 'Approved with Feedback' },
+      { key: 'FINAL', color: '#16a34a', label: 'Final' }
+    ];
+
+    const total = Object.values(counts).reduce((sum, count) => sum + (count || 0), 0);
+
+    let currentAngle = 0;
+    const segments = statusConfig.map(status => {
+      const count = counts[status.key as keyof typeof counts] || 0;
+      const percentage = total > 0 ? (count / total) * 100 : 0;
+      const angle = total > 0 ? (count / total) * 360 : 0;
+
+      const segment = {
+        ...status,
+        count,
+        percentage: Math.round(percentage),
+        startAngle: currentAngle,
+        endAngle: currentAngle + angle
+      };
+
+      currentAngle += angle;
+      return segment;
+    }).filter(segment => segment.count > 0); // Only segments with data for donut
+
+    // All statuses for legend (including 0 counts)
+    const allStatuses = statusConfig.map(status => ({
+      ...status,
+      count: counts[status.key as keyof typeof counts] || 0,
+      percentage: total > 0 ? Math.round(((counts[status.key as keyof typeof counts] || 0) / total) * 100) : 0
+    }));
+
+    return { segments, total, allStatuses };
+  };
+
+  const submissionData = getSubmissionData();
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -136,23 +178,27 @@ export default function CourseTab() {
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="flex items-center justify-center">
-                <Donut percent={75} label="Submissions" total="60 Totals" />
+                <MultiColorDonut
+                  segments={submissionData.segments}
+                  total={submissionData.total}
+                />
               </div>
               <ul className="space-y-2 text-lg">
-                <LegendItem color="#6b7280" text={`Not Submitted: ${dashboardData?.submissions.statusCounts.NOT_SUBMITTED}`} />
-                <LegendItem color="#1d4ed8" text={`Submitted: ${dashboardData?.submissions.statusCounts.SUBMITTED}`} />
-                {/* <LegendItem color="#f59e0b" text={`Missed: ${dashboardData?.submissions.statusCounts.MISSED}`} /> */}
-                <LegendItem color="#ef4444" text={`Rejected: ${dashboardData?.submissions.statusCounts.REJECTED}`} />
-                <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboardData?.submissions.statusCounts.APPROVED_WITH_FEEDBACK}`} />
-                <LegendItem color="#16a34a" text={`Final: ${dashboardData?.submissions.statusCounts.FINAL}`} />
+                {submissionData.allStatuses.map(status => (
+                  <LegendItem
+                    key={status.key}
+                    color={status.color}
+                    text={`${status.label}: ${status.count} (${status.percentage}%)`}
+                  />
+                ))}
               </ul>
             </div>
 
-            <div className="mt-3">
+            {/* <div className="mt-3">
               <Link href="#" className="text-lg text-[#326295] hover:underline">
                 More Detail
               </Link>
-            </div>
+            </div> */}
           </div>
         </div>
 
@@ -240,22 +286,63 @@ function LegendItem({ color, text }: { color: string; text: string }) {
   );
 }
 
-function Donut({ percent, label, total }: { percent: number; label: string; total: string }) {
-  const angle = Math.round((percent / 100) * 360);
+function MultiColorDonut({
+  segments,
+  total
+}: {
+  segments: Array<{
+    key: string;
+    color: string;
+    label: string;
+    count: number;
+    percentage: number;
+    startAngle: number;
+    endAngle: number;
+  }>;
+  total: number;
+}) {
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-48 h-48 rounded-full bg-gray-200">
+          <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold">0</div>
+              <div className="text-lg text-gray-500">No Data</div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 text-lg text-gray-600">0 Total Submissions</div>
+      </div>
+    );
+  }
+
+  // Create the conic-gradient string
+  const gradientSegments = segments.map(segment =>
+    `${segment.color} ${segment.startAngle}deg ${segment.endAngle}deg`
+  ).join(', ');
+
+  // Calculate the largest segment for display
+  const largestSegment = segments.reduce((max, segment) =>
+    segment.percentage > max.percentage ? segment : max
+  );
+
   return (
     <div className="flex flex-col items-center">
       <div
         className="relative w-48 h-48 rounded-full"
-        style={{ background: `conic-gradient(#16a34a ${angle}deg, #e5e7eb 0deg)` }}
+        style={{
+          background: `conic-gradient(${gradientSegments})`,
+          transform: 'rotate(-90deg)' // Start from top instead of right
+        }}
       >
-        <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
+        <div className="absolute inset-4 bg-white rounded-full grid place-items-center" style={{ transform: 'rotate(90deg)' }}>
           <div className="text-center">
-            <div className="text-3xl font-bold">{percent}%</div>
-            <div className="text-lg text-gray-500">{label}</div>
+            <div className="text-xl text-gray-900">Submissions</div>
+            <div className="text-2xl font-bold">{total} Totals</div>
           </div>
         </div>
       </div>
-      <div className="mt-2 text-lg text-gray-600">{total}</div>
     </div>
   );
 }
