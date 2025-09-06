@@ -1,35 +1,44 @@
 "use client";
-
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
-import { getAssignmentByOpenTaskandSubmittedAPI } from "@/api/assignment/getAllAssignments";
+import {
+  getAssignmentByOpenTaskandSubmittedAPI,
+  getAllAssignmentsAPI,
+} from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
+import { getUserRole } from "@/util/cookies";
 
 type CardAssignment = {
   id: number;
   title: string;
-  dueDate: string; // e.g., "9:00 PM"
+  dueDate: string;
   status: "missed" | "upcoming" | "submitted" | "approved";
-  dateGroup: string; // e.g., "20 April"
+  dateGroup: string;
 };
 
 export default function AssignmentPage() {
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
+
   const courseId = useSearchParams().get("courseId") || "";
   const groupId = useSearchParams().get("groupId") || "";
+  const role = getUserRole();
+  const isStudent = role === "student";
 
-  const [data, setData] =
+  const [studentData, setStudentData] =
     useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
+    console.log("stu")
+  const [lecturerData, setLecturerData] = useState<
+    getAllAssignments.allAssignment[] | null
+  >(null);
   const [loading, setLoading] = useState(false);
 
-  // ---- helpers: date picking + formatting ----
   const pickRelevantDateISO = (a: {
-    dueDate: string | null;
+    dueDate?: string | null;
     endDate: string;
-    schedule: string | null;
-  }) => a.dueDate ?? a.schedule ?? a.endDate;
+    schedule?: string | null;
+  }) => (a.dueDate ?? a.schedule ?? a.endDate)!;
 
   const formatDateGroup = (iso: string) =>
     new Date(iso).toLocaleDateString(undefined, {
@@ -48,62 +57,88 @@ export default function AssignmentPage() {
     return new Date(dueISO).getTime() < Date.now() ? "missed" : "upcoming";
   };
 
-  // ---- fetch ----
-  const fetchAssignments = async () => {
+  const fetchAssignmentsforStudent = async () => {
     try {
       if (!courseId || !groupId) return;
       const cid = Number(courseId);
       const gid = Number(groupId);
       if (!Number.isFinite(cid) || !Number.isFinite(gid)) return;
       setLoading(true);
-      const response = await getAssignmentByOpenTaskandSubmittedAPI(cid, gid);
-      setData(response.data);
+      const res = await getAssignmentByOpenTaskandSubmittedAPI(cid, gid);
+      setStudentData(res.data);
     } catch (e) {
-      console.error("Failed to fetch assignments", e);
+      console.error("Failed to fetch student assignments", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAssignmentsforLecturer = async () => {
+    try {
+      if (!courseId) return; 
+      const cid = Number(courseId);
+      if (!Number.isFinite(cid)) return;
+      setLoading(true);
+      const res = await getAllAssignmentsAPI(cid);
+      setLecturerData(res.data);
+    } catch (e) {
+      console.error("Failed to fetch lecturer assignments", e);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchAssignments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, groupId]);
+    if (isStudent) {
+      fetchAssignmentsforStudent();
+    } else {
+      fetchAssignmentsforLecturer();
+      setActiveTab("open"); 
+    }
+  }, [courseId, groupId, isStudent]);
 
-  // ---- map backend -> cards ----
   const openCards: CardAssignment[] = useMemo(() => {
-    if (!data) return [];
-    return data.openTasks.map((a) => {
+    if (!studentData) return [];
+    return studentData.openTasks.map((a) => {
       const whenISO = pickRelevantDateISO(a);
-      const dateGroup = formatDateGroup(whenISO);
-      const status = computeOpenStatus(a.dueDate);
       return {
         id: a.id,
         title: a.name,
         dueDate: formatTime(whenISO),
-        status,
-        dateGroup,
+        status: computeOpenStatus(a.dueDate ?? whenISO),
+        dateGroup: formatDateGroup(whenISO),
       };
     });
-  }, [data]);
+  }, [studentData]);
 
   const submittedCards: CardAssignment[] = useMemo(() => {
-    if (!data) return [];
-    return data.submitted.map((a) => {
+    if (!studentData) return [];
+    return studentData.submitted.map((a) => {
       const whenISO = pickRelevantDateISO(a);
-      const dateGroup = formatDateGroup(whenISO);
-      // We don’t have per-submission status in this payload; mark as submitted
       return {
         id: a.id,
         title: a.name,
         dueDate: formatTime(whenISO),
         status: "submitted",
-        dateGroup,
+        dateGroup: formatDateGroup(whenISO),
       };
     });
-  }, [data]);
+  }, [studentData]);
 
-  // ---- UI helpers ----
+  const lecturerCards: CardAssignment[] = useMemo(() => {
+    if (!lecturerData) return [];
+    return lecturerData.map((a) => {
+      const whenISO = (a.schedule ?? a.endDate)!;
+      return {
+        id: a.id,
+        title: a.name,
+        dueDate: formatTime(whenISO),
+        status: computeOpenStatus(whenISO), 
+        dateGroup: formatDateGroup(whenISO),
+      };
+    });
+  }, [lecturerData]);
+
   const getCardStyle = (status: CardAssignment["status"]) => {
     switch (status) {
       case "missed":
@@ -111,7 +146,6 @@ export default function AssignmentPage() {
       case "upcoming":
         return "bg-orange-100 border border-orange-200";
       case "submitted":
-        return "bg-green-100 border border-green-300";
       case "approved":
         return "bg-green-100 border border-green-300";
       default:
@@ -120,14 +154,32 @@ export default function AssignmentPage() {
   };
 
   const groupedAssignments = (data: CardAssignment[]) =>
-    data.reduce((acc: Record<string, CardAssignment[]>, curr) => {
+    data.reduce<Record<string, CardAssignment[]>>((acc, curr) => {
       (acc[curr.dateGroup] ||= []).push(curr);
       return acc;
     }, {});
 
-  const displayedData = activeTab === "open" ? openCards : submittedCards;
+  const displayedData = isStudent
+    ? activeTab === "open"
+      ? openCards
+      : submittedCards
+    : lecturerCards;
 
   const grouped = groupedAssignments(displayedData);
+
+  // Build detail link: student includes groupId, lecturer omits it
+  const detailHref = (assignmentId: number) =>
+    isStudent
+      ? {
+          pathname: "/assignments/detail",
+          query: { courseId, assignmentId, groupId },
+        }
+      : { pathname: "/assignments/detail", query: { courseId, assignmentId } };
+
+  const openCount = isStudent
+    ? studentData?.counts.open ?? 0
+    : lecturerData?.length ?? 0;
+  const submittedCount = isStudent ? studentData?.counts.submitted ?? 0 : 0;
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
@@ -140,27 +192,32 @@ export default function AssignmentPage() {
           }`}
           onClick={() => setActiveTab("open")}
         >
-          Open Tasks{data ? ` (${data.counts.open})` : ""}
+          Open Tasks ({openCount})
         </button>
-        <button
-          className={`pb-2 ${
-            activeTab === "submitted"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500"
-          }`}
-          onClick={() => setActiveTab("submitted")}
-        >
-          Submitted{data ? ` (${data.counts.submitted})` : ""}
-        </button>
+
+        {isStudent && (
+          <button
+            className={`pb-2 ${
+              activeTab === "submitted"
+                ? "border-b-2 border-black text-black"
+                : "text-gray-500"
+            }`}
+            onClick={() => setActiveTab("submitted")}
+          >
+            Submitted ({submittedCount})
+          </button>
+        )}
       </div>
 
       {loading && <div className="text-gray-500">Loading assignments…</div>}
 
       {!loading && displayedData.length === 0 && (
         <div className="text-gray-500">
-          {activeTab === "open"
-            ? "No open tasks for this group."
-            : "No submitted assignments yet."}
+          {isStudent
+            ? activeTab === "open"
+              ? "No open tasks for this group."
+              : "No submitted assignments yet."
+            : "No open tasks."}
         </div>
       )}
 
@@ -169,7 +226,7 @@ export default function AssignmentPage() {
           <div key={date}>
             <div className="text-2xl font-semibold mb-3">{date}</div>
             {tasks.map((task) => (
-              <Link href={`/assignments/${task.id}`} key={task.id}>
+              <Link href={detailHref(task.id)} key={task.id}>
                 <div
                   className={`${getCardStyle(
                     task.status
@@ -206,8 +263,9 @@ export default function AssignmentPage() {
         ))}
       </div>
 
+      {/* Keep the FAB — if you only want lecturers to see it, guard with !isStudent */}
       <Link
-        href={`/assignments/new?courseId=${courseId}`}
+        href={{ pathname: "/assignments/new", query: { courseId } }}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
                    bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
                    hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
