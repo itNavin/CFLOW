@@ -15,7 +15,7 @@ export const setUserRole = (role: string) => {
 
 export const getUserRole = () => {
     const role = Cookies.get("Role")
-    return role
+    return role ? role : ""
 }
 
 export const getUserId = () => {
