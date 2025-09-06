@@ -8,6 +8,7 @@ import { Announcement } from "@/types/api/announcement";
 import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { file } from "@/types/api/announcement";
+import { isCanUpload } from "@/util/RoleHelper";
 
 export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<
@@ -16,6 +17,7 @@ export default function AnnouncementPage() {
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
+  const [canUpload, setCanUpload] = useState(false);
 
   const fetchAnnouncements = async () => {
     try {
@@ -27,7 +29,13 @@ export default function AnnouncementPage() {
         return;
       }
       const response = await getAllAnnouncementByCourseIdAPI(id);
-      setAnnouncements(response.data);
+
+      const sortedAnnouncements = response.data.sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return dateB - dateA; // Latest first (descending order)
+      });
+      setAnnouncements(sortedAnnouncements);
     } catch (e) {
       console.error("Error fetching announcements:", e);
     }
@@ -42,11 +50,11 @@ export default function AnnouncementPage() {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
-    
+
     if (openDropdown !== null) {
       document.addEventListener('click', handleClickOutside);
     }
-    
+
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
@@ -54,6 +62,7 @@ export default function AnnouncementPage() {
 
   useEffect(() => {
     fetchAnnouncements();
+    setCanUpload(isCanUpload());
   }, [courseId]);
 
   return (
@@ -79,7 +88,7 @@ export default function AnnouncementPage() {
           <div className="space-y-3">
             {data.files.map((file, fileIndex) => {
               const dropdownId = `${data.id}-${fileIndex}`;
-              
+
               return (
                 <div
                   key={file.id}
@@ -91,7 +100,7 @@ export default function AnnouncementPage() {
                       {file.name || file.filepath}
                     </span>
                   </div>
-                  
+
                   <div className="relative dropdown-container">
                     <button
                       onClick={(e) => {
@@ -106,9 +115,9 @@ export default function AnnouncementPage() {
                     </button>
 
                     {openDropdown === dropdownId && (
-                      <div 
+                      <div
                         className="absolute right-0 top-full mt-1 z-50 bg-white border border-gray-200 rounded-lg shadow-xl min-w-[140px]"
-                        style={{ 
+                        style={{
                           boxShadow: '0 10px 25px rgba(0, 0, 0, 0.15)',
                           transform: 'translateY(2px)'
                         }}
@@ -136,7 +145,7 @@ export default function AnnouncementPage() {
         </div>
       ))}
 
-      <Link
+      {canUpload && <Link
         href={`/announcements/new?courseId=${courseId}`}
         className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
                    bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
@@ -145,7 +154,7 @@ export default function AnnouncementPage() {
       >
         <Plus className="h-5 w-5" />
         <span className="hidden sm:inline">Add New Announcement</span>
-      </Link>
+      </Link>}
     </main>
   );
 }
