@@ -97,7 +97,7 @@ export default function Sidebar() {
           return (
             <Link
               key={item.href}
-              href={`${item.href}?courseId=${id}&groupId=${project?.group.id}`}
+              href={`${item.href}?courseId=${id}${project?.group?.id ? `&groupId=${project.group.id}` : ''}`}
               className={`px-6 py-3 text-2xl font-semibold transition ${
                 isActive
                   ? "bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white"
