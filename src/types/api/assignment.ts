@@ -116,3 +116,38 @@ export namespace getAllAssignments {
         company: string | null;
     }[]
 }
+
+export namespace createAssignment {
+    export type CreateAssignmentPayload = {
+        id: number;
+        name: string;
+        description: string | null;
+        endDate: string;
+        schedule: string | null;
+        courseId: number;
+        deliverables: CreateDeliverablePayload[];
+        assignmentDueDates: CreateAssignmentDueDatePayload[];
+    }
+
+    export type CreateDeliverablePayload = {
+        id: number;
+        name: string;
+        assignmentId: number;
+        allowedFileTypes: CreateAllowedFileTypePayload[];
+    }
+
+    export type CreateAllowedFileTypePayload = {
+        id: number;
+        mime: string;
+        type: string;
+        deliverableId: number;
+    }
+
+    export type CreateAssignmentDueDatePayload = {
+        id:number;
+        assignmentId: number;
+        groupId: number;
+        dueDate: string;
+        createdAt: string;
+    }
+}

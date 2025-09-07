@@ -9,6 +9,10 @@ import {
 } from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
+import { isCanUpload } from "@/util/RoleHelper";
+import { createAssignment } from "@/types/api/assignment";
+import { createAssignmentAPI } from "@/api/assignment/createAssignment";
+import AssignmentModal, { AssignmentPayload } from "@/components/assignmentModal";
 
 type CardAssignment = {
   id: number;
@@ -20,19 +24,18 @@ type CardAssignment = {
 
 export default function AssignmentPage() {
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
-
   const courseId = useSearchParams().get("courseId") || "";
   const groupId = useSearchParams().get("groupId") || "";
   const role = getUserRole();
   const isStudent = role === "student";
-
-  const [studentData, setStudentData] =
-    useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
-    console.log("stu")
-  const [lecturerData, setLecturerData] = useState<
-    getAllAssignments.allAssignment[] | null
-  >(null);
+  const [studentData, setStudentData] = useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
+  const [lecturerData, setLecturerData] = useState<getAllAssignments.allAssignment[] | null>(null);
+  const [canUpload, setCanUpload] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingAssignment, setCreatingAssignment] = useState(false);
 
   const pickRelevantDateISO = (a: {
     dueDate?: string | null;
@@ -75,7 +78,7 @@ export default function AssignmentPage() {
 
   const fetchAssignmentsforLecturer = async () => {
     try {
-      if (!courseId) return; 
+      if (!courseId) return;
       const cid = Number(courseId);
       if (!Number.isFinite(cid)) return;
       setLoading(true);
@@ -88,12 +91,136 @@ export default function AssignmentPage() {
     }
   };
 
+  const handleCreateAssignment = async (data: AssignmentPayload) => {
+    try {
+      setCreatingAssignment(true);
+
+      if (!courseId) {
+        throw new Error("Course ID is required");
+      }
+
+      console.log("Creating assignment for course:", courseId, data);
+
+      // Convert the modal data to API format
+      const assignmentDueDates: createAssignment.CreateAssignmentDueDatePayload[] = [
+        {
+          id: 0, // Will be set by backend
+          assignmentId: 0, // Will be set by backend
+          groupId: Number(groupId) || 0, // Use current group or default
+          dueDate: data.dueAt || data.endAt || "",
+          createdAt: new Date().toISOString(),
+        }
+      ];
+
+      // ✅ FIXED: Proper handling of file types without accessing non-existent properties
+      const deliverables: createAssignment.CreateDeliverablePayload[] = data.deliverables.map((d, index) => ({
+        id: 0, // Will be set by backend
+        name: String(d.name || ""), // Ensure it's a string
+        assignmentId: 0, // Will be set by backend
+        allowedFileTypes: d.requiredTypes.map((type, typeIndex) => {
+          // Map common file types to MIME types
+          const getMimeType = (fileType: any): string => {
+            const typeStr = String(fileType.value || fileType.label || fileType || "").toLowerCase();
+
+            switch (typeStr) {
+              case 'pdf':
+                return 'application/pdf';
+              case 'doc':
+              case 'docx':
+                return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+              case 'xls':
+              case 'xlsx':
+                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+              case 'ppt':
+              case 'pptx':
+                return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+              case 'txt':
+                return 'text/plain';
+              case 'jpg':
+              case 'jpeg':
+                return 'image/jpeg';
+              case 'png':
+                return 'image/png';
+              case 'gif':
+                return 'image/gif';
+              case 'zip':
+                return 'application/zip';
+              case 'rar':
+                return 'application/x-rar-compressed';
+              default:
+                return 'application/octet-stream'; // Generic binary file type
+            }
+          };
+
+          const getTypeLabel = (fileType: any): string => {
+            return String(fileType.label || fileType.value || fileType || "").toUpperCase();
+          };
+
+          return {
+            id: 0, // Will be set by backend
+            mime: getMimeType(type), // ✅ Generate MIME type from file type
+            type: getTypeLabel(type), // ✅ Get readable type label
+            deliverableId: 0, // Will be set by backend
+          };
+        }),
+      }));
+
+      console.log("Processed deliverables:", deliverables);
+
+      // Call the API
+      const response = await createAssignmentAPI(
+        courseId,
+        data.title,
+        data.descriptionHtml,
+        data.endAt || "",
+        data.scheduleAt || "",
+        assignmentDueDates,
+        deliverables
+      );
+
+      console.log("Assignment created successfully:", response.data);
+
+      // Show success message
+      alert("Assignment created successfully!");
+
+      // Refresh the assignments list
+      if (isStudent) {
+        await fetchAssignmentsforStudent();
+      } else {
+        await fetchAssignmentsforLecturer();
+      }
+
+      // Close the modal
+      setShowCreateModal(false);
+
+    } catch (error: any) {
+      console.error("Error creating assignment:", error);
+
+      let errorMessage = "Failed to create assignment";
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setCreatingAssignment(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    if (!creatingAssignment) {
+      setShowCreateModal(false);
+    }
+  };
+
   useEffect(() => {
     if (isStudent) {
       fetchAssignmentsforStudent();
     } else {
       fetchAssignmentsforLecturer();
-      setActiveTab("open"); 
+      setActiveTab("open");
     }
   }, [courseId, groupId, isStudent]);
 
@@ -133,7 +260,7 @@ export default function AssignmentPage() {
         id: a.id,
         title: a.name,
         dueDate: formatTime(whenISO),
-        status: computeOpenStatus(whenISO), 
+        status: computeOpenStatus(whenISO),
         dateGroup: formatDateGroup(whenISO),
       };
     });
@@ -167,13 +294,12 @@ export default function AssignmentPage() {
 
   const grouped = groupedAssignments(displayedData);
 
-  // Build detail link: student includes groupId, lecturer omits it
   const detailHref = (assignmentId: number) =>
     isStudent
       ? {
-          pathname: "/assignments/detail",
-          query: { courseId, assignmentId, groupId },
-        }
+        pathname: "/assignments/detail",
+        query: { courseId, assignmentId, groupId },
+      }
       : { pathname: "/assignments/detail", query: { courseId, assignmentId } };
 
   const openCount = isStudent
@@ -185,11 +311,10 @@ export default function AssignmentPage() {
     <main className="min-h-screen bg-white p-6 font-dbheavent">
       <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
         <button
-          className={`pb-2 ${
-            activeTab === "open"
+          className={`pb-2 ${activeTab === "open"
               ? "border-b-2 border-black text-black"
               : "text-gray-500"
-          }`}
+            }`}
           onClick={() => setActiveTab("open")}
         >
           Open Tasks ({openCount})
@@ -197,11 +322,10 @@ export default function AssignmentPage() {
 
         {isStudent && (
           <button
-            className={`pb-2 ${
-              activeTab === "submitted"
+            className={`pb-2 ${activeTab === "submitted"
                 ? "border-b-2 border-black text-black"
                 : "text-gray-500"
-            }`}
+              }`}
             onClick={() => setActiveTab("submitted")}
           >
             Submitted ({submittedCount})
@@ -263,17 +387,29 @@ export default function AssignmentPage() {
         ))}
       </div>
 
-      {/* Keep the FAB — if you only want lecturers to see it, guard with !isStudent */}
-      <Link
-        href={{ pathname: "/assignments/new", query: { courseId } }}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
-                   bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
-                   hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
-                   active:scale-[0.98] transition"
-      >
-        <Plus className="h-5 w-5" />
-        <span className="hidden sm:inline">Add New Assignments</span>
-      </Link>
+      {/* FAB for creating new assignment - only show for non-students */}
+      {!isStudent && (
+        <button
+          onClick={() => setShowCreateModal(true)}
+          disabled={creatingAssignment}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
+                     bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
+                     hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                     active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus className="h-5 w-5" />
+          <span className="hidden sm:inline">
+            {creatingAssignment ? "Creating..." : "Add New Assignment"}
+          </span>
+        </button>
+      )}
+
+      {/* Assignment Creation Modal */}
+      <AssignmentModal
+        open={showCreateModal}
+        onClose={handleCloseModal}
+        onSubmit={handleCreateAssignment}
+      />
     </main>
   );
 }
