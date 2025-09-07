@@ -133,11 +133,12 @@ export default function AssignmentModal({
               <label className="block font-medium mb-1">
                 Description <span className="text-red-500">*</span>
               </label>
-              <div
-                contentEditable
-                className="min-h-[120px] rounded border border-gray-300 px-3 py-2 focus:outline-none"
-                onInput={(e) => setDescriptionHtml(e.currentTarget.innerHTML)}
-                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              <textarea
+                value={descriptionHtml}
+                onChange={(e) => setDescriptionHtml(e.target.value)}
+                placeholder="Enter assignment description..."
+                className="w-full min-h-[120px] rounded border border-gray-300 px-3 py-2 resize-vertical focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                rows={5}
               />
             </div>
 

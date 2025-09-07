@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import AssignmentModal, { AssignmentPayload } from "@/components/AssignmentModal";
+import AssignmentModal, { AssignmentPayload } from "@/components/assignmentModal";
 
 export default function NewAssignmentPage() {
   const searchParams = useSearchParams();
