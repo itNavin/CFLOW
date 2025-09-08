@@ -34,7 +34,6 @@ Axios.interceptors.request.use(
 Axios.interceptors.response.use(
   (response) => {
     const newToken = response.headers["x-refresh-token"];
-	console.log('Received new token:', newToken);
     if (newToken) {
       setAuthToken(newToken);
     }

@@ -8,17 +8,19 @@ import NotificationPopup from "./notification"; // adjust path as needed
 import { getCourse, Course } from "@/types/api/course";
 import { getCourseAPI } from "@/api/course/getCourse";
 import { getUserRole } from "@/util/cookies";
+import { getCourseNameAPI } from "@/api/course/getCourseName";
+import { getCoursename } from "@/types/api/course";
 
 export default function Navbar() {
   const searchParams = useSearchParams();
-  const courseId = searchParams.get("courseId");
+  const courseId = Number(searchParams.get("courseId"));
 
   const [showNotification, setShowNotification] = useState(false);
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [courseData, setCourseData] = useState<getCourse.Course | null>(null);
+  const [courseData, setCourseData] = useState<getCoursename.CourseName | null>(null);
 
   const fetchCourses = useCallback(async () => {
     if (userRole === undefined || !courseId) return;
@@ -27,8 +29,7 @@ export default function Navbar() {
       setLoading(true);
       setError(null);
 
-      const res = await getCourseAPI();
-      console.log("Course API response:", res.data);
+      const res = await getCourseNameAPI(courseId);
 
       setCourseData(res.data);
     } catch (err: any) {
@@ -60,8 +61,8 @@ export default function Navbar() {
             <span className="text-4xl font-semibold">
               {loading ? "Loading..." :
                 error ? "Error loading course" :
-                  courseData?.courses && courseData.courses.length > 0
-                    ? courseData.courses.find(c => c.course.id.toString() === courseId)?.course.name || "Course Not Found"
+                  courseData?.name && courseData.name.length > 0
+                    ? courseData.name
                     : "No Courses Available"}
             </span>
           )}
@@ -70,7 +71,7 @@ export default function Navbar() {
         <div className="flex items-center gap-6">
           <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
             <Bell className="w-6 h-6 text-black" />
-            <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span>
+            {/* <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span> */}
           </div>
           <Home className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/course")} />
           <User className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/profile")} />

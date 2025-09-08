@@ -31,20 +31,23 @@ export default function StudentDashboard() {
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo | null>(null);
   const [groupDashboard, setGroupDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
-    const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
 
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const assignmentId = Number(e.target.value);
-      setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
-  
-      if (!isNaN(assignmentId)) {
-        fetchDashboardDataWithQuery({ assignmentId: assignmentId > 0 ? assignmentId : undefined });
-      }
+    const assignmentId = Number(e.target.value);
+    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+
+    if (!isNaN(assignmentId)) {
+      fetchDashboardDataWithQuery({ 
+        assignmentId: assignmentId > 0 ? assignmentId : undefined,
+        groupId: groupInfo?.id // Add group ID to filter for this student's group
+      });
     }
+  }
 
   const fetchGroupInformation = async () => {
     try {
@@ -56,6 +59,7 @@ export default function StudentDashboard() {
         return;
       }
       const response = await getGroupInformation(id);
+      console.log("Group information:", response.data);
 
       setGroupInfo(response.data[0]);
     } catch (error) {
@@ -64,42 +68,29 @@ export default function StudentDashboard() {
     }
   };
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
     try {
       if (!courseId) return;
-
+      setDashboardLoading(true);
       const id = Number(courseId);
       if (Number.isNaN(id)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getDashboardData(id);
+      
+      console.log("Fetching dashboard with query:", query);
+      
+      const response = await getDashboardData(id, query);
+      console.log("Dashboard response with query:", response.data);
+
       setDashboard(response.data);
     } catch (error) {
-      console.error("Failed to load dashboard data:", error);
+      console.error("Failed to load dashboard data with query:", error);
       setError("Failed to load dashboard data");
+    } finally {
+      setDashboardLoading(false);
     }
-  };
-
-  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
-      try {
-        if (!courseId) return;
-        setDashboardLoading(true);
-        const id = Number(courseId);
-        if (Number.isNaN(id)) {
-          setError("Invalid courseId in URL");
-          return;
-        }
-        const response = await getDashboardData(id, query);
-        console.log("Response with query:", response.data);
-  
-        setDashboard(response.data);
-      } catch (error) {
-        setError("Failed to load dashboard data");
-      } finally {
-        setDashboardLoading(false);
-      }
-    }
+  }
 
   const fetchAssignments = async () => {
     try {
@@ -111,9 +102,10 @@ export default function StudentDashboard() {
         return;
       }
       const response = await getAllAssignmentsAPI(id);
-      console.log("Response:", response.data);
+      console.log("Assignments:", response.data);
       setAssignments(response.data);
     } catch (error) {
+      console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
     }
   };
@@ -122,19 +114,30 @@ export default function StudentDashboard() {
     const fetchData = async () => {
       setLoading(true);
       await fetchGroupInformation();
-      await fetchDashboardData();
       await fetchAssignments();
-      await fetchDashboardDataWithQuery({ assignmentId: selectedAssignmentChartId || undefined });
       setLoading(false);
     };
 
     fetchData();
   }, [courseId]);
 
+  useEffect(() => {
+    if (!groupInfo) return;
+    fetchDashboardDataWithQuery({ groupId: groupInfo.id });
+  }, [groupInfo])
+
+  // ✅ FIXED: Fetch dashboard data for student's group after group info is loaded
+  useEffect(() => {
+    if (groupInfo?.id) {
+      fetchDashboardDataWithQuery({ 
+        assignmentId: selectedAssignmentChartId || undefined,
+        groupId: groupInfo.id 
+      });
+    }
+  }, [groupInfo?.id, selectedAssignmentChartId]);
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
-
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -154,17 +157,18 @@ export default function StudentDashboard() {
             </section>
 
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
                 <h2 className="text-2xl font-semibold">Dashboard</h2>
-                <div className="flex items-center gap-3">
-                  <label className="text-xl text-gray-600">Assignment</label>
-                  <select onChange={handleChartAssignmentChange} className="block border border-gray-300 rounded px-2 py-1 text-lg">
-                    <option value={-1}>-- Select Assignment --</option>
+                <div className="flex items-center gap-2">
+                  <label className="text-lg text-gray-600 whitespace-nowrap">Assignment:</label>
+                  <select 
+                    onChange={handleChartAssignmentChange} 
+                    value={selectedAssignmentChartId || -1}
+                    className="border border-gray-300 rounded px-2 py-1 text-base min-w-[160px]"
+                  >
+                    <option value={-1}>All Assignments</option>
                     {assignments.map((assignment) => (
-                      <option
-                        key={assignment.id}
-                        value={assignment.id}
-                      >
+                      <option key={assignment.id} value={assignment.id}>
                         {assignment.name}
                       </option>
                     ))}
@@ -174,30 +178,28 @@ export default function StudentDashboard() {
 
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="flex items-center justify-center">
-                  <Donut percent={100} label="Submissions" total="3 Totals" />
+                  {/* ✅ FIXED: Use MultiColorDonut with actual data */}
+                  <MultiColorDonut 
+                    statusCounts={dashboard?.submissions?.statusCounts}
+                    loading={dashboardLoading}
+                  />
                 </div>
                 <ul className="space-y-2 text-lg">
                   {dashboard && (
                     <>
-                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED}`} />
-                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED}`} />
-                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED}`} />
-                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK}`} />
-                      <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL}`} />
+                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
+                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED || 0}`} />
+                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED || 0}`} />
+                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
+                      <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL || 0}`} />
                     </>
                   )}
                 </ul>
               </div>
-
-              {/* <div className="mt-3">
-                <Link href="#" className="text-lg text-[#326295] hover:underline">
-                  More Detail
-                </Link>
-              </div> */}
             </section>
           </div>
 
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          {/* <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Alerts</h2>
             <div className="divide-y">
               <AlertRow
@@ -213,11 +215,11 @@ export default function StudentDashboard() {
                 date="01/04/2025, 09:00 AM"
               />
             </div>
-          </section>
+          </section> */}
         </div>
 
         <div className="space-y-6">
-          <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          {/* <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Summary</h2>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
               {dashboard ? (
@@ -236,23 +238,24 @@ export default function StudentDashboard() {
                 </>
               )}
             </dl>
-          </section>
+          </section> */}
+
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
               <li>
-                <Link href="/assignments/1" className="inline-flex items-center gap-2 hover:underline text-lg">
-                  Assignment 1
+                <Link href={`/assignments?courseId=${courseId}&groupId=${groupInfo?.id || ''}`} className="inline-flex items-center gap-2 hover:underline text-lg">
+                  View All Assignments
                 </Link>
               </li>
               <li>
-                <Link href="/assignments/2" className="inline-flex items-center gap-2 hover:underline text-lg">
-                  Assignment 2
+                <Link href={`/files?courseId=${courseId}`} className="inline-flex items-center gap-2 hover:underline text-lg">
+                  Course Files
                 </Link>
               </li>
               <li>
-                <Link href="/assignments/3" className="inline-flex items-center gap-2 hover:underline text-lg">
-                  Assignment 3
+                <Link href={`/announcements?courseId=${courseId}`} className="inline-flex items-center gap-2 hover:underline text-lg">
+                  Announcements
                 </Link>
               </li>
             </ul>
@@ -274,6 +277,121 @@ export default function StudentDashboard() {
         </div>
       </div>
     </main>
+  );
+}
+
+// ✅ FIXED: MultiColorDonut component that works with status data
+function MultiColorDonut({
+  statusCounts,
+  loading = false
+}: {
+  statusCounts?: {
+    NOT_SUBMITTED?: number;
+    SUBMITTED?: number;
+    REJECTED?: number;
+    APPROVED_WITH_FEEDBACK?: number;
+    FINAL?: number;
+  };
+  loading?: boolean;
+}) {
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-48 h-48 rounded-full bg-gray-200 animate-pulse">
+          <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
+            <div className="text-center">
+              <div className="text-xl text-gray-400">Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default values if no data
+  const counts = {
+    NOT_SUBMITTED: statusCounts?.NOT_SUBMITTED || 0,
+    SUBMITTED: statusCounts?.SUBMITTED || 0,
+    REJECTED: statusCounts?.REJECTED || 0,
+    APPROVED_WITH_FEEDBACK: statusCounts?.APPROVED_WITH_FEEDBACK || 0,
+    FINAL: statusCounts?.FINAL || 0,
+  };
+
+  const total = Object.values(counts).reduce((sum, count) => sum + count, 0);
+
+  // Handle no data case
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-48 h-48 rounded-full bg-gray-200">
+          <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-gray-400">0</div>
+              <div className="text-lg text-gray-500">No Data</div>
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 text-lg text-gray-600">0 Total Submissions</div>
+      </div>
+    );
+  }
+
+  // Define colors for each status
+  const statusColors = {
+    NOT_SUBMITTED: '#6b7280', // gray
+    SUBMITTED: '#1d4ed8',      // blue
+    REJECTED: '#ef4444',       // red
+    APPROVED_WITH_FEEDBACK: '#10b981', // green
+    FINAL: '#16a34a',          // dark green
+  };
+
+  // Calculate segments
+  let currentAngle = 0;
+  const segments = Object.entries(counts)
+    .filter(([, count]) => count > 0) // Only include statuses with counts > 0
+    .map(([status, count]) => {
+      const percentage = (count / total) * 100;
+      const degrees = (count / total) * 360;
+      const startAngle = currentAngle;
+      const endAngle = currentAngle + degrees;
+      
+      currentAngle = endAngle;
+      
+      return {
+        status,
+        count,
+        percentage,
+        startAngle,
+        endAngle,
+        color: statusColors[status as keyof typeof statusColors],
+      };
+    });
+
+  // Create the conic-gradient string
+  const gradientSegments = segments.map(segment =>
+    `${segment.color} ${segment.startAngle}deg ${segment.endAngle}deg`
+  ).join(', ');
+
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="relative w-48 h-48 rounded-full"
+        style={{
+          background: segments.length > 0 
+            ? `conic-gradient(${gradientSegments})` 
+            : '#e5e7eb',
+          transform: 'rotate(-90deg)' // Start from top instead of right
+        }}
+      >
+        <div className="absolute inset-4 bg-white rounded-full grid place-items-center" style={{ transform: 'rotate(90deg)' }}>
+          <div className="text-center">
+            <div className="text-xl text-gray-900">Submissions</div>
+            <div className="text-2xl font-bold">{total} Total{total !== 1 ? 's' : ''}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -300,7 +418,7 @@ function GroupInformationCard({
           className="p-2 rounded-md hover:bg-gray-100"
           aria-label="Edit group"
         >
-          <Pencil className="h-5 w-5 text-gray-700" />
+          {/* <Pencil className="h-5 w-5 text-gray-700" /> */}
         </button>
       </div>
 
@@ -369,26 +487,6 @@ function LegendItem({ color, text }: { color: string; text: string }) {
       <span className="inline-block w-4 h-4 rounded-sm" style={{ backgroundColor: color }} />
       <span className="text-lg font-bold">{text}</span>
     </li>
-  );
-}
-
-function Donut({ percent, label, total }: { percent: number; label: string; total: string }) {
-  const angle = Math.round((percent / 100) * 360);
-  return (
-    <div className="flex flex-col items-center">
-      <div
-        className="relative w-48 h-48 rounded-full"
-        style={{ background: `conic-gradient(#16a34a ${angle}deg, #e5e7eb 0deg)` }}
-      >
-        <div className="absolute inset-4 bg-white rounded-full grid place-items-center">
-          <div className="text-center">
-            <div className="text-3xl font-bold">{percent}%</div>
-            <div className="text-lg text-gray-500">{label}</div>
-          </div>
-        </div>
-      </div>
-      <div className="mt-2 text-lg text-gray-600">{total}</div>
-    </div>
   );
 }
 

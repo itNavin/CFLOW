@@ -93,13 +93,13 @@ export default function GroupTab() {
             key={data.id}
             className="relative rounded-lg border bg-white p-5 shadow-sm"
           >
-            <button
+            {/* <button
               title="Edit"
               className="absolute right-3 top-3 inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50"
               onClick={() => setEditTarget(data)}
             >
               <Pencil className="h-4 w-4" />
-            </button>
+            </button> */}
 
             <h3 className="font-semibold text-xl text-gray-800 mb-2">{data.projectName}</h3>
 

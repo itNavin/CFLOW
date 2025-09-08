@@ -79,7 +79,7 @@ export default function AssignmentModal({
         deliverables,
         dueAt: dueAt || undefined,
         endAt: endAt || undefined,
-        scheduleAt: scheduleAt || undefined,
+        scheduleAt: scheduleAt !== "" ? scheduleAt : new Date().toISOString(),
       });
       onClose();
     } finally {
