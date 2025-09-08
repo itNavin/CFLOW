@@ -7,6 +7,7 @@ import { useParams } from "next/navigation";
 import { getUserRole } from "@/util/cookies";
 import { myProject } from "@/types/api/myProject";
 import { getMyProjectByCourseAPI } from "@/api/projectName/getMyProjectByCourse";
+import { log } from "console";
 
 type UserRole = "student" | "lecturer" | "staff" | "super_admin";
 
@@ -32,6 +33,8 @@ export default function Sidebar() {
       const response = await getMyProjectByCourseAPI(id);
       console.log("Project response:", response.data);
       setProject(response.data);
+      console.log("Project state updated:", response.data);
+      
       console.log("Project name:", response.data.group.projectName);
     } catch (error) {}
   };
@@ -44,7 +47,7 @@ export default function Sidebar() {
           return [];
         }
         return [
-          { name: project?.group?.projectName ?? "Unknown", href: "/student" },
+          { name: project?.group?.productName ?? project?.group.projectName ?? "Unknown", href: "/student" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
           { name: "Assignments", href: "/assignments" },
@@ -52,7 +55,7 @@ export default function Sidebar() {
       }
       case "lecturer":
         return [
-          { name: "Lecturer", href: "/advisor" },
+          { name: "Advisor", href: "/advisor" },
           { name: "Announcements", href: "/announcements" },
           { name: "Files", href: "/files" },
           { name: "Assignments", href: "/assignments" },
@@ -60,7 +63,7 @@ export default function Sidebar() {
       case "staff":
       case "super_admin":
         return [
-          { name: "Staff", href: `/admin` },
+          { name: "Admin", href: `/admin` },
           { name: "Announcements", href: `/announcements` },
           { name: "Files", href: `/files` },
           { name: "Assignments", href: `/assignments` },

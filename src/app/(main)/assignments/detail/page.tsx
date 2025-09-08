@@ -7,32 +7,49 @@ import AssignmentInformation from "@/components/assignment/information";
 import AssignmentGroup from "@/components/assignment/group";
 import { get } from "http";
 import { getUserRole } from "@/util/cookies";
+import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
+import { getAllAssignments } from "@/types/api/assignment";
+
 
 export default function AssignmentDetailPage() {
   const router = useRouter();
-  const assignmentId = useSearchParams().get("assignmentId") || "";
-  const groupId = useSearchParams().get("groupId") || "";
+  const assignmentId = Number(useSearchParams().get("assignmentId")) || 0;
+  const groupId = Number(useSearchParams().get("groupId")) || 0;
+  const courseId = Number(useSearchParams().get("courseId")) || 0;
   const role = getUserRole();
   const isStudent = (role ?? "") === "student";
   const isLecturer = (role ?? "") === "lecturer";
   const isStaff = (role ?? "") === "staff";
+    const [data, setData] = useState<getAllAssignments.getAssignmentWithSubmission>();
+  console.log("data:", data);
+
+  const fetchAssignmentAndSubmission = async () => {
+        try {
+          console.log("get in submit")
+          if (!assignmentId || !courseId) return;      
+    
+          const response = await getAssignmentWithSubmissionAPI(courseId, assignmentId);
+          setData(response.data);
+          console.log("Assignment with submission response:", response.data);
+        } catch (e) {
+          console.error("Error fetching assignment and submission:", e);
+        }
+      };
+      useEffect(() => {
+        fetchAssignmentAndSubmission();
+      }, [courseId, assignmentId]);
+  
 
   return (
     <div>
       <AssignmentInformation
-        assignmentId={Number(assignmentId)}
-        groupId={Number(groupId)}
+        data={data}
       />
       <SubmitAssignment
-        assignmentId={Number(assignmentId)}
-        groupId={Number(groupId)}
+        data={data}
       />
 
-      <div className="flex justify-end mt-6">
-        <button className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow">
-          Turn in
-        </button>
-      </div>
+      
     </div>
   );
 }

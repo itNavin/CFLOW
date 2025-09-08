@@ -78,3 +78,9 @@ type extras = {
     createdAnnouncement : announcement,
     uploadedFiles : file
 }
+
+export namespace getCoursename{
+  export type CourseName = {
+    name: string;
+  }
+}

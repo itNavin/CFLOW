@@ -28,12 +28,13 @@ export default function AssignmentPage() {
   const groupId = useSearchParams().get("groupId") || "";
   const role = getUserRole();
   const isStudent = role === "student";
+  const isStaff = role === "staff" || role === "SUPER_ADMIN";
   const [studentData, setStudentData] = useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
   const [lecturerData, setLecturerData] = useState<getAllAssignments.allAssignment[] | null>(null);
   const [canUpload, setCanUpload] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Modal state
+  // Modal state  
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingAssignment, setCreatingAssignment] = useState(false);
 
@@ -227,6 +228,8 @@ export default function AssignmentPage() {
   const openCards: CardAssignment[] = useMemo(() => {
     if (!studentData) return [];
     return studentData.openTasks.map((a) => {
+      console.log("OPENCARD",a);
+      
       const whenISO = pickRelevantDateISO(a);
       return {
         id: a.id,
@@ -255,7 +258,9 @@ export default function AssignmentPage() {
   const lecturerCards: CardAssignment[] = useMemo(() => {
     if (!lecturerData) return [];
     return lecturerData.map((a) => {
-      const whenISO = (a.schedule ?? a.endDate)!;
+      console.log("LECTURERCARD",a);
+      
+      const whenISO = (a.endDate ?? a.schedule)!;
       return {
         id: a.id,
         title: a.name,
@@ -268,8 +273,8 @@ export default function AssignmentPage() {
 
   const getCardStyle = (status: CardAssignment["status"]) => {
     switch (status) {
-      case "missed":
-        return "bg-red-100 border border-red-300";
+      // case "missed":
+      //   return "bg-red-100 border border-red-300";
       case "upcoming":
         return "bg-orange-100 border border-orange-200";
       case "submitted":
@@ -292,7 +297,9 @@ export default function AssignmentPage() {
       : submittedCards
     : lecturerCards;
 
-  const grouped = groupedAssignments(displayedData);
+    
+
+  const grouped = groupedAssignments(displayedData);  
 
   const detailHref = (assignmentId: number) =>
     isStudent
@@ -388,7 +395,7 @@ export default function AssignmentPage() {
       </div>
 
       {/* FAB for creating new assignment - only show for non-students */}
-      {!isStudent && (
+      {isStaff && (
         <button
           onClick={() => setShowCreateModal(true)}
           disabled={creatingAssignment}

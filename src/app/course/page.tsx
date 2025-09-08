@@ -160,7 +160,7 @@ export default function CoursePage() {
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-[30px] font-medium text-black">Courses</h2>
 
-          {canUpload && (
+          {userRole === "staff" && (
             <button
               onClick={() => setOpenCreate(true)}
               className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
@@ -244,9 +244,9 @@ export default function CoursePage() {
           )}
         </div>
 
-        <div className="mt-6 text-sm font-medium text-black cursor-pointer hover:underline">
+        {/* <div className="mt-6 text-sm font-medium text-black cursor-pointer hover:underline">
           Hide <span className="inline-block transform rotate-180">⌄</span>
-        </div>
+        </div> */}
       </div>
 
       {openCreate && (

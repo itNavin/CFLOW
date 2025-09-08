@@ -32,3 +32,12 @@ type course = {
     createdById: number;
     createdAt: string;
 }
+
+export namespace uploadSubmissionFile {
+    export type UploadSubmissionFilePayload = {
+        id: number;
+        submissionId: number;
+        deliverableId: number;
+        fileUrl: string[];
+    }
+}
