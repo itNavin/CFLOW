@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar";
 import { getCourseAPI } from "@/api/course/getCourse";
-import { getAllCourseAPI } from "@/api/course/getAllCourse";
+import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import { getUserRole } from "@/util/cookies";
 import { Course } from "@/types/api/course";
 import { CourseModal } from "./component/courseModal";
@@ -38,6 +38,7 @@ export default function CoursePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [canUpload, setCanUpload] = useState(false);
+  const [uploadUserData, setUploadUserData] = useState<any>(null);
 
   useEffect(() => {
     setUserRole(getUserRole()); // "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN" | undefined
@@ -52,13 +53,13 @@ export default function CoursePage() {
       setError(null);
 
       if (userRole === "staff" || userRole === "SUPER_ADMIN") {
-        const res = await getAllCourseAPI(); // GET /course
+        const res = await getStaffCourseAPI(); // GET /course
         // accept: { courses: [...] } or [...]
-        const list = pickArray<Course>(res, "courses");
+        const list = pickArray<Course>(res, "course");
         setCourses(list);
       } else {
         const res = await getCourseAPI(); // GET /course/my-courses
-        const memberships = pickArray<any>(res, "courses");
+        const memberships = pickArray<any>(res, "course");
         const list: Course[] = memberships
           .map((m) => m?.course ?? m) // if backend already returns pure Course, still works
           .filter(Boolean);
@@ -94,8 +95,6 @@ export default function CoursePage() {
           : "/student";
     router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
   };
-
-  // ...existing code...
 
   const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "createdAt">) => {
     try {
