@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/navbar";
-import { getCourseAPI } from "@/api/course/getCourse";
+import { getCourseAPI } from "@/api/course/getCourseByUser";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import { getUserRole } from "@/util/cookies";
 import { Course } from "@/types/api/course";

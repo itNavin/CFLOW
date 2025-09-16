@@ -1,12 +1,10 @@
 type cmUser = {
   id: string;
   email: string;
-  passwordHash: string;  
-  prefix: string;
   name: string;
-  surname: string;
   role: "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
-  createdAt: string;      
+  program: "CS" | "DSI";
+  createdAt: string;
 };
 
 type cmGroup = {
@@ -22,25 +20,37 @@ export namespace getAdvisorMember {
   export type AdvisorMember = advisorMember[];
 }
 
-export namespace getStudentNotInCourse{
+export namespace getStudentNotInCourse {
   export type getStudentNotInCourse = {
-    id: string;
-    name: string;
-    email: string;
-    role: "STUDENT";
-    createdAt: string;
+    message: string;
+    students: studentNotinCourse[];
   };
 }
 
-export namespace getAdvisorNotInCourse{
+type studentNotinCourse = {
+  id: string;
+  name: string;
+  email: string;
+  role: "STUDENT";
+  program: "CS" | "DSI";
+  createdAt: string;
+};
+
+export namespace getAdvisorNotInCourse {
   export type getAdvisorNotInCourse = {
-    id: string;
-    name: string;
-    email: string;
-    role: "ADVISOR";
-    createdAt: string;
+    message: string;
+    advisors: advisorNotinCourse[];
   };
 }
+
+type advisorNotinCourse = {
+  id: string;
+  name: string;
+  email: string;
+  role: "ADVISOR";
+  program: "CS" | "DSI";
+  createdAt: string;
+};
 
 type advisorMember = {
   id: string;
@@ -57,7 +67,10 @@ type advisorProject = {
 };
 
 export namespace getStudentMember {
-  export type StudentMember = studentMember[];
+  export type StudentMember = {
+    message: string;
+    students: studentMember[];
+  };
 }
 
 type studentMember = {
@@ -100,6 +113,7 @@ type user = {
   email: string;
   name: string;
   role: "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
+  program: "CS" | "DSI";
   createdAt: string;
 };
 
@@ -110,4 +124,18 @@ type course = {
   program: "CS" | "DSI";
   createdById: string;
   createdAt: string;
+};
+
+export namespace deleteCourseMember {
+  export type DeleteCourseMemberPayload = {
+    message: string;
+    result: result;
+  };
 }
+
+type result = {
+  requestedIds: string[];
+  deletedIds: string[];
+  notFoundIds: string[];
+  blocked: string[];
+};
