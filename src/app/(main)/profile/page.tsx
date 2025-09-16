@@ -4,6 +4,8 @@ import { removeAuthToken, removeUserRole } from "@/util/cookies";
 import { stopTokenRefresh } from "@/util/TokenRefreshInterval";
 import { useRouter } from "next/navigation";
 import React from "react";
+import UserDetailCard from "@/components/profile/userDetail";
+import CourseDetailCard from "@/components/profile/courseDetail";
 
 export default function ProfilePage() {
   const navigator = useRouter()
@@ -18,18 +20,9 @@ export default function ProfilePage() {
       <h2 className="text-2xl font-semibold mb-6">Profile</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* User Detail */}
-        <div className="border rounded-md p-4">
-          <h3 className="font-semibold mb-2">User Detail</h3>
-          <p><strong>Name</strong><br />Navin Dansaikul</p>
-          <p className="mt-2"><strong>Email</strong><br />65130500211@st.sit.kmutt.ac.th</p>
-        </div>
+        <UserDetailCard />
 
-        {/* Course Detail */}
-        <div className="border rounded-md p-4">
-          <h3 className="font-semibold mb-2">Course Detail</h3>
-          <p><strong>Course</strong><br />CSC498-CSC499[2026]</p>
-        </div>
+        <CourseDetailCard />
       </div>
 
       <div className="mt-8">
