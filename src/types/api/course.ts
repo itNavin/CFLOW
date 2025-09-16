@@ -6,23 +6,26 @@ export namespace getCourse{
     }
 }
 
-export namespace getAllCourse{
-  export type AllCourse = Course[];
+export namespace getStaffCourse{
+  export type StaffCourse = {
+    message: string;
+    course: Course[];
+  }
 }
 
 export namespace createCourse {
   export type CreateCoursePayload = {
-    id: number;
+    id: string;
     name: string;
     description?: string | null;
     program: "CS" | "DSI";
-    createdById: number;
+    createdById: string;
     createdAt: string;
   };
 }
 
 type myCourseUser = {
-  id: number;
+  id: string;
   email: string;
   prefix: string;
   name: string;
@@ -38,12 +41,12 @@ type courses = {
 }
 
 export type Course = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   program: "CS" | "DSI";
-  createdById: number;
-  createdAt: string;
+  // createdById: string;
+  // createdAt: string;
 };
 
 type group = {
@@ -81,6 +84,6 @@ type extras = {
 
 export namespace getCoursename{
   export type CourseName = {
-    name: string;
+    coursename: string;
   }
 }

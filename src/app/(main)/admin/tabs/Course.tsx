@@ -11,6 +11,8 @@ import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
 import { getGroupInformation } from "@/api/dashboard/getGroupInformation";
 import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
+import CourseInfo from "@/components/dashboard/courseInfo";
+import CourseTotal from "@/components/dashboard/courseTotal";
 
 export function formatUploadAt(
   iso: string,
@@ -99,22 +101,22 @@ export default function CourseTab() {
     }
   };
 
-  const fetchDashboardData = async () => {
-    try {
-      if (!courseId) return;
+  // const fetchDashboardData = async () => {
+  //   try {
+  //     if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
-      const response = await getDashboardData(id);
-      setDashboard(response.data);
-      console.log("Dashboard data:", response.data); // Debug log
-    } catch (error) {
-      setError("Failed to load dashboard data");
-    }
-  };
+  //     const id = Number(courseId);
+  //     if (Number.isNaN(id)) {
+  //       setError("Invalid courseId in URL");
+  //       return;
+  //     }
+  //     const response = await getDashboardData(id);
+  //     setDashboard(response.data);
+  //     console.log("Dashboard data:", response.data); // Debug log
+  //   } catch (error) {
+  //     setError("Failed to load dashboard data");
+  //   }
+  // };
 
   // ✅ FIXED: Added better error handling and logging
   const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
@@ -182,7 +184,7 @@ export default function CourseTab() {
     const fetchData = async () => {
       setLoading(true);
       await fetchGroupInformation();
-      await fetchDashboardData();
+      // await fetchDashboardData();
       await fetchAssignments();
       await fetchAllGroup();
       setLoading(false);
@@ -201,15 +203,7 @@ export default function CourseTab() {
                 <Pencil className="w-4 h-4 text-gray-700" />
               </button> */}
             </div>
-            {dashboard && (
-              <>
-                <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
-                <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
-                <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
-                <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
-                <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
-              </>
-            )}
+            <CourseInfo/>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
@@ -298,12 +292,7 @@ export default function CourseTab() {
       <div className="space-y-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-2xl font-semibold mb-4">Summary</h2>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-            <DT label="Total Students" value={dashboard?.totals.students ?? 0} />
-            <DT label="Total Advisors" value={dashboard?.totals.advisors ?? 0} />
-            <DT label="Total Groups" value={dashboard?.totals.groups ?? 0} />
-            <DT label="Total Assignments" value={dashboard?.totals.assignments ?? 0} />
-          </dl>
+          <CourseTotal/>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -333,14 +322,14 @@ export default function CourseTab() {
 
 /* --- Rest of your helper components remain the same --- */
 
-function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="py-2">
-      <div className="text-lg font-bold text-gray-900">{label}</div>
-      <div className="text-lg text-gray-900">{value}</div>
-    </div>
-  );
-}
+// function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
+//   return (
+//     <div className="py-2">
+//       <div className="text-lg font-bold text-gray-900">{label}</div>
+//       <div className="text-lg text-gray-900">{value}</div>
+//     </div>
+//   );
+// }
 
 function DT({ label, value }: { label: string; value: number }) {
   return (

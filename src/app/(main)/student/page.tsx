@@ -9,6 +9,7 @@ import { getGroupInformation } from "@/api/dashboard/getGroupInformation";
 import { getGroupData } from "@/api/dashboard/getGroupDashboard";
 import { getAllAssignments } from "@/types/api/assignment";
 import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
+import CourseInfo from "@/components/dashboard/courseInfo";
 
 export function formatUploadAt(
   iso: string,
@@ -145,15 +146,7 @@ export default function StudentDashboard() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-semibold">Class Information</h2>
               </div>
-              {dashboard && (
-                <>
-                  <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
-                  <InfoRow label="Description" value={dashboard.course.description || "No description available"} />
-                  <InfoRow label="Program Type" value={dashboard.course.program ?? "Unknown"} />
-                  <InfoRow label="Created Date" value={formatUploadAt(dashboard.course.createdAt ?? "")} />
-                  <InfoRow label="Created By" value={dashboard.course.createdBy.name ?? "Unknown"} />
-                </>
-              )}
+              <CourseInfo courseId={courseId} />
             </section>
 
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
