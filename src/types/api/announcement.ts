@@ -1,8 +1,8 @@
 //http://localhost:8000/announcement/course/:courseId
 export namespace Announcement {
     export type Announcement = {
-        id: number;
-        courseId: number;
+        id: string;
+        courseId: string;
         name: string;
         description: string;
         createdAt: string;
@@ -15,8 +15,8 @@ export namespace Announcement {
 
 export namespace createAnnouncement {
     export type createAnnouncementPayload = {
-        id: number;
-        courseId: number;
+        id: string;
+        courseId: string;
         name: string;
         description: string;
         createdAt: string;
@@ -28,16 +28,16 @@ export namespace createAnnouncement {
 }
 
 export type file = {
-    id: number;
+    id: string;
     name: string;
     filepath: string;
     uploadAt: string;
     uploadById: number;
-    announcementId: number | null;
+    announcementId: string | null;
 }
 
 type createById = {
-    id: number;
+    id: string;
     email: string;
     prefix: string;
     name: string;

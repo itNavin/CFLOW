@@ -1,7 +1,7 @@
 export namespace getGroup {
   export type Group = {
-    id: number;
-    courseId: number;
+    id: string;
+    courseId: string;
     codeNumber: string;
     projectName: string | null;
     productName: string | null;
@@ -11,39 +11,39 @@ export namespace getGroup {
   };
 
   export type Member = {
-    id: number;
+    id: string;
     workRole: string;
-    courseMemberId: number;
-    groupId: number;
+    courseMemberId: string;
+    groupId: string;
     courseMember: courseMember;
   };
 
   export type courseMember = {
-    id: number;
-    courseId: number;
-    userId: number;
+    id: string;
+    courseId: string;
+    userId: string;
     user: User;
   }
 
   export type User = {
-    id:number;
+    id: string;
     email: string;
     name: string;
     surname: string;
   }
 
   export type Advisor = {
-    id: number;
-    courseMemberId: number;
+    id: string;
+    courseMemberId: string;
     advisorRole: "ADVISOR" | "CO_ADVISOR" | string;
-    groupId: number;
+    groupId: string;
     courseMember: courseMemberAdvisor;
   };
 
   export type courseMemberAdvisor = {
-    id: number;
-    courseId: number;
-    userId: number;
+    id: string;
+    courseId: string;
+    userId: string;
     user: UserAdvisor;
   }
 

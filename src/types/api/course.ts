@@ -50,7 +50,7 @@ export type Course = {
 };
 
 type group = {
-  id: number;
+  id: string;
   projectName: string;
   productName: string | null;
   company: string | null;
@@ -58,22 +58,22 @@ type group = {
 };
 
 type announcement = {
-  id: number;
-  courseId: number;
+  id: string;
+  courseId: string;
   name: string;
   description: string;
   createdAt: string;
   schedule: string;
-  createById: number;
+  createById: string;
 };
 
 type file = {
-  id: number;
+  id: string;
   name: string;
   filepath: string;
   uploadAt: string;
-  uploadById: number;
-  announcementId: number | null;
+  uploadById: string;
+  announcementId: string | null;
 };
 
 type extras = {

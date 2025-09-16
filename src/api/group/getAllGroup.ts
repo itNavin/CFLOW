@@ -1,6 +1,6 @@
 import {getGroup} from "@/types/api/group";
 import { Axios } from "@/util/AxiosInstance";
 
-export const getAllGroupAPI = async (courseId: number) => {
+export const getAllGroupAPI = async (courseId: string) => {
   return Axios.get<getGroup.GroupList>(`/group/course/${courseId}`);
 };

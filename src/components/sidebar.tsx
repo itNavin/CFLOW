@@ -29,7 +29,7 @@ export default function Sidebar() {
   const fetchProjectName = async () => {
     try {
       if (!courseId) return;
-      const id = Number(courseId);
+      const id = String(courseId);
       const response = await getMyProjectByCourseAPI(id);
       console.log("Project response:", response.data);
       setProject(response.data);

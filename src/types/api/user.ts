@@ -1,12 +1,12 @@
 export namespace User {
   export type User = {
-    id: Number;
-    email: String;
-    passwordHash: String;
-    prefix: String;
-    name: String;
-    surname: String;
-    role: String;
+    id: string;
+    email: string;
+    passwordHash: string;
+    prefix: string;
+    name: string;
+    surname: string;
+    role: string;
     createdAt: Date;
   };
 }

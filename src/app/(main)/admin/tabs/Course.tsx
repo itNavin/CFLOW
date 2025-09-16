@@ -166,8 +166,8 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      const id = String(courseId);
+      if (Number.isNaN(Number(id))) {
         setError("Invalid courseId in URL");
         return;
       }
@@ -251,18 +251,18 @@ export default function CourseTab() {
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="flex items-center justify-center">
                 <MultiColorDonut 
-                  statusCounts={dashboard?.submissions?.statusCounts}
+                  statusCounts={dashboard?.course.submissions?.statusCounts}
                   loading={dashboardLoading}
                 />
               </div>
               <ul className="space-y-2 text-lg">
                 {dashboard && (
                   <>
-                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
-                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED || 0}`} />
-                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED || 0}`} />
-                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
-                    <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL || 0}`} />
+                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
+                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
+                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
+                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
+                    <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
                   </>
                 )}
               </ul>
@@ -319,17 +319,6 @@ export default function CourseTab() {
     </div>
   );
 }
-
-/* --- Rest of your helper components remain the same --- */
-
-// function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
-//   return (
-//     <div className="py-2">
-//       <div className="text-lg font-bold text-gray-900">{label}</div>
-//       <div className="text-lg text-gray-900">{value}</div>
-//     </div>
-//   );
-// }
 
 function DT({ label, value }: { label: string; value: number }) {
   return (

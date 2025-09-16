@@ -1,9 +1,9 @@
 export namespace submission {
     export type Submission = {
-        id: number;
+        id: string;
         submittedAt: string;
-        assignmentId: number;
-        groupId: number;
+        assignmentId: string;
+        groupId: string;
         status: "SUBMITTED" | "REJECTED" | "FINAL" | "APPROVED WITH FEEDBACK" | "NOT SUBMITTED";
         missed: boolean;
         version: number;

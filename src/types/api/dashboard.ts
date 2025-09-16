@@ -1,16 +1,20 @@
 //http://localhost:8000/dashboard/course/:courseId
 export namespace Dashboard{
     export type Dashboard = {
-        course: course;
-        totals: totals;
-        submissions: submissions;
+        message: string;
+        course: courses;
     }
-
     export type studentInfo = group
 }
 
+type courses = {
+    course: course;
+    totals: totals;
+    submissions: submissions;
+}
+
 type group = {
-    id: number;
+    id: string;
     codeNumber: string;
     projectName: string;
     productName: string;
@@ -20,30 +24,30 @@ type group = {
 }
 
 type member = {
-    id: number;
+    id: string;
     workRole: string;
-    courseMemberId: number;
-    groupId: number;
+    courseMemberId: string;
+    groupId: string;
     courseMember: courseMember;
 }
 
 type advisor = {
-    id: number;
-    courseMemberId: number;
+    id: string;
+    courseMemberId: string;
     advisorRole: string;
-    groupId: number;
+    groupId: string;
     courseMember: courseMember;
 }
 
 type courseMember = {
-    id: number;
-    courseId: number;
-    userId: number;
+    id: string;
+    courseId: string;
+    userId: string;
     user: user;
 }
 
 type user = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     role: "STUDENT" | "LECTURER" | "STAFF" | "SUPER_ADMIN";
@@ -51,7 +55,7 @@ type user = {
 }
 
 type course = {
-    id: number;
+    id: string;
     name: string;
     description: string;
     program: "CS" | "DSI";
@@ -60,7 +64,7 @@ type course = {
 }
 
 type createdBy = {
-    id: number;
+    id: string;
     name: string;
     email: string;
 }

@@ -13,7 +13,6 @@ import { createCourse } from "@/types/api/course";
 import { createCourseAPI } from "@/api/course/createCourse";
 import { isCanUpload } from "@/util/RoleHelper";
 
-// tiny helpers
 const asArray = <T = any>(data: any, key?: string): T[] => {
   if (Array.isArray(data)) return data as T[];
   if (key && Array.isArray(data?.[key])) return data[key] as T[];
@@ -33,7 +32,7 @@ export default function CoursePage() {
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [editing, setEditing] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,27 +41,26 @@ export default function CoursePage() {
   const [openUploadMember, setOpenUploadMember] = useState(false);
 
   useEffect(() => {
-    setUserRole(getUserRole()); // "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN" | undefined
-    setCanUpload(isCanUpload()); // Set canUpload based on user role
+    setUserRole(getUserRole());
+    setCanUpload(isCanUpload()); 
   }, []);
 
   const fetchCourses = useCallback(async () => {
-    if (userRole === undefined) return; // wait until role resolved
+    if (userRole === undefined) return; 
 
     try {
       setLoading(true);
       setError(null);
 
       if (userRole === "staff" || userRole === "SUPER_ADMIN") {
-        const res = await getStaffCourseAPI(); // GET /course
-        // accept: { courses: [...] } or [...]
+        const res = await getStaffCourseAPI(); 
         const list = pickArray<Course>(res, "course");
         setCourses(list);
       } else {
-        const res = await getCourseAPI(); // GET /course/my-courses
+        const res = await getCourseAPI(); 
         const memberships = pickArray<any>(res, "course");
         const list: Course[] = memberships
-          .map((m) => m?.course ?? m) // if backend already returns pure Course, still works
+          .map((m) => m?.course ?? m)
           .filter(Boolean);
         setCourses(list);
       }
@@ -102,18 +100,12 @@ export default function CoursePage() {
       setLoading(true);
       setError(null);
 
-      // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
 
-      // TODO: Replace with your actual upload API
-      // const response = await uploadMemberAPI(formData);
       console.log("Uploading file:", file.name);
 
-      // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Refresh courses after upload
       await fetchCourses();
 
       setOpenUploadMember(false);
@@ -136,7 +128,6 @@ export default function CoursePage() {
       setLoading(true);
       setError(null);
 
-      // Call the actual API
       const response = await createCourseAPI(
         payload.program,
         payload.name,
@@ -167,7 +158,7 @@ export default function CoursePage() {
       />
     )
   }
-  const toggleMenu = (id: number) => setOpenMenuId((prev) => (prev === id ? null : id));
+  const toggleMenu = (id: string) => setOpenMenuId((prev) => (prev === id ? null : id));
 
   const closeMenusOnOutsideClickRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
