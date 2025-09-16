@@ -1,11 +1,11 @@
 export namespace uploadCourseFile {
   export type uploadCourseFilePayload = {
-    id: number;
+    id: string;
     name: string;
     filepath: string;
     uploadAt: string;
-    createdById: number;
-    courseId: number;
+    createdById: string;
+    courseId: string;
     announcementId: number | null;
     createdBy: createdBy;
     course: course;
@@ -13,7 +13,7 @@ export namespace uploadCourseFile {
 }
 
 type createdBy = {
-  id: number;
+  id: string;
   email: string;
   prefix: string;
   name: string;
@@ -23,10 +23,10 @@ type createdBy = {
 };
 
 type course = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   program: "CS" | "DSI";
   createdAt: string;
-  createdById: number;
+  createdById: string;
 };

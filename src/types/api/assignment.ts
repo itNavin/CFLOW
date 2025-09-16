@@ -1,17 +1,17 @@
 export namespace getAllAssignments {
 
     export type allAssignment = {
-        id: number;
+        id: string;
         name: string;
         description: string;
         endDate: string;
         schedule: string;
-        courseId: number;
+        courseId: string;
     }
 
     export type AssignmentbyOpenTaskandSubmitted ={
-        courseId: number;
-        groupId: number;
+        courseId: string;
+        groupId: string;
         counts: Count;
         openTasks: openTasks[];
         submitted: submittedTasks[];
@@ -21,7 +21,7 @@ export namespace getAllAssignments {
         submitted: number;
     }
     type openTasks = {
-        id: number;
+        id: string;
         name: string;
         description: string;
         endDate: string;
@@ -29,7 +29,7 @@ export namespace getAllAssignments {
         dueDate: string;
     } 
     type submittedTasks = {
-        id: number;
+        id: string;
         name: string;
         description: string;
         endDate: string;
@@ -38,41 +38,41 @@ export namespace getAllAssignments {
     }
 
     export type getAssignmentWithSubmission = {
-        id: number;
+        id: string;
         name: string;
         description: string;
         endDate: string;
         schedule: string;
-        courseId: number;
+        courseId: string;
         deliverables: Deliverable[];
         assignmentDueDates: AssignmentDueDate[];
         submissions: Submission[];
     }
 
     type Deliverable = {
-        id: number;
+        id: string;
         name: string;
-        assignmentId: number;
+        assignmentId: string;
         allowedFileTypes: allowedFileType[];
     }
     type allowedFileType = {
-        id: number;
+        id: string;
         mime: string;
         type: string;
-        deliverableId: number;
+        deliverableId: string;
     }
     type AssignmentDueDate = {
-        id: number;
-        assignmentId: number;
-        groupId: number;
+        id: string;
+        assignmentId: string;
+        groupId: string;
         dueDate: string;
         createdAt: string;
     }
     type Submission = {
-        id: number;
+        id: string;
         submittedAt: string;
-        assignmentId: number;
-        groupId: number;
+        assignmentId: string;
+        groupId: string;
         comment: string;
         status: string;
         missed: boolean;
@@ -81,35 +81,35 @@ export namespace getAllAssignments {
         feedbacks: Feedback[];
     }
     type SubmissionFile = {
-        id: number;
-        submissionId: number;
-        deliverableId: number;
+        id: string;
+        submissionId: string;
+        deliverableId: string;
         fileUrl: string[];
         deliverable: Deliverable_2;
     }
     type Deliverable_2 = {
-        id: number;
+        id: string;
         name: string;
-        assignmentId: number;
+        assignmentId: string;
     }
     type Feedback = {
-        id: number;
-        submissionId: number;
+        id: string;
+        submissionId: string;
         comment: string;
         createdAt: string;
         feedbackFiles: FeedbackFile[];
     }
     type FeedbackFile = {
-        id: number;
-        feedbackId: number;
-        deliverableId: number;
+        id: string;
+        feedbackId: string;
+        deliverableId: string;
         fileUrl: string[];
         deliverable: Deliverable_2;
     }
 
     export type getGroupByLecturer = {
-        id: number;
-        courseId: number;
+        id: string;
+        courseId: string;
         codeNumber: string;
         projectName: string;
         productName: string | null;
@@ -119,33 +119,33 @@ export namespace getAllAssignments {
 
 export namespace createAssignment {
     export type CreateAssignmentPayload = {
-        id: number;
+        id: string;
         name: string;
         description: string | null;
         endDate: string;
         schedule: string | null;
-        courseId: number;
+        courseId: string;
         deliverables: CreateDeliverablePayload[];
         assignmentDueDates: CreateAssignmentDueDatePayload[];
     }
 
     export type CreateDeliverablePayload = {
-        id: number;
+        id: string;
         name: string;
-        assignmentId: number;
+        assignmentId: string;
         allowedFileTypes: CreateAllowedFileTypePayload[];
     }
 
     export type CreateAllowedFileTypePayload = {
-        id: number;
+        id: string;
         mime: string;
         type: string;
-        deliverableId: number;
+        deliverableId: string;
     }
 
     export type CreateAssignmentDueDatePayload = {
-        id:number;
-        assignmentId: number;
+        id:string;
+        assignmentId: string;
         groupId: number;
         dueDate: string;
         createdAt: string;

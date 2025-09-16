@@ -86,7 +86,7 @@ export default function CourseTotal({
       </div>
     );
   }
-  if (!dashboard?.totals) {
+  if (!dashboard?.course.totals) {
     return (
       <div className="text-gray-500 p-3 bg-gray-50 rounded-lg">
         No course data available
@@ -97,16 +97,16 @@ export default function CourseTotal({
   return (
     <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
       {showFields.students && (
-        <DT label="Total Students" value={dashboard.totals.students ?? 0} />
+        <DT label="Total Students" value={dashboard.course.totals.students ?? 0} />
       )}
       {showFields.advisors && (
-        <DT label="Total Advisors" value={dashboard.totals.advisors ?? 0} />
+        <DT label="Total Advisors" value={dashboard.course.totals.advisors ?? 0} />
       )}
       {showFields.groups && (
-        <DT label="Total Groups" value={dashboard.totals.groups ?? 0} />
+        <DT label="Total Groups" value={dashboard.course.totals.groups ?? 0} />
       )}
       {showFields.assignments && (
-        <DT label="Total Assignments" value={dashboard.totals.assignments ?? 0} />
+        <DT label="Total Assignments" value={dashboard.course.totals.assignments ?? 0} />
       )}
     </dl>
   );

@@ -50,7 +50,7 @@ type advisorMember = {
 };
 
 type advisorProject = {
-  id: number;
+  id: string;
   projectName: string;
   productName: string | null;
   company: string | null;
@@ -69,10 +69,10 @@ type studentMember = {
 };
 
 type groupMembers = {
-  id: number;
+  id: string;
   workRole: string;
-  courseMemberId: number;
-  groupId: number;
+  courseMemberId: string;
+  groupId: string;
   group: cmGroup;
 };
 

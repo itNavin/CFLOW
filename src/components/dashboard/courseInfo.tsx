@@ -89,7 +89,6 @@ export default function CourseInfo({
     );
   }
 
-  // No data state - using your Dashboard.Dashboard type
   if (!dashboard?.course) {
     return (
       <div className="text-gray-500 p-3 bg-gray-50 rounded-lg">
@@ -98,7 +97,6 @@ export default function CourseInfo({
     );
   }
 
-  // ✅ Using your exact Dashboard.course type structure
   const course = dashboard.course;
 
   return (
@@ -106,35 +104,35 @@ export default function CourseInfo({
       {showFields.name && (
         <InfoRow 
           label="Class Name" 
-          value={course.name || "Unknown"} 
+          value={course.course.name || "Unknown"} 
         />
       )}
       
       {showFields.description && (
         <InfoRow 
           label="Description" 
-          value={course.description || "No description available"} 
+          value={course.course.description || "No description available"} 
         />
       )}
       
       {showFields.program && (
         <InfoRow 
           label="Program Type" 
-          value={course.program || "Unknown"} 
+          value={course.course.program || "Unknown"} 
         />
       )}
       
       {showFields.createdDate && (
         <InfoRow 
           label="Created Date" 
-          value={formatUploadAt(course.createdAt)} 
+          value={formatUploadAt(course.course.createdAt)} 
         />
       )}
       
       {showFields.createdBy && (
         <InfoRow 
           label="Created By" 
-          value={course.createdBy?.name || "Unknown"} 
+          value={course.course.createdBy?.name || "Unknown"} 
         />
       )}
     </div>

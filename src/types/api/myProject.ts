@@ -8,7 +8,7 @@ export namespace myProject {
 }
 
 type group = {
-    id: number;
+    id: string;
     codeNumber: string;
     projectName: string;
     productName: string | null;

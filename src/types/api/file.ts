@@ -2,12 +2,12 @@
 // POST http://localhost:8000/file/create/course/2
 export namespace File {
     export type File = {
-        id: number;
+        id: string;
         name: string;
         filepath: string;
         uploadAt: string;
-        createdById: number;
-        courseId: number;
+        createdById: string;
+        courseId: string;
         announcementId: number | null;
         createdBy: uploadBy;
         course: course;
@@ -15,7 +15,7 @@ export namespace File {
 }
 
 type uploadBy = {
-    id: number;
+    id: string;
     email: string;
     prefix: string;
     name: string;
@@ -25,19 +25,19 @@ type uploadBy = {
 }
 
 type course = {
-    id: number;
+    id: string;
     name: string;
     description: string;
     program: "CS" | "DSI";
-    createdById: number;
+    createdById: string;
     createdAt: string;
 }
 
 export namespace uploadSubmissionFile {
     export type UploadSubmissionFilePayload = {
-        id: number;
-        submissionId: number;
-        deliverableId: number;
+        id: string;
+        submissionId: string;
+        deliverableId: string;
         fileUrl: string[];
     }
 }
