@@ -56,3 +56,42 @@ export namespace getGroup {
 
   export type GroupList = Group[];
 }
+
+
+export namespace createGroup {
+  export type CreateGroupPayload = {
+    message: string;
+    group: Group;
+  };
+}
+
+type Group = {
+  id : string;
+  courseId : string;
+  codeNumber : string;
+  projectName : string;
+  productName : string | null;
+  company : string | null;
+  members : Member[];
+  advisors : Advisor[];
+}
+
+type Member = {
+  id : string;
+  workRole : string;
+  courseMemberId : string;
+  groupId : string;
+};
+
+type Advisor = {
+  id : string;
+  courseMemberId : string;
+  advisorRole : "ADVISOR" | "CO_ADVISOR" | string;
+  groupId : string;
+};
+export namespace updateGroup {
+  export type UpdateGroupPayload = {
+    message: string;
+    group: Group;
+  }
+}

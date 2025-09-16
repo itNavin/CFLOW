@@ -6,7 +6,7 @@ import { Bell, Home, User } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import NotificationPopup from "./notification";
 import { getCourse, Course } from "@/types/api/course";
-import { getCourseAPI } from "@/api/course/getCourse";
+import { getCourseAPI } from "@/api/course/getCourseByUser";
 import { getUserRole } from "@/util/cookies";
 import { getCourseNameAPI } from "@/api/course/getCourseName";
 import { getCoursename } from "@/types/api/course";
