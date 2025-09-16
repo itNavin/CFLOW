@@ -1,34 +1,30 @@
-// src/types/api/courseMember.ts
-
-/** ---------- Shared Shapes ---------- **/
 type cmUser = {
-  id: number;
+  id: string;
   email: string;
-  passwordHash: string;   // ⚠ backend sends this
+  passwordHash: string;  
   prefix: string;
   name: string;
   surname: string;
   role: "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
-  createdAt: string;      // ISO datetime string
+  createdAt: string;      
 };
 
 type cmGroup = {
-  id: number;
-  courseId: number;
+  id: string;
+  courseId: string;
   codeNumber: string;
   projectName: string;
   productName: string | null;
   company: string | null;
 };
 
-/** ---------- Advisor Member ---------- **/
 export namespace getAdvisorMember {
   export type AdvisorMember = advisorMember[];
 }
 
 export namespace getStudentNotInCourse{
   export type getStudentNotInCourse = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     role: "STUDENT";
@@ -38,18 +34,18 @@ export namespace getStudentNotInCourse{
 
 export namespace getAdvisorNotInCourse{
   export type getAdvisorNotInCourse = {
-    id: number;
+    id: string;
     name: string;
     email: string;
-    role: "STUDENT";
+    role: "ADVISOR";
     createdAt: string;
   };
 }
 
 type advisorMember = {
-  id: number;
-  courseId: number;
-  user: cmUser & { role: "ADVISOR" }; // restrict to ADVISOR
+  id: string;
+  courseId: string;
+  user: cmUser & { role: "ADVISOR" };
   projects: advisorProject[];
 };
 
@@ -65,9 +61,9 @@ export namespace getStudentMember {
 }
 
 type studentMember = {
-  id: number;
-  courseId: number;
-  userId: number;
+  id: string;
+  courseId: string;
+  userId: string;
   user: cmUser & { role: "STUDENT" }; // restrict to STUDENT
   groupMembers: groupMembers[];
 };
@@ -92,15 +88,15 @@ export namespace addCourseMember {
 }
 
 type member = {
-  id: number;
-  courseId: number;
+  id: string;
+  courseId: string;
   userId: string;
   user: user;
   course: course;
 };
 
 type user = {
-  id: number;
+  id: string;
   email: string;
   name: string;
   role: "STUDENT" | "ADVISOR" | "ADMIN" | "SUPER_ADMIN";
@@ -108,7 +104,7 @@ type user = {
 };
 
 type course = {
-  id: number;
+  id: string;
   name: string;
   description: string;
   program: "CS" | "DSI";

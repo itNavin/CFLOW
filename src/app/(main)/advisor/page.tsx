@@ -11,6 +11,7 @@ import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
 import { getGroupInformation } from "@/api/dashboard/getGroupInformation";
 import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
+import CourseInfo from "@/components/dashboard/courseInfo";
 
 export function formatUploadAt(
   iso: string,
@@ -202,7 +203,8 @@ export default function CourseTab() {
                 {/* <Pencil className="w-4 h-4 text-gray-700" /> */}
               </button>
             </div>
-            {dashboard && (
+            <CourseInfo courseId={courseId} />
+            {/* {dashboard && (
               <>
                 <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
                 <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
@@ -210,7 +212,7 @@ export default function CourseTab() {
                 <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
                 <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
               </>
-            )}
+            )} */}
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
