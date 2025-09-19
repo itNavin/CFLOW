@@ -40,6 +40,8 @@ export default function CoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [canUpload, setCanUpload] = useState(false);
   const [openUploadMember, setOpenUploadMember] = useState(false);
+  const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     setUserRole(getUserRole());
@@ -160,12 +162,21 @@ export default function CoursePage() {
     )
   }
 
-  const handleDeleteCourse = async (courseId: string) => {
+  const handleDeleteCourse = async (course: Course) => {
+    setCourseToDelete(course);
+    setOpenMenuId(null); // Close the menu
+  };
+
+  const confirmDeleteCourse = async () => {
+    if (!courseToDelete) return;
+
     try {
-      setLoading(true);
+      setDeleting(true);
       setError(null);
-      await deleteCourseAPI(courseId);
-      setCourses((prev) => prev.filter((c) => c.id !== courseId));
+      
+      await deleteCourseAPI(courseToDelete.id);
+      setCourses((prev) => prev.filter((c) => c.id !== courseToDelete.id));
+      setCourseToDelete(null);
     } catch (err: any) {
       console.error("Error deleting course:", err);
       setError(
@@ -176,7 +187,7 @@ export default function CoursePage() {
             : "Failed to delete course"
       );
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
 
@@ -286,7 +297,7 @@ export default function CoursePage() {
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                       onClick={() => {
-                        handleDeleteCourse(course.id);
+                        handleDeleteCourse(course);
                       }}
                     >
                       Delete
@@ -302,6 +313,60 @@ export default function CoursePage() {
           Hide <span className="inline-block transform rotate-180">⌄</span>
         </div> */}
       </div>
+
+      {courseToDelete && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50" />
+          <div className="fixed inset-0 z-50 grid place-items-center p-4">
+            <div className="w-full max-w-md rounded-2xl border bg-white shadow-xl">
+              <div className="px-6 py-4 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Delete Course</h3>
+              </div>
+              
+              <div className="px-6 py-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-lg font-medium text-gray-900">
+                      Are you sure you want to delete this course?
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      <strong>" {courseToDelete.name} "</strong>
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                  <p className="text-sm text-red-800">
+                    <strong>Warning:</strong> All course data and related data will be permanently deleted.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-2xl">
+                <button
+                  onClick={() => setCourseToDelete(null)}
+                  disabled={deleting}
+                  className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDeleteCourse}
+                  disabled={deleting}
+                  className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {deleting ? "Deleting..." : "Delete Course"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {openCreate && (
         <CourseModal
