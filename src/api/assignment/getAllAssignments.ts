@@ -1,12 +1,12 @@
 import { getAllAssignments } from "@/types/api/assignment";
 import { Axios } from "@/util/AxiosInstance";
 
-export const getAllAssignmentsAPI = (courseId: number) => {
+export const getAllAssignmentsAPI = (courseId: string) => {
     const response = Axios.get<getAllAssignments.allAssignment[]>(`/assignment/course/${courseId}`);
     return response;
 }
 
-export const getAssignmentByOpenTaskandSubmittedAPI = (courseId: number, groupId: number) => {
+export const getAssignmentByOpenTaskandSubmittedAPI = (courseId: string, groupId: string) => {
     const response = Axios.get<getAllAssignments.AssignmentbyOpenTaskandSubmitted>(`/assignment/course/${courseId}/group/${groupId}/summary`);
     return response;
 }

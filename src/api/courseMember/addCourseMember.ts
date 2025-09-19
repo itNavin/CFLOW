@@ -2,12 +2,12 @@ import { Axios } from "@/util/AxiosInstance";
 import { addCourseMember } from "@/types/api/courseMember";
 
 export const addCourseMemberAPI = async (
-  courseId: number,
-  userIds: number[]
+  courseId: string,
+  userIds: string[]
 ) => {
-  const body = { userIds };
+  const body = { userIds, courseId };
   const response = await Axios.post(
-    `/courseMember/members/course/${courseId}`,
+    `/courseMember/addMember`,
     body
   );
   return response;
