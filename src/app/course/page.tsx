@@ -7,10 +7,11 @@ import { getCourseAPI } from "@/api/course/getCourseByUser";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import { getUserRole } from "@/util/cookies";
 import { Course } from "@/types/api/course";
-import { CourseModal } from "./component/courseModal";
-import { UploadMemberModal } from "./component/uploadMember";
+import { CourseModal } from "../../components/course/courseModal";
+import { UploadMemberModal } from "../../components/course/uploadMember";
 import { createCourse } from "@/types/api/course";
 import { createCourseAPI } from "@/api/course/createCourse";
+import { deleteCourseAPI } from "@/api/course/deleteCourse";
 import { isCanUpload } from "@/util/RoleHelper";
 
 const asArray = <T = any>(data: any, key?: string): T[] => {
@@ -158,6 +159,27 @@ export default function CoursePage() {
       />
     )
   }
+
+  const handleDeleteCourse = async (courseId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      await deleteCourseAPI(courseId);
+      setCourses((prev) => prev.filter((c) => c.id !== courseId));
+    } catch (err: any) {
+      console.error("Error deleting course:", err);
+      setError(
+        err?.response?.status
+          ? `Failed to delete course (HTTP ${err.response.status})`
+          : err instanceof Error
+            ? err.message
+            : "Failed to delete course"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleMenu = (id: string) => setOpenMenuId((prev) => (prev === id ? null : id));
 
   const closeMenusOnOutsideClickRef = useRef<HTMLDivElement | null>(null);
@@ -264,8 +286,7 @@ export default function CoursePage() {
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                       onClick={() => {
-                        setCourses((prev) => prev.filter((c) => c.id !== course.id));
-                        setOpenMenuId(null);
+                        handleDeleteCourse(course.id);
                       }}
                     >
                       Delete

@@ -41,12 +41,10 @@ export default function CourseTab() {
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
   
-  // ✅ FIXED: Use group ID directly instead of studentInfo object
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
   const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
   const courseId = searchParams.get("courseId") || "";
 
-  // ✅ FIXED: Simplified group change handler
   const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const groupId = Number(e.target.value);
     
@@ -69,7 +67,6 @@ export default function CourseTab() {
     }
   };
 
-  // ✅ FIXED: Simplified assignment change handler
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const assignmentId = Number(e.target.value);
     
@@ -199,20 +196,18 @@ export default function CourseTab() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-1">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold">Class Information</h2>
-              {/* <button className="p-2 rounded-md hover:bg-gray-100">
+              <button className="p-2 rounded-md hover:bg-gray-100">
                 <Pencil className="w-4 h-4 text-gray-700" />
-              </button> */}
+              </button>
             </div>
             <CourseInfo/>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
-            {/* ✅ FIXED: Reordered filters and improved layout */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
               <h2 className="text-2xl font-semibold">Dashboard</h2>
               
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Assignment Filter */}
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Assignment:</label>
                   <select 
