@@ -45,7 +45,7 @@ export default function StudentDashboard() {
     if (!isNaN(assignmentId)) {
       fetchDashboardDataWithQuery({ 
         assignmentId: assignmentId > 0 ? assignmentId : undefined,
-        groupId: groupInfo?.id // Add group ID to filter for this student's group
+        groupId: Number(groupInfo?.id) // Add group ID to filter for this student's group
       });
     }
   }
@@ -54,12 +54,11 @@ export default function StudentDashboard() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getGroupInformation(id);
+      const response = await getGroupInformation(courseId);
       console.log("Group information:", response.data);
 
       setGroupInfo(response.data[0]);
@@ -78,10 +77,11 @@ export default function StudentDashboard() {
         setError("Invalid courseId in URL");
         return;
       }
-      
-      console.log("Fetching dashboard with query:", query);
-      
-      const response = await getDashboardData(id, query);
+          
+      const response = await getDashboardData(courseId, {
+        assignmentId: query.assignmentId !== undefined ? String(query.assignmentId) : undefined,
+        groupId: query.groupId !== undefined ? String(query.groupId) : undefined,
+      });
       console.log("Dashboard response with query:", response.data);
 
       setDashboard(response.data);
@@ -97,12 +97,11 @@ export default function StudentDashboard() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getAllAssignmentsAPI(id);
+      const response = await getAllAssignmentsAPI(courseId);
       console.log("Assignments:", response.data);
       setAssignments(response.data);
     } catch (error) {
@@ -124,7 +123,7 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!groupInfo) return;
-    fetchDashboardDataWithQuery({ groupId: groupInfo.id });
+    fetchDashboardDataWithQuery({ groupId: Number(groupInfo.id) });
   }, [groupInfo])
 
   // ✅ FIXED: Fetch dashboard data for student's group after group info is loaded
@@ -132,7 +131,7 @@ export default function StudentDashboard() {
     if (groupInfo?.id) {
       fetchDashboardDataWithQuery({ 
         assignmentId: selectedAssignmentChartId || undefined,
-        groupId: groupInfo.id 
+        groupId: Number(groupInfo.id) 
       });
     }
   }, [groupInfo?.id, selectedAssignmentChartId]);
@@ -173,18 +172,18 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-center">
                   {/* ✅ FIXED: Use MultiColorDonut with actual data */}
                   <MultiColorDonut 
-                    statusCounts={dashboard?.submissions?.statusCounts}
+                    statusCounts={dashboard?.course.submissions?.statusCounts}
                     loading={dashboardLoading}
                   />
                 </div>
                 <ul className="space-y-2 text-lg">
                   {dashboard && (
                     <>
-                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
-                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED || 0}`} />
-                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED || 0}`} />
-                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
-                      <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL || 0}`} />
+                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
+                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
+                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
+                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
+                      <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
                     </>
                   )}
                 </ul>
