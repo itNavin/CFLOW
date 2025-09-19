@@ -87,3 +87,28 @@ export namespace getCoursename{
     coursename: string;
   }
 }
+
+export namespace deleteCourse {
+  export type DeleteCoursePayload = {
+    message: string;
+    summary: summary;
+  }
+}
+
+type summary = {
+  feedbackFiles : number;
+  submissionFiles : number;
+  feedbacks : number;
+  submissions : number;
+  allowedFileTypes : number;
+  deliverables : number;
+  assignmentDueDates : number;
+  groupMembers : number;
+  groupAdvisors : number;
+  groups : number;
+  activityLogs : number;
+  annoucements : number;
+  files : number;
+  courseMembers : number;
+  assignments : number;
+}
