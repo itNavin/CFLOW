@@ -7,8 +7,8 @@ import type { Dashboard } from "@/types/api/dashboard";
 
 interface CourseTotalProps {
   courseId?: string;
-  groupId?: number;
-  assignmentId?: number;
+  groupId?: string;
+  assignmentId?: string;
   showFields?: {
     students?: boolean;
     advisors?: boolean;
@@ -33,8 +33,7 @@ export default function CourseTotal({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  const courseId = propCourseId || searchParams.get("courseId") || "";
-
+  const courseId = searchParams.get("courseId") || "";
   const fetchDashboardData = async () => {
     try {
       if (!courseId) {
@@ -43,8 +42,8 @@ export default function CourseTotal({
         return;
       }
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      const id = String(courseId);
+      if (!courseId.trim()) {
         setError("Invalid course ID");
         setLoading(false);
         return;
@@ -53,13 +52,12 @@ export default function CourseTotal({
       setLoading(true);
       setError(null);
 
-      const query: { groupId?: number; assignmentId?: number } = {};
-      if (groupId !== undefined) query.groupId = groupId;
-      if (assignmentId !== undefined) query.assignmentId = assignmentId;
+      const query: { groupId?: string; assignmentId?: string } = {};
+      if (groupId !== undefined) query.groupId = String(groupId);
+      if (assignmentId !== undefined) query.assignmentId = String(assignmentId);
 
-      const response = await getDashboardData(id, query);
+      const response = await getDashboardData(courseId, query);
       setDashboard(response.data);
-      console.log("CourseTotal - Dashboard data:", response.data);
     } catch (error: any) {
       console.error("CourseTotal - Dashboard fetch error:", error);
       setError("Failed to load course totals");

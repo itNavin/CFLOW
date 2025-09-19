@@ -31,18 +31,15 @@ export default function CourseInfo({
   const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Use prop courseId or get from URL
-  const courseId = propCourseId || searchParams.get("courseId") || "";
-
+  const courseId =  searchParams.get("courseId") || "";
+  
   const fetchDashboardData = async () => {
     try {
       if (!courseId) {
         setError("No course ID provided");
         return;
       }
-
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (!courseId.trim()) {
         setError("Invalid courseId");
         return;
       }
@@ -50,10 +47,8 @@ export default function CourseInfo({
       setLoading(true);
       setError(null);
       
-      // ✅ Using your API function with proper typing
-      const response = await getDashboardData(id);
+      const response = await getDashboardData(courseId);
       setDashboard(response.data);
-      console.log("CourseInfo - Dashboard data:", response.data);
     } catch (error) {
       setError("Failed to load course data");
       console.error("CourseInfo - Dashboard fetch error:", error);
@@ -66,7 +61,6 @@ export default function CourseInfo({
     fetchDashboardData();
   }, [courseId]);
 
-  // Loading state
   if (loading) {
     return (
       <div className="space-y-2 animate-pulse">
@@ -79,7 +73,6 @@ export default function CourseInfo({
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="text-red-600 p-3 bg-red-50 rounded-lg">
@@ -96,7 +89,6 @@ export default function CourseInfo({
       </div>
     );
   }
-
   const course = dashboard.course;
 
   return (

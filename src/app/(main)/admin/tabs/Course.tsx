@@ -41,24 +41,22 @@ export default function CourseTab() {
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
   
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
-  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<string | null>(null);
   const courseId = searchParams.get("courseId") || "";
 
   const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const groupId = Number(e.target.value);
+    const groupId = e.target.value;
     
     console.log("Selected group ID:", groupId); // Debug log
-    
-    if (groupId === -1) {
-      // "All Groups" selected
+
+    if (groupId === "-1") {
       setSelectedGroupId(null);
       fetchDashboardDataWithQuery({
         groupId: undefined,
         assignmentId: selectedAssignmentChartId || undefined
       });
     } else {
-      // Specific group selected
       setSelectedGroupId(groupId);
       fetchDashboardDataWithQuery({
         groupId: groupId,
@@ -68,14 +66,14 @@ export default function CourseTab() {
   };
 
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const assignmentId = Number(e.target.value);
+    const assignmentId = e.target.value;
     
     console.log("Selected assignment ID:", assignmentId); // Debug log
-    
-    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+
+    setSelectedAssignmentChartId(assignmentId > "0" ? String(assignmentId) : null);
 
     fetchDashboardDataWithQuery({ 
-      assignmentId: assignmentId > 0 ? assignmentId : undefined, 
+      assignmentId: assignmentId > "0" ? String(assignmentId) : undefined, 
       groupId: selectedGroupId || undefined 
     });
   };
@@ -84,12 +82,11 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getGroupInformation(id);
+      const response = await getGroupInformation(courseId);
       setGroupInfo(response.data);
       console.log("Group information:", response.data); // Debug log
     } catch (error) {
@@ -98,31 +95,28 @@ export default function CourseTab() {
     }
   };
 
-  // const fetchDashboardData = async () => {
-  //   try {
-  //     if (!courseId) return;
+  const fetchDashboardData = async () => {
+      try {
+        if (!courseId) return;
+          if (Number.isNaN(courseId)) {
+          setError("Invalid courseId in URL");
+          return;
+        }
+        const response = await getDashboardData(courseId);
+        setDashboard(response.data);
+        console.log("Dashboard data:", response.data); // Debug log
+      } catch (error) {
+        setError("Failed to load dashboard data");
+      }
+  };
 
-  //     const id = Number(courseId);
-  //     if (Number.isNaN(id)) {
-  //       setError("Invalid courseId in URL");
-  //       return;
-  //     }
-  //     const response = await getDashboardData(id);
-  //     setDashboard(response.data);
-  //     console.log("Dashboard data:", response.data); // Debug log
-  //   } catch (error) {
-  //     setError("Failed to load dashboard data");
-  //   }
-  // };
-
-  // ✅ FIXED: Added better error handling and logging
-  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: string; groupId?: string }) => {
     try {
       if (!courseId) return;
       setDashboardLoading(true);
-      
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+
+      const id = String(courseId);
+      if (Number.isNaN(Number(id))) {
         setError("Invalid courseId in URL");
         return;
       }
@@ -144,13 +138,11 @@ export default function CourseTab() {
   const fetchAssignments = async () => {
     try {
       if (!courseId) return;
-
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getAllAssignmentsAPI(id);
+      const response = await getAllAssignmentsAPI(courseId);
       console.log("Assignments:", response.data); // Debug log
       setAssignments(response.data);
     } catch (error) {
@@ -181,7 +173,7 @@ export default function CourseTab() {
     const fetchData = async () => {
       setLoading(true);
       await fetchGroupInformation();
-      // await fetchDashboardData();
+      await fetchDashboardData();
       await fetchAssignments();
       await fetchAllGroup();
       setLoading(false);
@@ -200,7 +192,7 @@ export default function CourseTab() {
                 <Pencil className="w-4 h-4 text-gray-700" />
               </button>
             </div>
-            <CourseInfo/>
+            <CourseInfo courseId="courseId"/>
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
@@ -216,15 +208,14 @@ export default function CourseTab() {
                     className="border border-gray-300 rounded px-2 py-1 text-base min-w-[180px]"
                   >
                     <option value={-1}>All Assignments</option>
-                    {assignments.map((assignment) => (
+                    {/* {assignments.map((assignment) => (
                       <option key={assignment.id} value={assignment.id}>
                         {assignment.name}
                       </option>
-                    ))}
+                    ))} */}
                   </select>
                 </div>
 
-                {/* Group Filter */}
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Group:</label>
                   <select
@@ -287,7 +278,7 @@ export default function CourseTab() {
       <div className="space-y-6">
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-2xl font-semibold mb-4">Summary</h2>
-          <CourseTotal/>
+          <CourseTotal courseId={courseId} />
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
