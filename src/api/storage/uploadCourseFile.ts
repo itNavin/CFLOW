@@ -2,7 +2,7 @@ import { uploadCourseFile } from "@/types/api/storage";
 import { Axios } from "@/util/AxiosInstance";
 
 export const uploadCourseFileAPI = async (
-  courseId: number,
+  courseId: string,
   files: File[]
 ): Promise<uploadCourseFile.uploadCourseFilePayload[]> => {
   const promisesUpload = files.map(async (file, _) => {

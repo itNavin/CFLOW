@@ -2,11 +2,11 @@ import { Dashboard } from "@/types/api/dashboard";
 import { Axios } from "@/util/AxiosInstance";
 
 type DashboardQuery = {
-    assignmentId?: number | undefined;
-    groupId?: number | undefined;
+    assignmentId?: string | undefined;
+    groupId?: string | undefined;
 }
 
-export const getDashboardData =async  (courseId:number, query?: DashboardQuery) => {
+export const getDashboardData =async  (courseId:string, query?: DashboardQuery) => {
     const url = `/dashboard/course/${courseId}`
     let urlWithQuery = url;
     if (query && (query.assignmentId || query.groupId)) {
