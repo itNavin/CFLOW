@@ -4,19 +4,18 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X } from "lucide-react";
 import { getStudentMemberAPI } from "@/api/courseMember/getStudentMember";
-import { getStudentMember } from "@/types/api/courseMember";
+import { getStudentMember, getStudentNotInCourse, studentMember, studentNotInCourse } from "@/types/api/courseMember";
 import { usePathname, useSearchParams } from "next/navigation";
-import { getStudentNotInCourse } from "@/types/api/courseMember";
 import { getStudentNotInCourseAPI } from "@/api/courseMember/getStudentNotInCourse";
 import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 
 export default function StudentTab() {
   const courseId = useSearchParams().get("courseId") || "";
-  const [rows, setRows] = useState<getStudentMember.StudentMember>([]);
-  const [studentNotInCourse, setStudentNotInCourse] = useState<getStudentNotInCourse.getStudentNotInCourse[]>([]);
+  const [rows, setRows] = useState<studentMember[]>([]);
+  const [studentNotInCourse, setStudentNotInCourse] = useState<studentNotInCourse[]>([]);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [openCreate, setOpenCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
@@ -25,73 +24,80 @@ export default function StudentTab() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
 
-  const fetchStudentNotInCourse = async (courseId: number) => {
-    try {
-      setLoadingAvailable(true);
-      if (!courseId) return;
+  const fetchStudentNotInCourse = async (courseId: string) => {
+  try {
+    setLoadingAvailable(true);
+    if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
-      const response = await getStudentNotInCourseAPI(id);
-      setStudentNotInCourse(response.data);
-      console.log("Students not in course:", response.data);
-    } catch (error) {
-      console.error("Failed to load students not in course:", error);
-      setError("Failed to load available students");
-    } finally {
-      setLoadingAvailable(false);
+    const response = await getStudentNotInCourseAPI(courseId);
+    console.log("Students not in course response:", response.data);
+    
+    // Handle the correct response structure
+    if (response.data?.students && Array.isArray(response.data.students)) {
+      setStudentNotInCourse(response.data.students);
+    } else {
+      console.warn("Unexpected response structure:", response.data);
+      setStudentNotInCourse([]);
     }
-  };
+  } catch (error) {
+    console.error("Failed to load students not in course:", error);
+    setError("Failed to load available students");
+    setStudentNotInCourse([]);
+  } finally {
+    setLoadingAvailable(false);
+  }
+};
 
   const fetchStudents = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const id = parseInt(courseId);
-      if (!courseId || isNaN(id)) {
+      if (!courseId) {
         throw new Error("No course selected. Please select a course first.");
       }
 
-      const { data } = await getStudentMemberAPI(id);
-      setRows(data || []);
+      const response = await getStudentMemberAPI(courseId);
+      console.log("Students response:", response.data);
+
+      // Handle the correct response structure
+      if (response.data?.students && Array.isArray(response.data.students)) {
+        setRows(response.data.students);
+      } else {
+        console.warn("Unexpected response structure:", response.data);
+        setRows([]);
+      }
     } catch (e: any) {
       console.error("Error fetching students:", e);
       setError(e?.message || "Failed to load students");
+      setRows([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const addStudentsToCourse = async (selectedStudents: getStudentNotInCourse.getStudentNotInCourse[]) => {
+  const addStudentsToCourse = async (selectedStudents: studentNotInCourse[]) => {
     try {
       setAddingStudents(true);
-      
-      const courseIdNum = Number(courseId);
-      if (!courseIdNum || isNaN(courseIdNum)) {
+
+      if (!courseId || isNaN(Number(courseId))) {
         throw new Error("Invalid course ID");
       }
 
-      // Extract user IDs from selected students
       const userIds = selectedStudents.map(student => student.id);
-      
+
       console.log("Adding students to course:", {
-        courseId: courseIdNum,
+        courseId: courseId,
         userIds,
         selectedStudents
       });
 
-      // Call the API to add students to course
-      const response = await addCourseMemberAPI(courseIdNum, userIds);
-      
+      const response = await addCourseMemberAPI(courseId, userIds);
+
       console.log("Add students response:", response.data);
 
-      // Show success message based on response
       const { insertedCount, skippedAsDuplicate, requestedCount } = response.data;
-      
+
       let message = "";
       if (insertedCount > 0) {
         message += `Successfully added ${insertedCount} student(s) to the course.`;
@@ -99,18 +105,18 @@ export default function StudentTab() {
       if (skippedAsDuplicate > 0) {
         message += ` ${skippedAsDuplicate} student(s) were already in the course.`;
       }
-      
+
       alert(message || `Processed ${requestedCount} student(s).`);
 
       // Refresh the student list to show new additions
       await fetchStudents();
-      
+
       // Close the modal
       setOpenCreate(false);
 
     } catch (error: any) {
       console.error("Error adding students to course:", error);
-      
+
       // Show error message
       const errorMessage = error?.response?.data?.message || error?.message || "Failed to add students to course";
       alert(`Error: ${errorMessage}`);
@@ -126,7 +132,7 @@ export default function StudentTab() {
   // Fetch available students when modal opens
   useEffect(() => {
     if (openCreate && courseId) {
-      fetchStudentNotInCourse(Number(courseId));
+      fetchStudentNotInCourse(courseId);
     }
   }, [openCreate, courseId]);
 
@@ -137,20 +143,19 @@ export default function StudentTab() {
     try {
       const selectedIds = Object.keys(selected)
         .filter(id => selected[Number(id)])
-        .map(id => Number(id));
 
       if (selectedIds.length === 0) {
         alert("Please select advisors to delete");
         return;
       }
 
-      const selectedAdvisors = rows.filter(advisor => selectedIds.includes(advisor.id));
-      const advisorNames = selectedAdvisors.map(a => 
-        [a.user?.name, a.user?.surname].filter(Boolean).join(" ") || `ID: ${a.id}`
+      const selectedStudents = rows.filter(student => selectedIds.includes(student.id));
+      const studentNames = selectedStudents.map(s =>
+        [s.user?.name].filter(Boolean).join(" ") || `ID: ${s.id}`
       );
 
-      const confirmMessage = `Are you sure you want to remove ${selectedIds.length} student(s) from this course?\n\n${advisorNames.join(", ")}`;
-      
+      const confirmMessage = `Are you sure you want to remove ${selectedIds.length} student(s) from this course?\n\n${studentNames.join(", ")}`;
+
       if (!confirm(confirmMessage)) {
         return;
       }
@@ -162,36 +167,36 @@ export default function StudentTab() {
         throw new Error("Invalid course ID");
       }
 
-      console.log("Deleting advisors from course:", {
+      console.log("Deleting students from course:", {
         courseId: courseIdNum,
-        advisorIds: selectedIds,
-        selectedAdvisors
+        studentIds: selectedIds,
+        selectedStudents
       });
 
       // TODO: Replace with actual delete API call when available
       // const response = await deleteCourseMemberAPI(courseIdNum, selectedIds);
-      
+
       // Mock API call - replace this with actual API
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
-      
+
       // Clear selection
       setSelected({});
-      
+
       // Refresh the advisor list
       await fetchStudents();
 
     } catch (error: any) {
       console.error("Error deleting advisors from course:", error);
-      
+
       let errorMessage = "Failed to remove advisors from course";
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       alert(`Error: ${errorMessage}`);
     } finally {
       setDeletingStudent(false);
@@ -223,12 +228,12 @@ export default function StudentTab() {
 
   const toggleAll = () => {
     if (allChecked) return setSelected({});
-    const next: Record<number, boolean> = {};
+    const next: Record<string, boolean> = {};
     filtered.forEach((r) => (next[r.id] = true));
     setSelected(next);
   };
 
-  const toggleOne = (id: number) =>
+  const toggleOne = (id: string) =>
     setSelected((s) => ({ ...s, [id]: !s[id] }));
 
   return (
@@ -322,7 +327,7 @@ export default function StudentTab() {
                   </td>
                   <td className="py-3 align-top text-gray-900 text-lg whitespace-nowrap">{r.user?.id || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
-                    {[r.user?.name, r.user?.surname].filter(Boolean).join(" ") || "-"}
+                    {[r.user?.name].filter(Boolean).join(" ") || "-"}
                   </td>
                   <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
@@ -349,7 +354,7 @@ export default function StudentTab() {
 
       <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
         <div>{selectedCount} selected</div>
-        
+
         {selectedCount > 0 && (
           <button
             className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed"
@@ -381,16 +386,15 @@ function AddStudentModal({
   onCancel,
   onSave,
 }: {
-  availableStudents: getStudentNotInCourse.getStudentNotInCourse[];
+  availableStudents: studentNotInCourse[];
   loading: boolean;
   adding: boolean; // New prop for adding state
   onCancel: () => void;
-  onSave: (students: getStudentNotInCourse.getStudentNotInCourse[]) => void;
+  onSave: (students: studentNotInCourse[]) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStudents, setSelectedStudents] = useState<Record<number, boolean>>({});
+  const [selectedStudents, setSelectedStudents] = useState<Record<string, boolean>>({});
 
-  // Add safety check to ensure availableStudents is always an array
   const safeAvailableStudents = Array.isArray(availableStudents) ? availableStudents : [];
 
   const filteredStudents = useMemo(() => {
@@ -403,7 +407,6 @@ function AddStudentModal({
     );
   }, [searchQuery, safeAvailableStudents]);
 
-  // Now these will work since filteredStudents is guaranteed to be an array
   const allSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudents[s.id]);
   const someSelected = filteredStudents.some(s => selectedStudents[s.id]) && !allSelected;
 
@@ -411,13 +414,13 @@ function AddStudentModal({
     if (allSelected) {
       setSelectedStudents({});
     } else {
-      const newSelected: Record<number, boolean> = {};
+      const newSelected: Record<string, boolean> = {};
       filteredStudents.forEach(s => newSelected[s.id] = true);
       setSelectedStudents(newSelected);
     }
   };
 
-  const toggleStudent = (id: number) => {
+  const toggleStudent = (id: string) => {
     setSelectedStudents(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
@@ -449,10 +452,10 @@ function AddStudentModal({
         <div ref={panelRef} className="w-full max-w-4xl rounded-2xl border bg-white shadow-xl">
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-2xl font-semibold">Add Students</h2>
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               disabled={adding}
-              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" 
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close"
             >
               <X className="w-5 h-5 text-gray-600" />
@@ -521,7 +524,7 @@ function AddStudentModal({
                     ) : (
                       <tr>
                         <td colSpan={4} className="py-8 text-center text-gray-500">
-                          {safeAvailableStudents.length === 0 
+                          {safeAvailableStudents.length === 0
                             ? "No students available to add to this course."
                             : "No students match your search."
                           }
@@ -541,8 +544,8 @@ function AddStudentModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               disabled={adding}
               className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >

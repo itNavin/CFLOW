@@ -3,6 +3,7 @@ import { getProfileAPI } from "@/api/profile/getProfile";
 import { getProfile } from "@/types/api/profile";
 
 export default function UserDetailCard() {
+  // profileData is either null or the actual profile object
   const [profileData, setProfileData] = useState<getProfile.Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -13,7 +14,7 @@ export default function UserDetailCard() {
         setLoading(true);
         setError(null);
         const response = await getProfileAPI();
-        console.log("Profile data:", response.data);
+        console.log("Profile raw response:", response.data);
         setProfileData(response.data);
       } catch (err: any) {
         console.error("Error fetching profile:", err);
@@ -22,7 +23,6 @@ export default function UserDetailCard() {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, []);
 
@@ -35,24 +35,37 @@ export default function UserDetailCard() {
     );
   }
 
-  if (error || !profileData) {
+  if (error) {
     return (
       <div className="border rounded-md p-4">
         <h3 className="font-semibold mb-2">User Detail</h3>
-        <p className="text-red-500">{error || "No data available"}</p>
+        <p className="text-red-500">{error}</p>
       </div>
     );
   }
 
+  // ✅ If no profile in system
+  if (!profileData) {
+    return (
+      <div className="border rounded-md p-4">
+        <h3 className="font-semibold mb-2">User Detail</h3>
+        <p className="text-gray-500">You don’t have the data in system</p>
+      </div>
+    );
+  }
+
+  // Optional: local var for cleaner JSX
+  const user = profileData.profile?.user;
+
   return (
     <div className="border rounded-md p-4">
       <h3 className="font-semibold mb-2">User Detail</h3>
-      <p><strong>Name</strong><br />{profileData.profile.user.name}</p>
-      <p className="mt-2"><strong>Email</strong><br />{profileData.profile.user.email}</p>
-      <p className="mt-2"><strong>Username</strong><br />{profileData.profile.user.id}</p>
-      <p className="mt-2"><strong>Role</strong><br />{profileData.profile.user.role}</p>
-      {profileData.profile.user.program && (
-        <p className="mt-2"><strong>Program</strong><br />{profileData.profile.user.program}</p>
+      <p><strong>Name</strong><br />{user?.name ?? "-"}</p>
+      <p className="mt-2"><strong>Email</strong><br />{user?.email ?? "-"}</p>
+      <p className="mt-2"><strong>Username</strong><br />{user?.id ?? "-"}</p>
+      <p className="mt-2"><strong>Role</strong><br />{user?.role ?? "-"}</p>
+      {user?.program && (
+        <p className="mt-2"><strong>Program</strong><br />{user.program}</p>
       )}
     </div>
   );

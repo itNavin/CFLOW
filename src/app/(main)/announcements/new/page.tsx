@@ -75,8 +75,7 @@ export default function NewAnnouncement() {
     setError(null);
 
     try {
-      const courseIdNumber = Number(courseId);
-      if (Number.isNaN(courseIdNumber)) {
+      if (Number.isNaN(courseId)) {
         throw new Error("Invalid course ID");
       }
 
@@ -86,7 +85,7 @@ export default function NewAnnouncement() {
 
       // Create the announcement first
       const newAnnouncement = await createAnnouncementByCourseIdAPI(
-        courseIdNumber,
+        courseId,
         title.trim(),
         description.trim(),
         scheduleDate,
@@ -97,7 +96,7 @@ export default function NewAnnouncement() {
       if (selectedFiles.length > 0) {
         try {
           uploadedFiles = await uploadAnnouncementFileAPI(
-            courseIdNumber,
+            courseId,
             newAnnouncement.data.id,
             selectedFiles
           );

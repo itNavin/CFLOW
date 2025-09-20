@@ -17,17 +17,20 @@ type cmGroup = {
 };
 
 export namespace getAdvisorMember {
-  export type AdvisorMember = advisorMember[];
+  export type AdvisorMember = { 
+    message: string;
+    advisors: advisorMember[]; 
+  };
 }
 
 export namespace getStudentNotInCourse {
   export type getStudentNotInCourse = {
     message: string;
-    students: studentNotinCourse[];
+    students: studentNotInCourse[];
   };
 }
 
-type studentNotinCourse = {
+export type studentNotInCourse = {
   id: string;
   name: string;
   email: string;
@@ -52,7 +55,7 @@ type advisorNotinCourse = {
   createdAt: string;
 };
 
-type advisorMember = {
+export type advisorMember = {
   id: string;
   courseId: string;
   user: cmUser & { role: "ADVISOR" };
@@ -73,7 +76,7 @@ export namespace getStudentMember {
   };
 }
 
-type studentMember = {
+export type studentMember = {
   id: string;
   courseId: string;
   userId: string;

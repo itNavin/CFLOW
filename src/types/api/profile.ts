@@ -1,7 +1,7 @@
 export namespace getProfile {
     export type Profile = {
         message: string;
-        profile: profile;
+        profile: profile | null;
     }
 }
 
