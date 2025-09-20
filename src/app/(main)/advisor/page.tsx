@@ -88,12 +88,11 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getGroupInformation(id);
+      const response = await getGroupInformation(courseId);
       setGroupInfo(response.data);
       console.log("Group information:", response.data); // Debug log
     } catch (error) {
@@ -111,7 +110,7 @@ export default function CourseTab() {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getDashboardData(id);
+      const response = await getDashboardData(courseId);
       setDashboard(response.data);
       console.log("Dashboard data:", response.data); // Debug log
     } catch (error) {

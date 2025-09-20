@@ -27,12 +27,11 @@ export default function AnnouncementPage() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (!courseId) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getAllAnnouncementByCourseIdAPI(id);
+      const response = await getAllAnnouncementByCourseIdAPI(courseId);
 
       const sortedAnnouncements = response.data.sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();

@@ -14,9 +14,9 @@ import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 export default function AdvisorTab() {
   const searchParams = useSearchParams();
 
-  const [rows, setRows] = useState<getAdvisorMember.AdvisorMember>([]);
+  const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
   const [addingAdvisors, setAddingAdvisors] = useState(false);
@@ -25,24 +25,28 @@ export default function AdvisorTab() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const courseId = searchParams.get("courseId") || "";
-  const [advisorsNotInCourse, setAdvisorsNotInCourse] = useState<getAdvisorNotInCourse.getAdvisorNotInCourse[]>([]);
+  const [advisorsNotInCourse, setAdvisorsNotInCourse] = useState<any[]>([]);
 
   const fetchAdvisorsNotInCourse = async () => {
     try {
       setLoadingAvailable(true);
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
-        setError("Invalid courseId in URL");
-        return;
+      const response = await getAdvisorNotInCourseAPI(courseId);
+      console.log("Raw response:", response.data);
+
+      if (response.data && response.data.advisors && Array.isArray(response.data.advisors)) {
+        setAdvisorsNotInCourse(response.data.advisors);
+        console.log("Advisors not in course:", response.data.advisors);
+      } else {
+        console.error("Unexpected response structure:", response.data);
+        setAdvisorsNotInCourse([]);
       }
-      const response = await getAdvisorNotInCourseAPI(id);
-      setAdvisorsNotInCourse(response.data);
-      console.log("Advisors not in course:", response.data);
+
     } catch (error) {
       console.error("Failed to load advisors not in course:", error);
       setError("Failed to load available advisors");
+      setAdvisorsNotInCourse([]);
     } finally {
       setLoadingAvailable(false);
     }
@@ -53,16 +57,27 @@ export default function AdvisorTab() {
       setLoading(true);
       setError(null);
 
-      const id = parseInt(courseId);
-      if (!courseId || isNaN(id)) {
-        throw new Error("No course selected. Please select a course first.");
+      if (!courseId) {
+        setError("No course ID provided");
+        return;
       }
+      const response = await getAdvisorMemberAPI(courseId);
+      if (response.data?.advisors && Array.isArray(response.data.advisors)) {
+      setRows(response.data.advisors);
+    } else if (Array.isArray(response.data)) {
+      // Fallback for direct array response
+      setRows(response.data);
+      console.log("Set rows to (direct array):", response.data);
+    } else {
+      console.warn("Unexpected response structure:", response.data);
+      setRows([]);
+    }
 
-      const { data } = await getAdvisorMemberAPI(id);
-      setRows(data || []);
+
     } catch (e: any) {
       console.error("Error fetching advisors:", e);
       setError(e?.message || "Failed to load advisors");
+      setRows([]); // Ensure array on error
     } finally {
       setLoading(false);
     }
@@ -71,8 +86,8 @@ export default function AdvisorTab() {
   const deleteSelectedAdvisors = async () => {
     try {
       const selectedIds = Object.keys(selected)
-        .filter(id => selected[Number(id)])
-        .map(id => Number(id));
+        .filter(id => selected[id])
+        .map(id => id);
 
       if (selectedIds.length === 0) {
         alert("Please select advisors to delete");
@@ -80,90 +95,76 @@ export default function AdvisorTab() {
       }
 
       const selectedAdvisors = rows.filter(advisor => selectedIds.includes(advisor.id));
-      const advisorNames = selectedAdvisors.map(a => 
-        [a.user?.name, a.user?.surname].filter(Boolean).join(" ") || `ID: ${a.id}`
+      const advisorNames = selectedAdvisors.map(a =>
+        a.user?.name || a.name || `ID: ${a.id}`
       );
 
       const confirmMessage = `Are you sure you want to remove ${selectedIds.length} advisor(s) from this course?\n\n${advisorNames.join(", ")}`;
-      
+
       if (!confirm(confirmMessage)) {
         return;
       }
 
       setDeletingAdvisors(true);
-      
-      const courseIdNum = Number(courseId);
-      if (!courseIdNum || isNaN(courseIdNum)) {
+
+      if (!courseId) {
         throw new Error("Invalid course ID");
       }
 
       console.log("Deleting advisors from course:", {
-        courseId: courseIdNum,
+        courseId: courseId,
         advisorIds: selectedIds,
         selectedAdvisors
       });
 
-      // TODO: Replace with actual delete API call when available
-      // const response = await deleteCourseMemberAPI(courseIdNum, selectedIds);
-      
-      // Mock API call - replace this with actual API
+      // TODO: Replace with actual delete API call
       await new Promise(resolve => setTimeout(resolve, 1500));
-      
+
       alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
-      
-      // Clear selection
+
       setSelected({});
-      
-      // Refresh the advisor list
       await fetchAdvisors();
 
     } catch (error: any) {
       console.error("Error deleting advisors from course:", error);
-      
+
       let errorMessage = "Failed to remove advisors from course";
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       alert(`Error: ${errorMessage}`);
     } finally {
       setDeletingAdvisors(false);
     }
   };
 
-  // Function to add advisors to course
-  const addAdvisorsToCourse = async (selectedAdvisors: getAdvisorNotInCourse.getAdvisorNotInCourse[]) => {
+  const addAdvisorsToCourse = async (selectedAdvisors: any[]) => {
     try {
       setAddingAdvisors(true);
-      
-      const courseIdNum = Number(courseId);
-      if (!courseIdNum || isNaN(courseIdNum)) {
+
+      if (!courseId) {
         throw new Error("Invalid course ID");
       }
 
-      // Extract user IDs from selected advisors
-      const userIds = selectedAdvisors.map(advisor => advisor.id);
-      
+      const advisorsIds = selectedAdvisors.map(advisor => advisor.id);
+
       console.log("Adding advisors to course:", {
-        courseId: courseIdNum,
-        userIds,
+        courseId: courseId,
+        advisorsIds,
         selectedAdvisors
       });
 
-      // Call the API to add advisors to course
-      const response = await addCourseMemberAPI(courseIdNum, userIds);
-      
-      console.log("Add advisors response:", response.data);
+      const response = await addCourseMemberAPI(courseId, advisorsIds);
 
-      // Handle the response based on your API structure
       if (response.status === 200 || response.status === 201) {
         let message = "";
-        
+
         if (response.data) {
           const { insertedCount, skippedAsDuplicate, requestedCount, message: apiMessage } = response.data;
-          
+
           console.log("Response breakdown:", {
             insertedCount,
             skippedAsDuplicate,
@@ -180,8 +181,7 @@ export default function AdvisorTab() {
             if (skippedAsDuplicate !== undefined && skippedAsDuplicate > 0) {
               message += ` ${skippedAsDuplicate} advisor(s) were already in the course.`;
             }
-            
-            // Fallback message if we don't have the expected response structure
+
             if (!message) {
               message = `Successfully processed ${selectedAdvisors.length} advisor(s).`;
             }
@@ -189,13 +189,10 @@ export default function AdvisorTab() {
         } else {
           message = `Successfully added ${selectedAdvisors.length} advisor(s) to the course.`;
         }
-        
+
         alert(message);
 
-        // Refresh the advisor list to show new additions
         await fetchAdvisors();
-        
-        // Close the modal
         setOpenCreate(false);
 
       } else {
@@ -206,10 +203,9 @@ export default function AdvisorTab() {
       console.error("Error adding advisors to course:", error);
       console.error("Error response:", error?.response);
       console.error("Error data:", error?.response?.data);
-      
-      // Show error message
+
       let errorMessage = "Failed to add advisors to course";
-      
+
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.response?.data?.error) {
@@ -217,7 +213,7 @@ export default function AdvisorTab() {
       } else if (error?.message) {
         errorMessage = error.message;
       }
-      
+
       alert(`Error: ${errorMessage}`);
     } finally {
       setAddingAdvisors(false);
@@ -228,15 +224,11 @@ export default function AdvisorTab() {
     fetchAdvisors();
   }, [courseId]);
 
-  // Fetch available advisors when modal opens
   useEffect(() => {
     if (openCreate && courseId) {
       fetchAdvisorsNotInCourse();
     }
   }, [openCreate, courseId]);
-
-  const handleUploadClick = () => fileInputRef.current?.click();
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -245,26 +237,36 @@ export default function AdvisorTab() {
   };
 
   const filtered = useMemo(() => {
+    if (!Array.isArray(rows)) {
+      console.warn("rows is not an array:", rows);
+      return [];
+    }
+
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.user?.prefix?.toLowerCase().includes(q) ||
+
+    return rows.filter((r) => {
+      if (!r) return false;
+
+      return (
         r.user?.name?.toLowerCase().includes(q) ||
-        r.user?.surname?.toLowerCase().includes(q) ||
         r.user?.email?.toLowerCase().includes(q) ||
-        r.projects.some((p) => p.projectName?.toLowerCase().includes(q))
-    );
+        r.name?.toLowerCase().includes(q) ||
+        r.email?.toLowerCase().includes(q) ||
+        (Array.isArray(r.projects) && r.projects.some((p: any) => p.projectName?.toLowerCase().includes(q)))
+      );
+    });
   }, [query, rows]);
 
-  const allChecked = filtered.length > 0 && filtered.every((a) => a.id != null && selected[a.id]);
+  const safeFiltered = Array.isArray(filtered) ? filtered : [];
+  const allChecked = safeFiltered.length > 0 && safeFiltered.every((a) => a.id != null && selected[a.id]);
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
   const toggleAll = () => {
     if (allChecked) setSelected({});
     else {
-      const next: Record<number, boolean> = {};
-      filtered.forEach((r) => {
+      const next: Record<string, boolean> = {};
+      safeFiltered.forEach((r) => {
         if (r.id != null) {
           next[r.id] = true;
         }
@@ -273,7 +275,7 @@ export default function AdvisorTab() {
     }
   };
 
-  const toggleOne = (id: number) =>
+  const toggleOne = (id: string) =>
     setSelected((s) => ({ ...s, [id]: !s[id] }));
 
   return (
@@ -283,7 +285,7 @@ export default function AdvisorTab() {
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
             onClick={() => setOpenCreate(true)}
-            disabled={addingAdvisors || deletingAdvisors} // Disable while adding or deleting advisors
+            disabled={addingAdvisors || deletingAdvisors}
           >
             <Plus className="w-4 h-4" />
             {addingAdvisors ? "Adding..." : "Add"}
@@ -315,30 +317,32 @@ export default function AdvisorTab() {
         ) : error ? (
           <div className="p-6 text-center text-red-600 text-lg">
             {error}
+            <div className="mt-2 text-sm text-gray-500">
+              Debug: rows type: {typeof rows}, is array: {Array.isArray(rows) ? 'yes' : 'no'}
+            </div>
           </div>
         ) : (
           <table className="min-w-full text-sm">
             <thead>
               <tr className="text-left text-gray-900 border-b">
                 <th className="w-10 py-3 pl-4">
-                  <input 
-                    type="checkbox" 
-                    checked={allChecked} 
-                    onChange={toggleAll} 
+                  <input
+                    type="checkbox"
+                    checked={allChecked}
+                    onChange={toggleAll}
                     className="accent-[#326295]"
                     disabled={deletingAdvisors}
                   />
                 </th>
-                <th className="py-3 text-xl">Prefix</th>
                 <th className="py-3 text-xl">Name</th>
-                <th className="py-3 text-xl">Mail</th>
+                <th className="py-3 text-xl">Email</th>
                 <th className="py-3 text-xl">Project name</th>
                 <th className="py-3 pr-4 text-right text-xl">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
-                <tr key={r.id} className={`border-t ${deletingAdvisors ? 'opacity-50' : ''}`}>
+              {safeFiltered.map((r, index) => (
+                <tr key={r.id || `advisor-${index}`} className={`border-t ${deletingAdvisors ? 'opacity-50' : ''}`}>
                   <td className="py-3 pl-4 align-top">
                     <input
                       type="checkbox"
@@ -348,15 +352,16 @@ export default function AdvisorTab() {
                       disabled={deletingAdvisors}
                     />
                   </td>
-                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.prefix || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
-                    {[r.user?.name, r.user?.surname].filter(Boolean).join(" ") || "-"}
+                    {r.user?.name || r.name || "-"}
                   </td>
-                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
-                    {(r.projects ?? []).length ? (
+                    {r.user?.email || r.email || "-"}
+                  </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">
+                    {(Array.isArray(r.projects) && r.projects.length) ? (
                       <ol className="list-decimal ml-4 space-y-0.5">
-                        {(r.projects ?? []).map((p, i) => (
+                        {r.projects.map((p: any, i: any) => (
                           <li key={p.id ?? `${r.id}-${i}`}>{p.projectName || "(untitled)"}</li>
                         ))}
                       </ol>
@@ -366,8 +371,8 @@ export default function AdvisorTab() {
                   </td>
 
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    <button 
-                      onClick={() => alert(`TODO: delete ${[r.user?.name, r.user?.surname].filter(Boolean).join(" ") || 'advisor'}`)} 
+                    <button
+                      onClick={() => alert(`TODO: delete ${r.user?.name || r.name || 'advisor'}`)}
                       className="text-red-500 hover:underline text-lg"
                       disabled={deletingAdvisors}
                     >
@@ -376,9 +381,11 @@ export default function AdvisorTab() {
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {safeFiltered.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500 text-lg">No advisors found.</td>
+                  <td colSpan={5} className="py-8 text-center text-gray-500 text-lg">
+                    {loading ? "Loading..." : "No advisors found."}
+                  </td>
                 </tr>
               )}
             </tbody>
@@ -388,10 +395,10 @@ export default function AdvisorTab() {
 
       <div className="flex items-center justify-between text-xs text-gray-600 mt-3">
         <div>{selectedCount} selected</div>
-        
+
         {selectedCount > 0 && (
           <button
-            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600 rounded border transition disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={deleteSelectedAdvisors}
             disabled={addingAdvisors || deletingAdvisors}
           >
@@ -404,9 +411,9 @@ export default function AdvisorTab() {
         <AddAdvisorModal
           availableAdvisors={advisorsNotInCourse}
           loading={loadingAvailable}
-          adding={addingAdvisors} // Pass adding state to modal
+          adding={addingAdvisors}
           onCancel={() => setOpenCreate(false)}
-          onSave={addAdvisorsToCourse} // Use the real API function
+          onSave={addAdvisorsToCourse}
         />
       )}
     </section>
@@ -421,24 +428,25 @@ function AddAdvisorModal({
   onCancel,
   onSave,
 }: {
-  availableAdvisors: getAdvisorNotInCourse.getAdvisorNotInCourse[];
+  availableAdvisors: any[];
   loading: boolean;
-  adding: boolean; // New prop for adding state
+  adding: boolean;
   onCancel: () => void;
-  onSave: (advisors: getAdvisorNotInCourse.getAdvisorNotInCourse[]) => void;
+  onSave: (advisors: any[]) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedAdvisors, setSelectedAdvisors] = useState<Record<number, boolean>>({});
+  const [selectedAdvisors, setSelectedAdvisors] = useState<Record<string, boolean>>({});
 
+  // Ensure we always have an array
   const safeAvailableAdvisors = Array.isArray(availableAdvisors) ? availableAdvisors : [];
 
   const filteredAdvisors = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return safeAvailableAdvisors;
     return safeAvailableAdvisors.filter(advisor =>
-      advisor.id.toString().includes(q) ||
-      advisor.name.toLowerCase().includes(q) ||
-      advisor.email.toLowerCase().includes(q)
+      advisor?.id?.toString().includes(q) ||
+      advisor?.name?.toLowerCase().includes(q) ||
+      advisor?.email?.toLowerCase().includes(q)
     );
   }, [searchQuery, safeAvailableAdvisors]);
 
@@ -449,13 +457,13 @@ function AddAdvisorModal({
     if (allSelected) {
       setSelectedAdvisors({});
     } else {
-      const newSelected: Record<number, boolean> = {};
+      const newSelected: Record<string, boolean> = {};
       filteredAdvisors.forEach(a => newSelected[a.id] = true);
       setSelectedAdvisors(newSelected);
     }
   };
 
-  const toggleAdvisor = (id: number) => {
+  const toggleAdvisor = (id: string) => {
     setSelectedAdvisors(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
@@ -468,7 +476,7 @@ function AddAdvisorModal({
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !adding && onCancel(); // Prevent closing while adding
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !adding && onCancel();
     const onClick = (e: MouseEvent) => {
       if (!adding && panelRef.current && !panelRef.current.contains(e.target as Node)) onCancel();
     };
@@ -487,10 +495,10 @@ function AddAdvisorModal({
         <div ref={panelRef} className="w-full max-w-4xl rounded-2xl border bg-white shadow-xl">
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-2xl font-semibold">Add Advisors</h2>
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               disabled={adding}
-              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed" 
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Close"
             >
               <X className="w-5 h-5 text-gray-600" />
@@ -541,8 +549,8 @@ function AddAdvisorModal({
                   </thead>
                   <tbody>
                     {filteredAdvisors.length > 0 ? (
-                      filteredAdvisors.map((advisor) => (
-                        <tr key={advisor.id} className="border-t hover:bg-gray-50">
+                      filteredAdvisors.map((advisor, index) => (
+                        <tr key={advisor.id || `advisor-${index}`} className="border-t hover:bg-gray-50">
                           <td className="py-3 pl-4">
                             <input
                               type="checkbox"
@@ -559,7 +567,7 @@ function AddAdvisorModal({
                     ) : (
                       <tr>
                         <td colSpan={4} className="py-8 text-center text-gray-500">
-                          {safeAvailableAdvisors.length === 0 
+                          {safeAvailableAdvisors.length === 0
                             ? "No advisors available to add to this course."
                             : "No advisors match your search."
                           }
@@ -579,8 +587,8 @@ function AddAdvisorModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-            <button 
-              onClick={onCancel} 
+            <button
+              onClick={onCancel}
               disabled={adding}
               className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
             >
