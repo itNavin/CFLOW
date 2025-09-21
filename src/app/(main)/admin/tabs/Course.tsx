@@ -162,7 +162,7 @@ export default function CourseTab() {
       }
       const response = await getAllGroupAPI(id);
       console.log("All groups:", response.data); // Debug log
-      setGroup(response.data);
+      setGroup(response.data.groups);
     } catch (error) {
       console.error("Failed to load groups:", error);
       setError("Failed to load groups");
