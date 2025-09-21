@@ -13,6 +13,7 @@ import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
 import CourseInfo from "@/components/dashboard/courseInfo";
 import CourseTotal from "@/components/dashboard/courseTotal";
+import { Course } from "@/types/api/course";
 
 export function formatUploadAt(
   iso: string,
@@ -40,16 +41,16 @@ export default function CourseTab() {
   const [group, setGroup] = useState<getGroup.GroupList>([]);
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
-  
+
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<string | null>(null);
   const courseId = searchParams.get("courseId") || "";
+  const [showCourseModal, setShowCourseModal] = useState(false);
+  const [courseData, setCourseData] = useState<Course | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const groupId = e.target.value;
-    
-    console.log("Selected group ID:", groupId); // Debug log
-
     if (groupId === "-1") {
       setSelectedGroupId(null);
       fetchDashboardDataWithQuery({
@@ -57,38 +58,53 @@ export default function CourseTab() {
         assignmentId: selectedAssignmentChartId || undefined
       });
     } else {
-      setSelectedGroupId(groupId);
-      fetchDashboardDataWithQuery({
-        groupId: groupId,
-        assignmentId: selectedAssignmentChartId || undefined
-      });
+      const groupExists = group.find(groupItem => groupItem.id === groupId);
+
+      if (groupExists) {
+        setSelectedGroupId(groupId);
+        fetchDashboardDataWithQuery({
+          groupId: groupId,
+          assignmentId: selectedAssignmentChartId || undefined
+        });
+      } else {
+        console.error("Selected group not found in groups list:", groupId);
+        setError(`Selected group not found: ${groupId}`);
+        setSelectedGroupId(null);
+      }
     }
   };
 
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const assignmentId = e.target.value;
-    
-    console.log("Selected assignment ID:", assignmentId); // Debug log
+    if (assignmentId === "-1") {
+      setSelectedAssignmentChartId(null);
+      fetchDashboardDataWithQuery({
+        assignmentId: undefined,
+        groupId: selectedGroupId || undefined
+      });
+    } else {
+      const assignmentExists = assignments.find(assignment => assignment.id === assignmentId);
 
-    setSelectedAssignmentChartId(assignmentId > "0" ? String(assignmentId) : null);
-
-    fetchDashboardDataWithQuery({ 
-      assignmentId: assignmentId > "0" ? String(assignmentId) : undefined, 
-      groupId: selectedGroupId || undefined 
-    });
+      if (assignmentExists) {
+        setSelectedAssignmentChartId(assignmentId);
+        fetchDashboardDataWithQuery({
+          assignmentId: assignmentId,
+          groupId: selectedGroupId || undefined
+        });
+      } else {
+        console.error("Selected assignment not found in assignments list:", assignmentId);
+        setError(`Selected assignment not found: ${assignmentId}`);
+        // Reset to "All Assignments"
+        setSelectedAssignmentChartId(null);
+      }
+    }
   };
 
   const fetchGroupInformation = async () => {
     try {
       if (!courseId) return;
-
-      if (Number.isNaN(courseId)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
       const response = await getGroupInformation(courseId);
       setGroupInfo(response.data);
-      console.log("Group information:", response.data); // Debug log
     } catch (error) {
       console.error("Failed to load group information:", error);
       setError("Failed to load group information");
@@ -96,36 +112,20 @@ export default function CourseTab() {
   };
 
   const fetchDashboardData = async () => {
-      try {
-        if (!courseId) return;
-          if (Number.isNaN(courseId)) {
-          setError("Invalid courseId in URL");
-          return;
-        }
-        const response = await getDashboardData(courseId);
-        setDashboard(response.data);
-        console.log("Dashboard data:", response.data); // Debug log
-      } catch (error) {
-        setError("Failed to load dashboard data");
-      }
+    try {
+      if (!courseId) return;
+      const response = await getDashboardData(courseId);
+      setDashboard(response.data);
+    } catch (error) {
+      setError("Failed to load dashboard data");
+    }
   };
 
   const fetchDashboardDataWithQuery = async (query: { assignmentId?: string; groupId?: string }) => {
     try {
       if (!courseId) return;
       setDashboardLoading(true);
-
-      const id = String(courseId);
-      if (Number.isNaN(Number(id))) {
-        setError("Invalid courseId in URL");
-        return;
-      }
-      
-      console.log("Fetching dashboard with query:", query); // Debug log
-      
-      const response = await getDashboardData(id, query);
-      console.log("Dashboard response with query:", response.data);
-
+      const response = await getDashboardData(courseId, query);
       setDashboard(response.data);
     } catch (error) {
       console.error("Failed to load dashboard data with query:", error);
@@ -138,16 +138,19 @@ export default function CourseTab() {
   const fetchAssignments = async () => {
     try {
       if (!courseId) return;
-      if (Number.isNaN(courseId)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
       const response = await getAllAssignmentsAPI(courseId);
-      console.log("Assignments:", response.data); // Debug log
-      setAssignments(response.data);
-    } catch (error) {
+      if (response.data?.assignments && Array.isArray(response.data.assignments)) {
+        setAssignments(response.data.assignments);
+      } else if (Array.isArray(response.data)) {
+        setAssignments(response.data);
+      } else {
+        console.warn("Assignments data is not in expected format:", response.data);
+        setAssignments([]); // Set empty array as fallback
+      }
+    } catch (error: any) {
       console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
+      setAssignments([]); // Set empty array on error
     }
   };
 
@@ -155,18 +158,17 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = String(courseId);
-      if (Number.isNaN(Number(id))) {
-        setError("Invalid courseId in URL");
-        return;
-      }
-      const response = await getAllGroupAPI(id);
-      console.log("All groups:", response.data); // Debug log
+      const response = await getAllGroupAPI(courseId);
       setGroup(response.data.groups);
     } catch (error) {
       console.error("Failed to load groups:", error);
       setError("Failed to load groups");
     }
+  };
+
+  const handleCourseUpdated = async () => {
+    console.log("Course was updated, refreshing dashboard data...");
+    await fetchDashboardData();
   };
 
   useEffect(() => {
@@ -181,38 +183,47 @@ export default function CourseTab() {
     fetchData();
   }, [courseId]);
 
+  const getStatusCounts = () => {
+    if (!dashboard?.course?.submissions?.statusCounts) {
+      return undefined;
+    }
+    return dashboard.course.submissions.statusCounts;
+  };
+
+  type StatusKey = 'NOT_SUBMITTED' | 'SUBMITTED' | 'REJECTED' | 'APPROVED_WITH_FEEDBACK' | 'FINAL';
+  const getStatusCount = (status: StatusKey): number => {
+    return dashboard?.course?.submissions?.statusCounts?.[status] || 0;
+  };
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
       <div className="xl:col-span-2 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold">Class Information</h2>
-              <button className="p-2 rounded-md hover:bg-gray-100">
-                <Pencil className="w-4 h-4 text-gray-700" />
-              </button>
-            </div>
-            <CourseInfo courseId="courseId"/>
+            <CourseInfo 
+            courseId={courseId} 
+            onCourseUpdated={handleCourseUpdated}
+            />
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
               <h2 className="text-2xl font-semibold">Dashboard</h2>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Assignment:</label>
-                  <select 
-                    onChange={handleChartAssignmentChange} 
+                  <select
+                    onChange={handleChartAssignmentChange}
                     value={selectedAssignmentChartId || -1}
                     className="border border-gray-300 rounded px-2 py-1 text-base min-w-[180px]"
                   >
                     <option value={-1}>All Assignments</option>
-                    {/* {assignments.map((assignment) => (
+                    {assignments.map((assignment) => (
                       <option key={assignment.id} value={assignment.id}>
                         {assignment.name}
                       </option>
-                    ))} */}
+                    ))}
                   </select>
                 </div>
 
@@ -236,43 +247,25 @@ export default function CourseTab() {
 
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="flex items-center justify-center">
-                <MultiColorDonut 
-                  statusCounts={dashboard?.course.submissions?.statusCounts}
+                <MultiColorDonut
+                  statusCounts={getStatusCounts()}
                   loading={dashboardLoading}
                 />
               </div>
               <ul className="space-y-2 text-lg">
                 {dashboard && (
                   <>
-                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
-                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
-                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
-                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
-                    <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
+                    <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
+                    <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
+                    <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
+                    <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
+                    <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
                   </>
                 )}
               </ul>
             </div>
           </div>
         </div>
-
-        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-2xl font-semibold mb-4">Alerts</h2>
-          <div className="divide-y">
-            <AlertRow
-              icon={<AlertTriangle className="w-6 h-6 text-yellow-600" />}
-              title="Assignment Missed"
-              desc="5 groups missed the submission for Assignment 1"
-              date="01/04/2025, 09:00 AM"
-            />
-            <AlertRow
-              icon={<span className="text-2xl">📣</span>}
-              title="Announcement Posted"
-              desc="New announcement posted by Thanatat Wongabut"
-              date="01/04/2025, 09:00 AM"
-            />
-          </div>
-        </div> */}
       </div>
 
       <div className="space-y-6">
@@ -393,9 +386,9 @@ function MultiColorDonut({
       const degrees = (count / total) * 360;
       const startAngle = currentAngle;
       const endAngle = currentAngle + degrees;
-      
+
       currentAngle = endAngle;
-      
+
       return {
         status,
         count,
@@ -415,8 +408,8 @@ function MultiColorDonut({
       <div
         className="relative w-48 h-48 rounded-full"
         style={{
-          background: segments.length > 0 
-            ? `conic-gradient(${gradientSegments})` 
+          background: segments.length > 0
+            ? `conic-gradient(${gradientSegments})`
             : '#e5e7eb',
           transform: 'rotate(-90deg)'
         }}

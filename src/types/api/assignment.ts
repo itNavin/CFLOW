@@ -9,6 +9,11 @@ export namespace getAllAssignments {
         courseId: string;
     }
 
+    export type getAllAssignmentResponse = {
+        message: string;
+        assignments: allAssignment[];
+    }
+
     export type AssignmentbyOpenTaskandSubmitted ={
         courseId: string;
         groupId: string;

@@ -142,3 +142,18 @@ type result = {
   notFoundIds: string[];
   blocked: string[];
 };
+
+
+export namespace deleteCourseMemberByUserId {
+  export type DeleteCourseMemberByUserIdPayload = {
+    message: string;
+    result: resultByUserId;
+  };
+}
+
+type resultByUserId = {
+  requestedIds: string[];
+  deletedIds: string[];
+  notFoundIds: string[];
+  blocked: string[];
+};

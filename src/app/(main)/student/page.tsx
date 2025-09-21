@@ -103,7 +103,7 @@ export default function StudentDashboard() {
       }
       const response = await getAllAssignmentsAPI(courseId);
       console.log("Assignments:", response.data);
-      setAssignments(response.data);
+      setAssignments(response.data.assignments);
     } catch (error) {
       console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
