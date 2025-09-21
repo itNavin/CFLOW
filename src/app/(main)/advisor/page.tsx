@@ -39,21 +39,14 @@ export default function CourseTab() {
   const [group, setGroup] = useState<getGroup.GroupList>([]);
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
-
-  // ✅ FIXED: Use group ID directly instead of studentInfo object
-  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedGroupData, setSelectedGroupData] = useState<Dashboard.studentInfo | null>(null);
-  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<string | null>(null);
   const courseId = searchParams.get("courseId") || "";
 
-  // ✅ FIXED: Simplified group change handler
   const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const groupId = Number(e.target.value);
-
-    console.log("Selected group ID:", groupId); // Debug log
-
-    if (groupId === -1) {
-      // "All Groups" selected
+    const groupId = String(e.target.value);
+    if (groupId === "-1") {
       setSelectedGroupId(null);
       setSelectedGroupData(null);
       fetchDashboardDataWithQuery({
@@ -61,7 +54,6 @@ export default function CourseTab() {
         assignmentId: selectedAssignmentChartId || undefined
       });
     } else {
-      // Specific group selected
       setSelectedGroupId(groupId);
       fetchDashboardDataWithQuery({
         groupId: groupId,
@@ -72,14 +64,14 @@ export default function CourseTab() {
 
   // ✅ FIXED: Simplified assignment change handler
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const assignmentId = Number(e.target.value);
+    const assignmentId = String(e.target.value);
 
     console.log("Selected assignment ID:", assignmentId); // Debug log
 
-    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+    setSelectedAssignmentChartId(assignmentId === "-1" ? null : assignmentId);
 
     fetchDashboardDataWithQuery({
-      assignmentId: assignmentId > 0 ? assignmentId : undefined,
+      assignmentId: assignmentId > "0" ? assignmentId : undefined,
       groupId: selectedGroupId || undefined
     });
   };
@@ -105,8 +97,7 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
@@ -118,20 +109,19 @@ export default function CourseTab() {
     }
   };
 
-  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: string; groupId?: string }) => {
     try {
       if (!courseId) return;
       setDashboardLoading(true);
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
 
       console.log("Fetching dashboard with query:", query); // Debug log
 
-      const response = await getDashboardData(id, query);
+      const response = await getDashboardData(courseId, query);
       console.log("Dashboard response with query:", response.data);
 
       setDashboard(response.data);
@@ -147,12 +137,11 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getAllAssignmentsAPI(id);
+      const response = await getAllAssignmentsAPI(courseId);
       console.log("Assignments:", response.data); // Debug log
       setAssignments(response.data);
     } catch (error) {
@@ -165,14 +154,13 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
 
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (Number.isNaN(courseId)) {
         setError("Invalid courseId in URL");
         return;
       }
-      const response = await getAllGroupAPI(id);
+      const response = await getAllGroupAPI(courseId);
       console.log("All groups:", response.data); // Debug log
-      setGroup(response.data);
+      setGroup(response.data.groups);
     } catch (error) {
       console.error("Failed to load groups:", error);
       setError("Failed to load groups");
@@ -259,18 +247,18 @@ export default function CourseTab() {
             <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
               <div className="flex items-center justify-center">
                 <MultiColorDonut
-                  statusCounts={dashboard?.submissions?.statusCounts}
+                  statusCounts={dashboard?.course.submissions?.statusCounts}
                   loading={dashboardLoading}
                 />
               </div>
               <ul className="space-y-2 text-lg">
                 {dashboard && (
                   <>
-                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
-                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.submissions?.statusCounts.SUBMITTED || 0}`} />
-                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.submissions?.statusCounts.REJECTED || 0}`} />
-                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
-                    <LegendItem color="#16a34a" text={`Final: ${dashboard.submissions?.statusCounts.FINAL || 0}`} />
+                    <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
+                    <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
+                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
+                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
+                    <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
                   </>
                 )}
               </ul>

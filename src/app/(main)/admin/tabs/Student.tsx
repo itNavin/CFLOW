@@ -25,28 +25,26 @@ export default function StudentTab() {
   const [deletingStudent, setDeletingStudent] = useState(false);
 
   const fetchStudentNotInCourse = async (courseId: string) => {
-  try {
-    setLoadingAvailable(true);
-    if (!courseId) return;
+    try {
+      setLoadingAvailable(true);
+      if (!courseId) return;
 
-    const response = await getStudentNotInCourseAPI(courseId);
-    console.log("Students not in course response:", response.data);
-    
-    // Handle the correct response structure
-    if (response.data?.students && Array.isArray(response.data.students)) {
-      setStudentNotInCourse(response.data.students);
-    } else {
-      console.warn("Unexpected response structure:", response.data);
+      const response = await getStudentNotInCourseAPI(courseId);
+
+      if (response.data?.students && Array.isArray(response.data.students)) {
+        setStudentNotInCourse(response.data.students);
+      } else {
+        console.warn("Unexpected response structure:", response.data);
+        setStudentNotInCourse([]);
+      }
+    } catch (error) {
+      console.error("Failed to load students not in course:", error);
+      setError("Failed to load available students");
       setStudentNotInCourse([]);
+    } finally {
+      setLoadingAvailable(false);
     }
-  } catch (error) {
-    console.error("Failed to load students not in course:", error);
-    setError("Failed to load available students");
-    setStudentNotInCourse([]);
-  } finally {
-    setLoadingAvailable(false);
-  }
-};
+  };
 
   const fetchStudents = async () => {
     try {
@@ -60,7 +58,6 @@ export default function StudentTab() {
       const response = await getStudentMemberAPI(courseId);
       console.log("Students response:", response.data);
 
-      // Handle the correct response structure
       if (response.data?.students && Array.isArray(response.data.students)) {
         setRows(response.data.students);
       } else {
@@ -80,7 +77,7 @@ export default function StudentTab() {
     try {
       setAddingStudents(true);
 
-      if (!courseId || isNaN(Number(courseId))) {
+      if (!courseId) {
         throw new Error("Invalid course ID");
       }
 
@@ -96,30 +93,22 @@ export default function StudentTab() {
 
       console.log("Add students response:", response.data);
 
-      const { insertedCount, skippedAsDuplicate, requestedCount } = response.data;
-
-      let message = "";
-      if (insertedCount > 0) {
-        message += `Successfully added ${insertedCount} student(s) to the course.`;
-      }
-      if (skippedAsDuplicate > 0) {
-        message += ` ${skippedAsDuplicate} student(s) were already in the course.`;
+      if (response.data?.message) {
+        alert(`Successfully processed ${selectedStudents.length} student(s).`);
+      } else {
+        alert(`Added ${selectedStudents.length} student(s) to the course.`);
       }
 
-      alert(message || `Processed ${requestedCount} student(s).`);
-
-      // Refresh the student list to show new additions
       await fetchStudents();
-
-      // Close the modal
       setOpenCreate(false);
 
     } catch (error: any) {
-      console.error("Error adding students to course:", error);
-
-      // Show error message
-      const errorMessage = error?.response?.data?.message || error?.message || "Failed to add students to course";
-      alert(`Error: ${errorMessage}`);
+      if (error?.response?.status === 404) {
+        alert("Error: API endpoint not found. Please check if the add course member API is properly configured.");
+      } else {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add students to course";
+        alert(`Error: ${errorMessage}`);
+      }
     } finally {
       setAddingStudents(false);
     }
@@ -145,7 +134,7 @@ export default function StudentTab() {
         .filter(id => selected[Number(id)])
 
       if (selectedIds.length === 0) {
-        alert("Please select advisors to delete");
+        alert("Please select students to delete");
         return;
       }
 
@@ -179,18 +168,16 @@ export default function StudentTab() {
       // Mock API call - replace this with actual API
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
+      alert(`Successfully removed ${selectedIds.length} student(s) from the course.`);
 
-      // Clear selection
       setSelected({});
 
-      // Refresh the advisor list
       await fetchStudents();
 
     } catch (error: any) {
-      console.error("Error deleting advisors from course:", error);
+      console.error("Error deleting students from course:", error);
 
-      let errorMessage = "Failed to remove advisors from course";
+      let errorMessage = "Failed to remove students from course";
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.message) {

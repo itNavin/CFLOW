@@ -58,7 +58,6 @@ export const CourseModal = ({
                     ref={panelRef}
                     className="w-full max-w-2xl rounded-2xl border bg-white shadow-xl overflow-hidden"
                 >
-                    {/* Header */}
                     <div className="flex items-center justify-between px-6 py-4 border-b">
                         <h3 className="text-[28px] font-medium">
                             {mode === "create" ? "Create Course" : "Edit Course"}

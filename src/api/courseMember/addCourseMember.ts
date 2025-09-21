@@ -6,8 +6,8 @@ export const addCourseMemberAPI = async (
   userIds: string[]
 ) => {
   const body = { userIds, courseId };
-  const response = await Axios.post(
-    `/courseMember/addMember`,
+  const response = await Axios.post<addCourseMember.AddCourseMemberPayload>(
+    `/courseMember/addMembers`,
     body
   );
   return response;

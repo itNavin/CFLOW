@@ -112,3 +112,20 @@ type summary = {
   courseMembers : number;
   assignments : number;
 }
+
+export namespace updateCourse {
+  export type UpdateCoursePayload = {
+    message: string;
+    course: update;
+  }
+}
+
+type update = {
+  id: string;
+  name: string;
+  description: string | null;
+  program: "CS" | "DSI";
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}

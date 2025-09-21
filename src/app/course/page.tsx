@@ -13,6 +13,8 @@ import { createCourse } from "@/types/api/course";
 import { createCourseAPI } from "@/api/course/createCourse";
 import { deleteCourseAPI } from "@/api/course/deleteCourse";
 import { isCanUpload } from "@/util/RoleHelper";
+import { updateCourse } from "@/types/api/course";
+import { updateCourseAPI } from "@/api/course/updateCourse";
 
 const asArray = <T = any>(data: any, key?: string): T[] => {
   if (Array.isArray(data)) return data as T[];
@@ -42,6 +44,7 @@ export default function CoursePage() {
   const [openUploadMember, setOpenUploadMember] = useState(false);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     setUserRole(getUserRole());
@@ -68,7 +71,6 @@ export default function CoursePage() {
         setCourses(list);
       }
     } catch (err: any) {
-      console.error("Error fetching courses:", err?.response?.status, err?.response?.data || err);
       setError(
         err?.response?.status
           ? `Failed to fetch courses (HTTP ${err.response.status})`
@@ -105,15 +107,11 @@ export default function CoursePage() {
 
       const formData = new FormData();
       formData.append('file', file);
-
-      console.log("Uploading file:", file.name);
-
       await new Promise(resolve => setTimeout(resolve, 2000));
       await fetchCourses();
 
       setOpenUploadMember(false);
     } catch (err: any) {
-      console.error("Error uploading members:", err);
       setError(
         err?.response?.status
           ? `Failed to upload members (HTTP ${err.response.status})`
@@ -140,7 +138,6 @@ export default function CoursePage() {
 
       setOpenCreate(false);
     } catch (err: any) {
-      console.error("Error creating course:", err);
       setError(
         err?.response?.status
           ? `Failed to create course (HTTP ${err.response.status})`
@@ -162,9 +159,48 @@ export default function CoursePage() {
     )
   }
 
+  const handleEditCourse = async (payload: Omit<Course, "id">) => {
+    if (!editing) return;
+
+    try {
+      setUpdating(true);
+      setError(null);
+      const response = await updateCourseAPI(
+        editing.id,
+        payload.name,
+        payload.description || null
+      );
+      setCourses((prev) =>
+        prev.map((c) => 
+          c.id === editing.id 
+            ? {
+                id: response.data.course.id,
+                name: response.data.course.name,
+                description: response.data.course.description || "",
+                program: response.data.course.program,
+              }
+            : c
+        )
+      );
+
+      setEditing(null);
+
+      // Show success message
+      alert("Course updated successfully!");
+
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.message || err?.message || "Failed to update course";
+      setError(errorMessage);
+      alert(`Error: ${errorMessage}`);
+      throw err; 
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleDeleteCourse = async (course: Course) => {
     setCourseToDelete(course);
-    setOpenMenuId(null); // Close the menu
+    setOpenMenuId(null);
   };
 
   const confirmDeleteCourse = async () => {
@@ -178,7 +214,6 @@ export default function CoursePage() {
       setCourses((prev) => prev.filter((c) => c.id !== courseToDelete.id));
       setCourseToDelete(null);
     } catch (err: any) {
-      console.error("Error deleting course:", err);
       setError(
         err?.response?.status
           ? `Failed to delete course (HTTP ${err.response.status})`
@@ -308,10 +343,6 @@ export default function CoursePage() {
             ))
           )}
         </div>
-
-        {/* <div className="mt-6 text-sm font-medium text-black cursor-pointer hover:underline">
-          Hide <span className="inline-block transform rotate-180">⌄</span>
-        </div> */}
       </div>
 
       {courseToDelete && (
@@ -388,17 +419,7 @@ export default function CoursePage() {
           mode="edit"
           initial={editing}
           onClose={() => setEditing(null)}
-          onSubmit={async (payload) => {
-            try {
-              setCourses((prev) =>
-                prev.map((c) => (c.id === editing.id ? { ...c, ...payload } : c))
-              );
-              setEditing(null);
-            } catch (err) {
-              console.error("Error updating course:", err);
-              setError("Failed to update course");
-            }
-          }}
+          onSubmit={handleEditCourse}
         />
       )}
     </>

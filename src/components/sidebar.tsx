@@ -31,11 +31,7 @@ export default function Sidebar() {
       if (!courseId) return;
       const id = String(courseId);
       const response = await getMyProjectByCourseAPI(id);
-      console.log("Project response:", response.data);
-      setProject(response.data);
-      console.log("Project state updated:", response.data);
-      
-      console.log("Project name:", response.data.group.projectName);
+      setProject(response.data);      
     } catch (error) {}
   };
 
