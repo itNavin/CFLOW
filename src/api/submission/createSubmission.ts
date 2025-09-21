@@ -3,8 +3,8 @@ import { submission } from "@/types/api/submission";
 import { uploadSubmissionFile } from "@/types/api/file";
 
 export const createSubmissionAPI = async (
-  courseId: number,
-  assignmentId: number,
+  courseId: string,
+  assignmentId: string,
   comment: string
 ) => {
   const body = {
@@ -18,11 +18,11 @@ export const createSubmissionAPI = async (
 };
 
 export const uploadSubmissionFileAPI = async (
-  courseId: number,
-  assignmentId: number,
-  deliverableId: number,
-  groupId: number,
-  submissionId: number,
+  courseId: string,
+  assignmentId: string,
+  deliverableId: string,
+  groupId: string,
+  submissionId: string,
   file: File
 ): Promise<uploadSubmissionFile.UploadSubmissionFilePayload> => {
   try {
@@ -40,7 +40,7 @@ export const uploadSubmissionFileAPI = async (
         }
       );
     return response.data;
-  } catch (e) {
-    return { id: -1 } as uploadSubmissionFile.UploadSubmissionFilePayload;
+  } catch (error) {
+    throw error;
   }
 };
