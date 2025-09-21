@@ -9,6 +9,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { getStudentNotInCourseAPI } from "@/api/courseMember/getStudentNotInCourse";
 import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
+import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 
 export default function StudentTab() {
   const courseId = useSearchParams().get("courseId") || "";
@@ -118,7 +119,6 @@ export default function StudentTab() {
     fetchStudents();
   }, [courseId]);
 
-  // Fetch available students when modal opens
   useEffect(() => {
     if (openCreate && courseId) {
       fetchStudentNotInCourse(courseId);
@@ -128,10 +128,34 @@ export default function StudentTab() {
   const handleUploadClick = () => fileInputRef.current?.click();
   const selectedCount = Object.values(selected).filter(Boolean).length;
 
+  const deleteSingleStudent = async (student: studentMember) => {
+    try {
+      const studentName = student.user?.name || `ID: ${student.id}`;
+
+      if (!confirm(`Are you sure you want to remove ${studentName} from this course?`)) {
+        return;
+      }
+      setDeletingStudent(true);
+      const response = await deleteCourseMemberAPI(student.id);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+
+        if (deletedIds.includes(student.id)) {
+          alert(`Successfully removed ${studentName} from the course.`);
+          await fetchStudents(); // Refresh the list
+        } else if (blocked.includes(student.id)) {
+          alert(`Error: Cannot remove ${studentName} - student may be assigned to a group or have submissions.`);
+        }
+      }
+    } catch (error) {
+    } finally {
+      setDeletingStudent(false);
+    }
+  };
+
   const deleteSelectedStudents = async () => {
     try {
-      const selectedIds = Object.keys(selected)
-        .filter(id => selected[Number(id)])
+      const selectedIds = Object.keys(selected).filter(id => selected[id]);
 
       if (selectedIds.length === 0) {
         alert("Please select students to delete");
@@ -140,7 +164,7 @@ export default function StudentTab() {
 
       const selectedStudents = rows.filter(student => selectedIds.includes(student.id));
       const studentNames = selectedStudents.map(s =>
-        [s.user?.name].filter(Boolean).join(" ") || `ID: ${s.id}`
+        s.user?.name || `ID: ${s.id}`
       );
 
       const confirmMessage = `Are you sure you want to remove ${selectedIds.length} student(s) from this course?\n\n${studentNames.join(", ")}`;
@@ -151,34 +175,40 @@ export default function StudentTab() {
 
       setDeletingStudent(true);
 
-      const courseIdNum = Number(courseId);
-      if (!courseIdNum || isNaN(courseIdNum)) {
-        throw new Error("Invalid course ID");
+      const response = await deleteCourseMemberAPI(selectedIds);
+      console.log("Bulk delete response:", response.data);
+
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+
+        let message = "";
+        if (deletedIds && deletedIds.length > 0) {
+          message += `Successfully removed ${deletedIds.length} student(s).`;
+        }
+        if (blocked && blocked.length > 0) {
+          message += `\n${blocked.length} student(s) could not be removed (may be assigned to groups or have submissions).`;
+        }
+        if (notFoundIds && notFoundIds.length > 0) {
+          message += `\n${notFoundIds.length} student(s) were not found.`;
+        }
+
+        alert(message || "Operation completed.");
+      } else if (response.data?.message) {
+        alert(response.data.message);
+      } else {
+        alert(`Successfully removed ${selectedIds.length} student(s) from the course.`);
       }
 
-      console.log("Deleting students from course:", {
-        courseId: courseIdNum,
-        studentIds: selectedIds,
-        selectedStudents
-      });
-
-      // TODO: Replace with actual delete API call when available
-      // const response = await deleteCourseMemberAPI(courseIdNum, selectedIds);
-
-      // Mock API call - replace this with actual API
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      alert(`Successfully removed ${selectedIds.length} student(s) from the course.`);
-
       setSelected({});
-
       await fetchStudents();
 
     } catch (error: any) {
       console.error("Error deleting students from course:", error);
 
       let errorMessage = "Failed to remove students from course";
-      if (error?.response?.data?.message) {
+      if (error?.response?.status === 400) {
+        errorMessage = error?.response?.data?.message || "Bad request - check if students can be removed";
+      } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.message) {
         errorMessage = error.message;
@@ -189,7 +219,6 @@ export default function StudentTab() {
       setDeletingStudent(false);
     }
   };
-
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -324,7 +353,11 @@ export default function StudentTab() {
                     {r.groupMembers?.[0]?.group?.productName || <span className="text-gray-400">-</span>}
                   </td>
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    <button onClick={() => alert(`TODO: delete ${r.user?.name || 'student'}`)} className="text-red-500 hover:underline text-lg">Delete</button>
+                    <button
+                      onClick={() => deleteSingleStudent(r)}
+                      className="text-red-500 hover:underline text-lg">
+                      {deletingStudent ? "Deleting..." : "Delete"}
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -344,7 +377,7 @@ export default function StudentTab() {
 
         {selectedCount > 0 && (
           <button
-            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
             onClick={deleteSelectedStudents}
             disabled={addingStudents || deletingStudent}
           >

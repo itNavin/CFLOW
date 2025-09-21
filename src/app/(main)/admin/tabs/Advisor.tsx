@@ -10,6 +10,7 @@ import { getAdvisorNotInCourse } from "@/types/api/courseMember";
 import { getAdvisorNotInCourseAPI } from "@/api/courseMember/getAdvisorNotInCourse";
 import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
+import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 
 export default function AdvisorTab() {
   const searchParams = useSearchParams();
@@ -33,11 +34,9 @@ export default function AdvisorTab() {
       if (!courseId) return;
 
       const response = await getAdvisorNotInCourseAPI(courseId);
-      console.log("Raw response:", response.data);
 
       if (response.data && response.data.advisors && Array.isArray(response.data.advisors)) {
         setAdvisorsNotInCourse(response.data.advisors);
-        console.log("Advisors not in course:", response.data.advisors);
       } else {
         console.error("Unexpected response structure:", response.data);
         setAdvisorsNotInCourse([]);
@@ -63,15 +62,14 @@ export default function AdvisorTab() {
       }
       const response = await getAdvisorMemberAPI(courseId);
       if (response.data?.advisors && Array.isArray(response.data.advisors)) {
-      setRows(response.data.advisors);
-    } else if (Array.isArray(response.data)) {
-      // Fallback for direct array response
-      setRows(response.data);
-      console.log("Set rows to (direct array):", response.data);
-    } else {
-      console.warn("Unexpected response structure:", response.data);
-      setRows([]);
-    }
+        setRows(response.data.advisors);
+      } else if (Array.isArray(response.data)) {
+        // Fallback for direct array response
+        setRows(response.data);
+      } else {
+        console.warn("Unexpected response structure:", response.data);
+        setRows([]);
+      }
 
 
     } catch (e: any) {
@@ -83,11 +81,60 @@ export default function AdvisorTab() {
     }
   };
 
+  const deleteSingleAdvisor = async (advisor: any) => {
+    try {
+      const advisorName = advisor.user?.name || advisor.name || `ID: ${advisor.id}`;
+
+      if (!confirm(`Are you sure you want to remove ${advisorName} from this course?`)) {
+        return;
+      }
+
+      setDeletingAdvisors(true);
+
+      const response = await deleteCourseMemberAPI(advisor.id);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+
+        if (deletedIds && deletedIds.includes(advisor.id)) {
+          alert(`Successfully removed ${advisorName} from the course.`);
+          await fetchAdvisors(); 
+        } else if (notFoundIds && notFoundIds.includes(advisor.id)) {
+          alert(`Error: Advisor ${advisorName} was not found in the course.`);
+        } else if (blocked && blocked.includes(advisor.id)) {
+          alert(`Error: Cannot remove ${advisorName} - advisor may be supervising groups or have assignments.`);
+        } else {
+          alert(`Error: Failed to remove ${advisorName} from the course.`);
+        }
+      } else if (response.data?.message) {
+        alert(response.data.message);
+        await fetchAdvisors();
+      } else {
+        alert(`Successfully removed ${advisorName} from the course.`);
+        await fetchAdvisors();
+      }
+
+    } catch (error: any) {
+      console.error("Error deleting advisor from course:", error);
+
+      let errorMessage = "Failed to remove advisor from course";
+
+      if (error?.response?.status === 400) {
+        errorMessage = error?.response?.data?.message || "Bad request - check if advisor can be removed";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setDeletingAdvisors(false);
+    }
+  };
+
   const deleteSelectedAdvisors = async () => {
     try {
-      const selectedIds = Object.keys(selected)
-        .filter(id => selected[id])
-        .map(id => id);
+      const selectedIds = Object.keys(selected).filter(id => selected[id]);
 
       if (selectedIds.length === 0) {
         alert("Please select advisors to delete");
@@ -107,21 +154,33 @@ export default function AdvisorTab() {
 
       setDeletingAdvisors(true);
 
-      if (!courseId) {
-        throw new Error("Invalid course ID");
+      const response = await deleteCourseMemberAPI(selectedIds);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+        
+        let message = "";
+        
+        if (deletedIds && deletedIds.length > 0) {
+          message += `Successfully removed ${deletedIds.length} advisor(s).`;
+        }
+        
+        if (blocked && blocked.length > 0) {
+          message += `\n${blocked.length} advisor(s) could not be removed (may be supervising groups or have assignments).`;
+        }
+        
+        if (notFoundIds && notFoundIds.length > 0) {
+          message += `\n${notFoundIds.length} advisor(s) were not found.`;
+        }
+
+        alert(message || "Operation completed.");
+        
+      } else if (response.data?.message) {
+        alert(response.data.message);
+      } else {
+        alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
       }
 
-      console.log("Deleting advisors from course:", {
-        courseId: courseId,
-        advisorIds: selectedIds,
-        selectedAdvisors
-      });
-
-      // TODO: Replace with actual delete API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
-
+      // Clear selection and refresh
       setSelected({});
       await fetchAdvisors();
 
@@ -129,7 +188,10 @@ export default function AdvisorTab() {
       console.error("Error deleting advisors from course:", error);
 
       let errorMessage = "Failed to remove advisors from course";
-      if (error?.response?.data?.message) {
+      
+      if (error?.response?.status === 400) {
+        errorMessage = error?.response?.data?.message || "Bad request - check if advisors can be removed";
+      } else if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error?.message) {
         errorMessage = error.message;
@@ -150,13 +212,6 @@ export default function AdvisorTab() {
       }
 
       const advisorsIds = selectedAdvisors.map(advisor => advisor.id);
-
-      console.log("Adding advisors to course:", {
-        courseId: courseId,
-        advisorsIds,
-        selectedAdvisors
-      });
-
       const response = await addCourseMemberAPI(courseId, advisorsIds);
 
       if (response.status === 200 || response.status === 201) {
@@ -164,14 +219,6 @@ export default function AdvisorTab() {
 
         if (response.data) {
           const { insertedCount, skippedAsDuplicate, requestedCount, message: apiMessage } = response.data;
-
-          console.log("Response breakdown:", {
-            insertedCount,
-            skippedAsDuplicate,
-            requestedCount,
-            apiMessage
-          });
-
           if (apiMessage) {
             message = apiMessage;
           } else {
@@ -232,7 +279,6 @@ export default function AdvisorTab() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    console.log("Selected file:", file.name, file.type, file.size);
     e.target.value = "";
   };
 
@@ -372,11 +418,11 @@ export default function AdvisorTab() {
 
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
                     <button
-                      onClick={() => alert(`TODO: delete ${r.user?.name || r.name || 'advisor'}`)}
+                      onClick={() => deleteSingleAdvisor(r)}
                       className="text-red-500 hover:underline text-lg"
                       disabled={deletingAdvisors}
                     >
-                      Delete
+                      {deletingAdvisors ? "Deleting..." : "Delete"}
                     </button>
                   </td>
                 </tr>
@@ -398,7 +444,7 @@ export default function AdvisorTab() {
 
         {selectedCount > 0 && (
           <button
-            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600 rounded border transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
             onClick={deleteSelectedAdvisors}
             disabled={addingAdvisors || deletingAdvisors}
           >

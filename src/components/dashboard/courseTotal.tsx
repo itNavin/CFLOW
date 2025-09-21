@@ -32,7 +32,7 @@ export default function CourseTotal({
   const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const courseId = searchParams.get("courseId") || "";
   const fetchDashboardData = async () => {
     try {
@@ -41,17 +41,13 @@ export default function CourseTotal({
         setLoading(false);
         return;
       }
-
-      const id = String(courseId);
       if (!courseId.trim()) {
         setError("Invalid course ID");
         setLoading(false);
         return;
       }
-
       setLoading(true);
       setError(null);
-
       const query: { groupId?: string; assignmentId?: string } = {};
       if (groupId !== undefined) query.groupId = String(groupId);
       if (assignmentId !== undefined) query.assignmentId = String(assignmentId);
@@ -81,6 +77,22 @@ export default function CourseTotal({
       <div className="text-red-600 p-3 bg-red-50 rounded-lg">
         <p className="font-semibold">Error loading course totals</p>
         <p className="text-sm">{error}</p>
+      </div>
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <div className="text-gray-500 p-3 bg-gray-50 rounded-lg">
+        No dashboard data available
+      </div>
+    );
+  }
+
+  if (!dashboard.course) {
+    return (
+      <div className="text-gray-500 p-3 bg-gray-50 rounded-lg">
+        No course data available
       </div>
     );
   }

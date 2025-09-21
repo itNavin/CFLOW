@@ -143,7 +143,7 @@ export default function CourseTab() {
       }
       const response = await getAllAssignmentsAPI(courseId);
       console.log("Assignments:", response.data); // Debug log
-      setAssignments(response.data);
+      setAssignments(response.data.assignments);
     } catch (error) {
       console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
@@ -186,9 +186,6 @@ export default function CourseTab() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-1">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-2xl font-semibold">Class Information</h2>
-              <button className="p-2 rounded-md hover:bg-gray-100">
-                {/* <Pencil className="w-4 h-4 text-gray-700" /> */}
-              </button>
             </div>
             <CourseInfo courseId={courseId} />
             {/* {dashboard && (
