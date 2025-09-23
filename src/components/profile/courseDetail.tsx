@@ -14,7 +14,7 @@ export default function CourseDetailCard() {
         setError(null);
         const response = await getProfileAPI();
         // Adjust based on your API response structure
-        setCourses(response.data.profile.courseNames ?? []);
+        setCourses(response.data.profile?.courseNames ?? []);
       } catch (err: any) {
         console.error("Error fetching courses:", err);
         setError("Failed to load courses");
@@ -50,7 +50,7 @@ export default function CourseDetailCard() {
       {courses.length > 0 ? (
         courses.map((course, index) => (
           <p key={index}>
-            <strong>Course</strong><br />{course}
+            {course}
           </p>
         ))
       ) : (
