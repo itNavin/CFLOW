@@ -3,17 +3,27 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 import { getGroup } from "@/types/api/group";
+import { updateGroupAPI } from "@/api/group/updateGroup";
+import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
+import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
 
-// Define interfaces for the component
 interface Member {
   studentId: string;
   name: string;
+  courseMemberId: string;
+}
+
+interface Advisor {
+  id: string;
+  name: string;
+  email?: string;
+  courseMemberId: string;
 }
 
 interface UpdateGroupModalProps {
   group: getGroup.Group;
   onCancel: () => void;
-  onSave: (updated: getGroup.Group) => void;
+  onSave: () => void;
 }
 
 export default function UpdateGroupModal({
@@ -21,62 +31,102 @@ export default function UpdateGroupModal({
   onCancel,
   onSave,
 }: UpdateGroupModalProps) {
-  // Extract the current values from the group data
   const [groupNo, setGroupNo] = useState(group.codeNumber || "");
   const [projectTitle, setProjectTitle] = useState(group.projectName || "");
   const [productTitle, setProductTitle] = useState(group.productName || "");
   const [company, setCompany] = useState(group.company || "");
-  
-  // Convert API data to local format
-  const [members, setMembers] = useState<Member[]>(
-    group.members?.map(m => ({
-      studentId: m.courseMember.user.id,
-      name: `${m.courseMember.user.name} ${m.courseMember.user.surname}`.trim()
-    })) || []
-  );
-  
-  const [advisor, setAdvisor] = useState<string>(
-    group.advisors?.[0] 
-      ? `${group.advisors[0].courseMember.user.email} ${group.advisors[0].courseMember.user.name} ${group.advisors[0].courseMember.user.surname}`.trim()
-      : ""
-  );
-  
-  const [coAdvisor, setCoAdvisor] = useState<string>(
-    group.advisors?.[1] 
-      ? `${group.advisors[1].courseMember.user.email} ${group.advisors[1].courseMember.user.name} ${group.advisors[1].courseMember.user.surname}`.trim()
-      : ""
-  );
+
+  const [availableStudents, setAvailableStudents] = useState<Member[]>([]);
+  const [availableAdvisors, setAvailableAdvisors] = useState<Advisor[]>([]);
+
+  const [members, setMembers] = useState<Member[]>([]);
+  const [advisor, setAdvisor] = useState<string>("");
+  const [coAdvisor, setCoAdvisor] = useState<string>("");
 
   const [qMember, setQMember] = useState("");
   const [qAdvisor, setQAdvisor] = useState("");
   const [qCoAdvisor, setQCoAdvisor] = useState("");
 
-  const panelRef = useRef<HTMLDivElement | null>(null);
-  const canSave = projectTitle.trim().length > 0 && groupNo.trim().length > 0;
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [isLoadingAdvisors, setIsLoadingAdvisors] = useState(false);
 
-  // Mock data - replace with actual API calls
-  const STUDENTS: Member[] = [
-    { studentId: "65130500211", name: "Navin Dansakul" },
-    { studentId: "65130500241", name: "Mananchai Chankhuong" },
-    { studentId: "65130500299", name: "Cristiano Ronaldo" },
-    { studentId: "65130500212", name: "Lamine Yamal" },
-    { studentId: "65130500213", name: "Lionel Messi" },
-    { studentId: "65130500214", name: "Rafael Leao" },
-    { studentId: "65130500271", name: "Harry Maguire" },
-    { studentId: "65130500272", name: "Marcus Rashford" },
-    { studentId: "65130500273", name: "Antony Santos" },
-  ];
-  
-  const ADVISORS: { id: string; name: string }[] = [
-    { id: "65130500255", name: "Dr. Vithida Chongsuphajaisiddhi" },
-    { id: "65130500256", name: "Dr. Chonlameth Apninkanondt" },
-    { id: "65130500257", name: "Dr. Tuul Triyason" },
-  ];
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const canSave = projectTitle.trim().length > 0 && groupNo.trim().length > 0 && !isUpdating;
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onCancel();
+    const initialMembers = group.members?.map(m => ({
+      studentId: String(m.courseMember.user.id),
+      name: m.courseMember.user.name,
+      courseMemberId: String(m.courseMember.id)
+    })) || [];
+    setMembers(initialMembers);
+
+    const mainAdvisor = group.advisors?.find(a => a.advisorRole === "ADVISOR");
+    const coAdvisorData = group.advisors?.find(a => a.advisorRole === "CO_ADVISOR");
+
+    setAdvisor(mainAdvisor?.courseMember.user.name || "");
+    setCoAdvisor(coAdvisorData?.courseMember.user.name || "");
+  }, [group]);
+
+  const fetchAvailableStudents = async () => {
+    try {
+      setIsLoadingStudents(true);
+      const response = await getStudentNotInGroupAPI(group.courseId);
+      console.log("Available Students", response.data.students);
+
+      const mappedStudents = response.data.students.map((s) => {
+        return {
+          studentId: String(s.userId),
+          name: s.name,
+          courseMemberId: String(s.courseMemberId)
+        }
+      })
+      setAvailableStudents(mappedStudents);
+      console.log("setAvailableStudents", mappedStudents);
+    }
+    catch (error) {
+      console.error("Error fetching students:", error);
+      setAvailableStudents([]);
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  const fetchAvailableAdvisors = async () => {
+    try {
+      setIsLoadingAdvisors(true);
+      const response = await getAdvisorMemberAPI(group.courseId);
+
+      console.log("Available Advisors", response.data.advisors);
+
+      const mappedAdvisors: Advisor[] = response.data.advisors.map((a) => {
+        return {
+          id: a.user.id,
+          name: a.user.name,
+          email: a.user.email || undefined,
+          courseMemberId: a.id
+        }
+      });
+
+      setAvailableAdvisors(mappedAdvisors);
+    } catch (error) {
+      console.error("Error fetching advisors:", error);
+      setAvailableAdvisors([]);
+    } finally {
+      setIsLoadingAdvisors(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableStudents();
+    fetchAvailableAdvisors();
+  }, [group.courseId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !isUpdating && onCancel();
     const onClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) onCancel();
+      if (!isUpdating && panelRef.current && !panelRef.current.contains(e.target as Node)) onCancel();
     };
     document.addEventListener("keydown", onKey);
     document.addEventListener("mousedown", onClick);
@@ -84,58 +134,90 @@ export default function UpdateGroupModal({
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [onCancel]);
+  }, [onCancel, isUpdating]);
 
   const memberSuggestions = useMemo(() => {
     const q = qMember.trim().toLowerCase();
-    if (!q) return [] as Member[];
-    return STUDENTS.filter(
-      (s) => s.studentId.includes(q) || s.name.toLowerCase().includes(q)
-    ).slice(0, 6);
-  }, [qMember]);
+    if (!q) return [];
+
+    return availableStudents.filter((s) => {
+      const isAlreadyMember = members.some(m => String(m.studentId) === String(s.studentId));
+      if (isAlreadyMember) return false;
+      return String(s.studentId).toLowerCase().includes(q) || String(s.name).toLowerCase().includes(q);
+    }).slice(0, 6);
+  }, [qMember, availableStudents, members]);
 
   const advisorSuggestions = useMemo(() => {
     const q = qAdvisor.trim().toLowerCase();
-    if (!q) return [] as { id: string; name: string }[];
-    return ADVISORS.filter(
-      (a) => a.id.includes(q) || a.name.toLowerCase().includes(q)
+    if (!q) return [];
+    return availableAdvisors.filter(a =>
+      a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
     ).slice(0, 6);
-  }, [qAdvisor]);
+  }, [qAdvisor, availableAdvisors]);
 
   const coAdvisorSuggestions = useMemo(() => {
     const q = qCoAdvisor.trim().toLowerCase();
-    if (!q) return [] as { id: string; name: string }[];
-    return ADVISORS.filter(
-      (a) => a.id.includes(q) || a.name.toLowerCase().includes(q)
+    if (!q) return [];
+    return availableAdvisors.filter(a =>
+      a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
     ).slice(0, 6);
-  }, [qCoAdvisor]);
+  }, [qCoAdvisor, availableAdvisors]);
 
   const addMember = (m: Member) => {
     setMembers((prev) => {
-      const exists = prev.some((x) => x.studentId === m.studentId);
-      if (exists) return prev;
+      if (prev.find(mem => mem.studentId == m.studentId)) return prev;
       return [...prev, m];
     });
     setQMember("");
   };
 
-  const removeMember = (sid: string) =>
-    setMembers((prev) => prev.filter((m) => m.studentId !== sid));
-
-  const handleSave = () => {
-    // Create updated group object with the same structure as the original
-    const updatedGroup: getGroup.Group = {
-      ...group,
-      codeNumber: groupNo.trim(),
-      projectName: projectTitle.trim(),
-      productName: productTitle.trim(),
-      company: company.trim() || null,
-      // Note: In a real implementation, you'd need to handle the members and advisors
-      // conversion back to the API format here
-    };
-
-    onSave(updatedGroup);
+  const removeMember = (studentIdToRemove: string) => {
+    setMembers((prev) => prev.filter((m) => m.studentId !== studentIdToRemove));
   };
+
+  const extractAdvisorId = (advisorString: string): { id: string }[] => {
+    if (!advisorString) return [];
+    const advisor = availableAdvisors.find(a => advisorString.includes(a.name));
+    // return advisor?.id || "";
+    if (!advisor) return [];
+    return [{ id: advisor?.courseMemberId }];
+  };
+
+  const handleSave = async () => {
+    try {
+      setIsUpdating(true);
+
+      const memberIds = members.map(m => ({ id: m.courseMemberId }));
+      const advisorIds = extractAdvisorId(advisor);
+      const coAdvisorIds = extractAdvisorId(coAdvisor);
+
+      const response = await updateGroupAPI(
+        group.courseId,
+        group.id,
+        groupNo.trim(),
+        projectTitle.trim(),
+        productTitle.trim() || null,
+        company.trim() || null,
+        memberIds,
+        advisorIds,
+        coAdvisorIds
+      );
+
+      alert("Group updated successfully!");
+      onSave();
+
+    } catch (error: any) {
+      console.error("Error updating group:", error);
+      alert(`Error: ${error?.response?.data?.message || error?.message || "Failed to update group"}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;  // ⟵ prevent SSR output for this modal
+
 
   return (
     <>
@@ -144,56 +226,69 @@ export default function UpdateGroupModal({
         <div ref={panelRef} className="w-full max-w-xl rounded-2xl border bg-white shadow-xl">
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-2xl font-semibold">Edit Group</h2>
-            <button onClick={onCancel} className="p-2 rounded hover:bg-gray-100" aria-label="Close">
+            <button
+              onClick={onCancel}
+              disabled={isUpdating}
+              className="p-2 rounded hover:bg-gray-100 disabled:opacity-50"
+            >
               <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
 
           <div className="px-6 py-5 space-y-5">
-            <Field label="ID" required>
+            <Field label="ID" required htmlFor="groupNo">
               <input
+                id="groupNo"
                 value={groupNo}
                 onChange={(e) => setGroupNo(e.target.value)}
+                disabled={isUpdating}
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                 placeholder="0001"
               />
             </Field>
 
-            <Field label="Project Title" required>
+            <Field label="Project Title" required htmlFor="projectTitle">
               <input
+                id="projectTitle"
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
+                disabled={isUpdating}
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                placeholder="HelloHello"
+                placeholder="Project Name"
               />
             </Field>
 
-            <Field label="Product Title">
+            <Field label="Product Title" htmlFor="productTitle">
               <input
+                id="productTitle"
                 value={productTitle}
                 onChange={(e) => setProductTitle(e.target.value)}
+                disabled={isUpdating}
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                placeholder="Twomandown"
+                placeholder="Product Name"
               />
             </Field>
 
-            <Field label="Company">
+            <Field label="Company" htmlFor="company">
               <input
+                id="company"
                 value={company}
                 onChange={(e) => setCompany(e.target.value)}
+                disabled={isUpdating}
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                placeholder="Enter company name (optional)"
+                placeholder="Company Name"
               />
             </Field>
 
-            <Field label="Member">
+            <Field label="Members">
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   {members.map((m) => (
                     <Chip
-                      key={m.studentId}
+                      key={m.courseMemberId}
                       label={`${m.studentId} ${m.name}`}
-                      onRemove={() => removeMember(m.studentId)}
+                      onRemove={() => !isUpdating && removeMember(m.studentId)}
+                      disabled={isUpdating}
                     />
                   ))}
                 </div>
@@ -201,27 +296,22 @@ export default function UpdateGroupModal({
                   <input
                     value={qMember}
                     onChange={(e) => setQMember(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && qMember.trim()) {
-                        // Accept "6513.. Full Name"
-                        const m = qMember.match(/^([0-9]{6,})\s+(.+)$/);
-                        if (m) addMember({ studentId: m[1], name: m[2] });
-                        setQMember("");
-                      }
-                    }}
-                    placeholder='Search (type "6513.. Full Name" and Enter)'
+                    disabled={isUpdating}
+                    placeholder="Search students..."
                     className="w-full rounded border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  {qMember && memberSuggestions.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow">
+
+                  {qMember && memberSuggestions.length > 0 && !isLoadingStudents && (
+                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow max-h-40 overflow-y-auto">
                       {memberSuggestions.map((s) => (
                         <li
                           key={s.studentId}
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => addMember(s)}
                         >
-                          {s.studentId} {s.name}
+                          <div className="font-medium">{s.studentId}</div>
+                          <div className="text-gray-600 text-xs">{s.name}</div>
                         </li>
                       ))}
                     </ul>
@@ -232,35 +322,36 @@ export default function UpdateGroupModal({
 
             <Field label="Advisor">
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {advisor && <Chip label={advisor} onRemove={() => setAdvisor("")} />}
-                </div>
+                {advisor && (
+                  <Chip
+                    label={advisor}
+                    onRemove={() => !isUpdating && setAdvisor("")}
+                    disabled={isUpdating}
+                  />
+                )}
                 <div className="relative">
                   <input
                     value={qAdvisor}
                     onChange={(e) => setQAdvisor(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && qAdvisor.trim()) {
-                        setAdvisor(qAdvisor.trim());
-                        setQAdvisor("");
-                      }
-                    }}
-                    placeholder="Search advisor"
+                    disabled={isUpdating}
+                    placeholder="Search advisor..."
                     className="w-full rounded border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  {qAdvisor && advisorSuggestions.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow">
+
+                  {qAdvisor && advisorSuggestions.length > 0 && !isLoadingAdvisors && (
+                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow max-h-40 overflow-y-auto">
                       {advisorSuggestions.map((a) => (
                         <li
                           key={a.id}
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
-                            setAdvisor(`${a.id} ${a.name}`);
+                            setAdvisor(a.name);
                             setQAdvisor("");
                           }}
                         >
-                          {a.id} {a.name}
+                          <div className="font-medium">{a.name}</div>
+                          {a.email && <div className="text-gray-600 text-xs">{a.email}</div>}
                         </li>
                       ))}
                     </ul>
@@ -271,35 +362,36 @@ export default function UpdateGroupModal({
 
             <Field label="Co-Advisor">
               <div className="space-y-2">
-                <div className="flex flex-wrap gap-2">
-                  {coAdvisor && <Chip label={coAdvisor} onRemove={() => setCoAdvisor("")} />}
-                </div>
+                {coAdvisor && (
+                  <Chip
+                    label={coAdvisor}
+                    onRemove={() => !isUpdating && setCoAdvisor("")}
+                    disabled={isUpdating}
+                  />
+                )}
                 <div className="relative">
                   <input
                     value={qCoAdvisor}
                     onChange={(e) => setQCoAdvisor(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && qCoAdvisor.trim()) {
-                        setCoAdvisor(qCoAdvisor.trim());
-                        setQCoAdvisor("");
-                      }
-                    }}
-                    placeholder="Search co-advisor"
+                    disabled={isUpdating}
+                    placeholder="Search co-advisor..."
                     className="w-full rounded border pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                   />
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  {qCoAdvisor && coAdvisorSuggestions.length > 0 && (
-                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow">
+
+                  {qCoAdvisor && coAdvisorSuggestions.length > 0 && !isLoadingAdvisors && (
+                    <ul className="absolute z-10 mt-1 w-full rounded border bg-white shadow max-h-40 overflow-y-auto">
                       {coAdvisorSuggestions.map((a) => (
                         <li
                           key={a.id}
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
-                            setCoAdvisor(`${a.id} ${a.name}`);
+                            setCoAdvisor(a.name);
                             setQCoAdvisor("");
                           }}
                         >
-                          {a.id} {a.name}
+                          <div className="font-medium">{a.name}</div>
+                          {a.email && <div className="text-gray-600 text-xs">{a.email}</div>}
                         </li>
                       ))}
                     </ul>
@@ -310,15 +402,19 @@ export default function UpdateGroupModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-            <button onClick={onCancel} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100">
+            <button
+              onClick={onCancel}
+              disabled={isUpdating}
+              className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100"
+            >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={!canSave}
-              className="rounded px-5 py-2 text-white disabled:opacity-60 shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
+              className="rounded px-5 py-2 text-white bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320]"
             >
-              Save
+              {isUpdating ? "Updating..." : "Save"}
             </button>
           </div>
         </div>
@@ -327,33 +423,53 @@ export default function UpdateGroupModal({
   );
 }
 
-function Chip({ label, onRemove }: { label: string; onRemove: () => void }) {
+function Chip({
+  label,
+  onRemove,
+  disabled = false,
+}: {
+  label: string;
+  onRemove: () => void;
+  disabled?: boolean;
+}) {
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800">
+    <div className={`inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm ${disabled ? 'opacity-50' : ''}`}>
       {label}
-      <button onClick={onRemove} className="rounded-full p-0.5 hover:bg-gray-200" aria-label="Remove">
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
+        onMouseDown={(e) => e.stopPropagation()}
+        disabled={disabled}
+        className="rounded-full p-0.5 hover:bg-gray-200"
+      >
         <X className="w-3.5 h-3.5 text-gray-700" />
       </button>
-    </span>
+    </div>
   );
 }
+
 
 function Field({
   label,
   required,
   children,
+  htmlFor, // optional input id
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
+  htmlFor?: string;
 }) {
   return (
-    <label className="block">
-      <div className="mb-1 text-lg font-semibold text-gray-900">
+    <div className="block">
+      <label
+        className="mb-1 block text-lg font-semibold text-gray-900"
+        htmlFor={htmlFor}
+      >
         {label}
         {required && <span className="text-red-500 pl-0.5">*</span>}
-      </div>
+      </label>
       {children}
-    </label>
+    </div>
   );
 }
