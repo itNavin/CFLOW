@@ -208,8 +208,8 @@ export default function GroupTab() {
         <UpdateGroupModal
           group={editTarget}
           onCancel={() => setEditTarget(null)}
-          onSave={(updated) => {
-            setGroup((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
+          onSave={() => {
+            fetchGroup();
             setEditTarget(null);
           }}
         />

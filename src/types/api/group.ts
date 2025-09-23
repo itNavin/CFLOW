@@ -107,3 +107,21 @@ export namespace updateGroup {
     group: Group;
   };
 }
+
+export namespace studentNotInGroup {
+  export type StudentNotInGroup = {
+    message: string;
+    students: Student[];
+  }
+}
+
+type Student = {
+  courseMemberId: string;
+  userId: string;
+  name: string;
+  email: string;
+  role: "STUDENT";
+  program: string;
+  createdAt: string;
+}
+    

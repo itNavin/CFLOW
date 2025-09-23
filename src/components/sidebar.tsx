@@ -93,12 +93,15 @@ export default function Sidebar() {
     <aside className="w-60 h-screen bg-white border-r">
       <nav className="flex flex-col py-6 space-y-2 font-dbheavent">
         {menuItems.map((item) => {
+          const groupId = project?.group?.id ? String(project.group.id) : "";
+
+
           const linkHref = isStudent
             ? {
                 pathname: item.href,
                 query: {
                   courseId: String(id),
-                  groupId: String(project?.group.id ?? ""),
+                  groupId: groupId,
                 },
               }
             : { pathname: item.href, query: { courseId: String(id) } };
