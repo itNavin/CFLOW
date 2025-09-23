@@ -44,7 +44,6 @@ export const CourseModal = ({
                 description: description.trim(),
             });
         } catch (error) {
-            // Error handling is done in the parent component
         } finally {
             setIsSubmitting(false);
         }
@@ -71,9 +70,7 @@ export const CourseModal = ({
                         </button>
                     </div>
 
-                    {/* Body */}
                     <div className="px-6 py-5 space-y-6 text-black">
-                        {/* Program */}
                         <div>
                             <div className="text-[18px] font-semibold mb-2">
                                 Course<span className="text-red-500">*</span>
@@ -102,7 +99,6 @@ export const CourseModal = ({
                             </div>
                         </div>
 
-                        {/* Course name */}
                         <div>
                             <div className="text-[18px] font-semibold mb-2">
                                 Course name<span className="text-red-500">*</span>
@@ -115,7 +111,6 @@ export const CourseModal = ({
                             />
                         </div>
 
-                        {/* Description */}
                         <div>
                             <div className="text-[18px] font-semibold mb-2">Description</div>
                             <input
@@ -127,7 +122,6 @@ export const CourseModal = ({
                         </div>
                     </div>
 
-                    {/* Footer */}
                     <div className="px-6 py-4 border-t flex justify-end">
                         <button
                             disabled={!canSubmit}
