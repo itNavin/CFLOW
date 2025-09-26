@@ -10,6 +10,10 @@ import { getUserById } from "@/api/user/getUserById";
 import { createGroupAPI } from "@/api/group/createGroup";
 import CreateGroupModal from "@/components/group/createGroup";
 import UpdateGroupModal from "@/components/group/updateGroupModal";
+import * as XLSX from "xlsx";
+import { Course } from "@/types/api/course";
+import { getStaffCourse } from "@/types/api/course";
+import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 
 export default function GroupTab() {
   const courseId = useSearchParams().get("courseId") || "";
@@ -19,6 +23,7 @@ export default function GroupTab() {
   const [openCreate, setOpenCreate] = useState(false);
   const [editTarget, setEditTarget] = useState<getGroup.Group | null>(null);
   const [loading, setLoading] = useState(true);
+  const [course, setCourse] = useState<Course | null>(null);
 
   const fetchGroup = async () => {
     try {
@@ -32,7 +37,6 @@ export default function GroupTab() {
       }
 
       const response = await getAllGroupAPI(courseId);
-      console.log("API Response:", response.data);
 
       if (response.data?.groups && Array.isArray(response.data.groups)) {
         setGroup(response.data.groups);
@@ -49,8 +53,23 @@ export default function GroupTab() {
     }
   };
 
+  const fetchCourse = async () => {
+    try {
+      if (!courseId) return;
+      const response = await getStaffCourseAPI();
+      const found = response.data.course.find(c => c.id === courseId);
+      setCourse(found || null);
+
+      console.log("course", found);
+    } catch (error) {
+      console.error("Error fetching course info:", error);
+      setCourse(null);
+    }
+  };
+
   useEffect(() => {
     fetchGroup();
+    fetchCourse();
   }, [courseId]);
 
   const filtered = useMemo(() => {
@@ -68,11 +87,67 @@ export default function GroupTab() {
   const handleCreate = async (newGroup: getGroup.Group) => {
     setGroup((prev) => [newGroup, ...prev]);
     setOpenCreate(false);
-
     await fetchGroup();
   };
 
+  useEffect(() => {
+    console.log("openCreate changed:", openCreate);
+  }, [openCreate]);
 
+  const handleDownloadAll = () => {
+    const pageTitle = course?.program
+      ? `${course.program.toUpperCase()} Student Group Data`
+      : "Student Group Data";
+
+    const headerRow = [
+      "ID",
+      "Project Title",
+      "Product Title",
+      "Company",
+      "Members",
+      "Advisor",
+      "CoAdvisor"
+    ]
+
+    const dataRows = group.map(g => [
+      g.codeNumber,
+      g.projectName,
+      g.productName,
+      g.company,
+      g.members.map((m, idx) =>
+        `${idx + 1}. ${m.courseMember.user.id} ${m.courseMember.user.name}`
+      ).join("\n"), 
+      g.advisors[0]?.courseMember.user.name || "",
+      g.advisors[1]?.courseMember.user.name || ""
+    ]);
+    const excelData = [
+      [pageTitle],
+      headerRow,
+      ...dataRows
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+
+    worksheet["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headerRow.length - 1 } }];
+    worksheet['!cols'] = headerRow.map((_, colIdx) => ({
+      wch: Math.max(
+        ...[headerRow, ...dataRows].map(row => (row[colIdx] ? row[colIdx].toString().length : 10)),
+        10
+      )
+    }));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Groups");
+
+    worksheet["A1"].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
+
+    Object.keys(worksheet)
+      .filter(k => k.endsWith("2"))
+      .forEach((cellKey) => {
+        worksheet[cellKey].s = { font: { bold: true } };
+      });
+
+    XLSX.writeFile(workbook, `Course_${course?.name}_Groups_Data.xlsx`);
+  };
 
   const nextGroupNo = useMemo(() => {
     if (!Array.isArray(group) || group.length === 0) {
@@ -87,6 +162,10 @@ export default function GroupTab() {
     return String(maxNo + 1).padStart(4, '0');
   }, [group]);
 
+  useEffect(() => {
+  console.log("openCreate changed:", openCreate);
+}, [openCreate]);
+
   return (
     <section className="min-h-[60vh]">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -100,10 +179,10 @@ export default function GroupTab() {
           </button>
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
-            onClick={() => alert("TODO: download all data")}
+            onClick={handleDownloadAll}
           >
             <Download className="w-4 h-4" />
-            Download All Data
+            Download
           </button>
         </div>
 
@@ -152,7 +231,7 @@ export default function GroupTab() {
                 <div className="grid grid-cols-[110px_1fr]">
                   <dt className="text-gray-900 text-xl">Member :</dt>
                   <dd>
-                    <ul className="list-none space-y-1 text-xl">
+                    <ol className="list-decimal ml-3 space-y-1 text-xl">
                       {data.members.map((members) => (
                         <li key={members.id}>
                           <span className="text-gray-900 text-xl mr-2">
@@ -164,17 +243,14 @@ export default function GroupTab() {
                           {members.courseMember.user.surname}
                         </li>
                       ))}
-                    </ul>
+                    </ol>
                   </dd>
                 </div>
 
                 <div className="grid grid-cols-[110px_1fr]">
                   <dt className="text-gray-900 text-xl">Advisor :</dt>
                   <dd className="text-xl">
-                    {data.advisors[0]?.courseMember.id}
-                    <span className="text-gray-900 text-xl ml-2 mr-2">
                       {data.advisors[0]?.courseMember.user.name}
-                    </span>
                     {data.advisors[0]?.courseMember.user.surname}
                   </dd>
                 </div>

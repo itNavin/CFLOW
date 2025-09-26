@@ -52,6 +52,7 @@ export namespace getGroup {
   };
 
   export type UserAdvisor = {
+    id: string;
     email: string;
     prefix: string;
     name: string;
@@ -75,6 +76,8 @@ type newGroup = {
   projectName: string;
   productName: string | null;
   company: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type Group = {
