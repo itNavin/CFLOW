@@ -23,7 +23,7 @@ export function formatUploadAt(
     year: "numeric",
     month: "short",
     day: "2-digit",
-    timeZone: "Asia/Bangkok", // convert from Z (UTC) → Bangkok (UTC+7)
+    timeZone: "Asia/Bangkok", 
   });
 }
 
@@ -32,29 +32,27 @@ export default function StudentDashboard() {
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo | null>(null);
   const [groupDashboard, setGroupDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
-  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<number | null>(null);
+  const [selectedAssignmentChartId, setSelectedAssignmentChartId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
 
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const assignmentId = Number(e.target.value);
-    setSelectedAssignmentChartId(assignmentId > 0 ? assignmentId : null);
+    const assignmentId = e.target.value;
+    setSelectedAssignmentChartId(assignmentId > "0" ? assignmentId : null);
 
-    if (!isNaN(assignmentId)) {
-      fetchDashboardDataWithQuery({ 
-        assignmentId: assignmentId > 0 ? assignmentId : undefined,
-        groupId: Number(groupInfo?.id) // Add group ID to filter for this student's group
+    if (!assignmentId) {
+      fetchDashboardDataWithQuery({
+        assignmentId: assignmentId > "0" ? assignmentId : undefined,
+        groupId: groupInfo?.id
       });
     }
-  }
+  };
 
   const fetchGroupInformation = async () => {
     try {
-      if (!courseId) return;
-
-      if (Number.isNaN(courseId)) {
+      if (!courseId) {
         setError("Invalid courseId in URL");
         return;
       }
@@ -68,16 +66,15 @@ export default function StudentDashboard() {
     }
   };
 
-  const fetchDashboardDataWithQuery = async (query: { assignmentId?: number; groupId?: number }) => {
+  const fetchDashboardDataWithQuery = async (query: { assignmentId?: string; groupId?: string }) => {
     try {
       if (!courseId) return;
       setDashboardLoading(true);
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      const id = courseId;
+      if (!id) {
         setError("Invalid courseId in URL");
         return;
-      }
-          
+      }          
       const response = await getDashboardData(courseId, {
         assignmentId: query.assignmentId !== undefined ? String(query.assignmentId) : undefined,
         groupId: query.groupId !== undefined ? String(query.groupId) : undefined,
@@ -97,7 +94,7 @@ export default function StudentDashboard() {
     try {
       if (!courseId) return;
 
-      if (Number.isNaN(courseId)) {
+      if (!courseId) {
         setError("Invalid courseId in URL");
         return;
       }
@@ -123,18 +120,29 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!groupInfo) return;
-    fetchDashboardDataWithQuery({ groupId: Number(groupInfo.id) });
+    fetchDashboardDataWithQuery({ groupId: String(groupInfo.id) });
   }, [groupInfo])
 
-  // ✅ FIXED: Fetch dashboard data for student's group after group info is loaded
   useEffect(() => {
     if (groupInfo?.id) {
       fetchDashboardDataWithQuery({ 
         assignmentId: selectedAssignmentChartId || undefined,
-        groupId: Number(groupInfo.id) 
+        groupId: String(groupInfo.id) 
       });
     }
   }, [groupInfo?.id, selectedAssignmentChartId]);
+
+  const getStatusCounts = () => {
+    if (!dashboard?.course?.submissions?.statusCounts) {
+      return undefined;
+    }
+    return dashboard.course.submissions.statusCounts;
+  };
+
+  type StatusKey = 'NOT_SUBMITTED' | 'SUBMITTED' | 'REJECTED' | 'APPROVED_WITH_FEEDBACK' | 'FINAL';
+  const getStatusCount = (status: StatusKey): number => {
+    return dashboard?.course?.submissions?.statusCounts?.[status] || 0;
+  };
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
@@ -142,9 +150,6 @@ export default function StudentDashboard() {
         <div className="xl:col-span-2 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-1">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-semibold">Class Information</h2>
-              </div>
               <CourseInfo courseId={courseId} />
             </section>
 
@@ -170,68 +175,23 @@ export default function StudentDashboard() {
 
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="flex items-center justify-center">
-                  {/* ✅ FIXED: Use MultiColorDonut with actual data */}
                   <MultiColorDonut 
-                    statusCounts={dashboard?.course.submissions?.statusCounts}
+                    statusCounts={getStatusCounts()}
                     loading={dashboardLoading}
                   />
                 </div>
                 <ul className="space-y-2 text-lg">
-                  {dashboard && (
-                    <>
-                      <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
-                      <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
-                      <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
-                      <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
-                      <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
-                    </>
-                  )}
+                      <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
+                      <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
+                      <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
+                      <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
+                      <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
                 </ul>
               </div>
             </section>
           </div>
-
-          {/* <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-2xl font-semibold mb-4">Alerts</h2>
-            <div className="divide-y">
-              <AlertRow
-                icon={<CheckCircle2 className="w-5 h-5 text-green-600" />}
-                title="Assignment Approved"
-                desc="Assignment 3 has been marked as final. No further action is required."
-                date="01/04/2025, 09:00 AM"
-              />
-              <AlertRow
-                icon={<span className="text-xl">📨</span>}
-                title="Announcement Posted"
-                desc="New announcement posted by Thanatat Wongabut"
-                date="01/04/2025, 09:00 AM"
-              />
-            </div>
-          </section> */}
         </div>
-
         <div className="space-y-6">
-          {/* <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-            <h2 className="text-2xl font-semibold mb-4">Summary</h2>
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-              {dashboard ? (
-                <>
-                  <DT label="Total Students" value={(dashboard.totals.students ?? 0).toString()} />
-                  <DT label="Total Advisors" value={(dashboard.totals.advisors ?? 0).toString()} />
-                  <DT label="Total Groups" value={(dashboard.totals.groups ?? 0).toString()} />
-                  <DT label="Total Assignments" value={(dashboard.totals.assignments ?? 0).toString()} />
-                </>
-              ) : (
-                <>
-                  <DT label="Total Students" value="0" />
-                  <DT label="Total Advisors" value="0" />
-                  <DT label="Total Groups" value="0" />
-                  <DT label="Total Assignments" value="0" />
-                </>
-              )}
-            </dl>
-          </section> */}
-
           <section className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
@@ -255,7 +215,7 @@ export default function StudentDashboard() {
 
           <GroupInformationCard
             data={{
-              id: groupInfo?.id?.toString() || "No Group",
+              id: groupInfo?.codeNumber || "No Group",
               projectTitle: groupInfo?.projectName || "-",
               productTitle: groupInfo?.productName || "-",
               company: groupInfo?.company || "-",
@@ -263,6 +223,7 @@ export default function StudentDashboard() {
                 `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
               ) || [],
               advisor: groupInfo?.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
+              codeNumber: groupInfo?.codeNumber || "-",
             }}
             onEdit={() => console.log("Edit group")}
           />
@@ -272,7 +233,6 @@ export default function StudentDashboard() {
   );
 }
 
-// ✅ FIXED: MultiColorDonut component that works with status data
 function MultiColorDonut({
   statusCounts,
   loading = false
@@ -286,7 +246,6 @@ function MultiColorDonut({
   };
   loading?: boolean;
 }) {
-  // Show loading state
   if (loading) {
     return (
       <div className="flex flex-col items-center">
@@ -329,7 +288,6 @@ function MultiColorDonut({
     );
   }
 
-  // Define colors for each status
   const statusColors = {
     NOT_SUBMITTED: '#6b7280', // gray
     SUBMITTED: '#1d4ed8',      // blue
@@ -398,6 +356,7 @@ function GroupInformationCard({
     company?: string;
     members: string[];
     advisor: string;
+    codeNumber: string;
   };
   onEdit?: () => void;
 }) {
@@ -415,7 +374,7 @@ function GroupInformationCard({
       </div>
 
       <div className="space-y-4 text-gray-900">
-        <Field label="ID" value={data.id} />
+        <Field label="ID" value={data.codeNumber} />
         <Field label="Project Title" value={data.projectTitle} />
         <Field label="Product Title" value={data.productTitle} />
         {data.company && <Field label="Company" value={data.company} />}
@@ -455,57 +414,11 @@ function Field({
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="py-2">
-      <div className="text-lg font-bold text-gray-900">{label}</div>
-      <div className="text-lg text-gray-900">{value}</div>
-    </div>
-  );
-}
-
-function DT({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt className="text-lg font-bold text-gray-900">{label}</dt>
-      <dd className="text-lg text-gray-900">{value}</dd>
-    </>
-  );
-}
-
 function LegendItem({ color, text }: { color: string; text: string }) {
   return (
     <li className="flex items-center gap-2">
       <span className="inline-block w-4 h-4 rounded-sm" style={{ backgroundColor: color }} />
       <span className="text-lg font-bold">{text}</span>
     </li>
-  );
-}
-
-function AlertRow({
-  icon,
-  title,
-  desc,
-  date,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  date: string;
-}) {
-  return (
-    <div className="py-3 flex items-start justify-between">
-      <div className="flex items-start gap-3">
-        <div className="mt-0.5">{icon}</div>
-        <div>
-          <div className="font-semibold text-lg">{title}</div>
-          <div className="text-lg text-gray-600">{desc}</div>
-          <Link href="#" className="text-lg text-[#326295] hover:underline">
-            More Detail
-          </Link>
-        </div>
-      </div>
-      <div className="text-lg text-gray-500">{date}</div>
-    </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Search, X } from "lucide-react";
 import { getGroup } from "@/types/api/group";
 import { createGroupAPI } from "@/api/group/createGroup";
+import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
 
 interface CreateGroupModalProps {
   nextGroupNo: string;
@@ -28,6 +29,7 @@ export default function CreateGroupModal({
   const [memberQuery, setMemberQuery] = useState("");
   const [advisorQuery, setAdvisorQuery] = useState("");
   const [coAdvisorQuery, setCoAdvisorQuery] = useState("");
+  const [availableStudents, setAvailableStudents] = useState<string[]>([]);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const canSave = projectTitle.trim().length > 0 && selectedMembers.length > 0 && selectedAdvisors.length > 0;
@@ -47,25 +49,22 @@ export default function CreateGroupModal({
 
   const handleSave = async () => {
     if (!canSave) return;
-
     try {
       setLoading(true);
 
-      // Call the API
       const response = await createGroupAPI(
         courseId,
         nextGroupNo,
         projectTitle.trim(),
         productTitle.trim() || null,
         company.trim() || null,
-        selectedMembers,
+        availableStudents,
         selectedAdvisors,
         selectedCoAdvisors.length > 0 ? selectedCoAdvisors : null
       );
 
       console.log("Create group response:", response.data);
 
-      // Pass the created group back to parent
       if (response.data?.group) {
         const createdGroup: getGroup.Group = {
           ...response.data.group,
@@ -88,11 +87,11 @@ export default function CreateGroupModal({
   };
 
   const addMember = (id: string) => {
-    setSelectedMembers(prev => prev.includes(id) ? prev : [...prev, id]);
+    setAvailableStudents(prev => prev.includes(id) ? prev : [...prev, id]);
   };
 
   const removeMember = (id: string) => {
-    setSelectedMembers(prev => prev.filter(x => x !== id));
+    setAvailableStudents(prev => prev.filter(x => x !== id));
   };
 
   const addAdvisor = (id: string) => {

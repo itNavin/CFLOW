@@ -3,19 +3,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
-import {
-  getAssignmentByOpenTaskandSubmittedAPI,
-  getAllAssignmentsAPI,
-} from "@/api/assignment/getAllAssignments";
+import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
-import { isCanUpload } from "@/util/RoleHelper";
-import { createAssignment } from "@/types/api/assignment";
-import { createAssignmentAPI } from "@/api/assignment/createAssignment";
-import AssignmentModal, { AssignmentPayload } from "@/components/assignmentModal";
+import AssignmentModal from "@/components/assignmentModal";
+import { getStudentAssignmentAPI } from "@/api/assignment/getAssignmentStudent";
 
 type CardAssignment = {
-  id: number;
+  id: string;
   title: string;
   dueDate: string;
   status: "missed" | "upcoming" | "submitted" | "approved";
@@ -23,258 +18,143 @@ type CardAssignment = {
 };
 
 export default function AssignmentPage() {
-  const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
-  const courseId = useSearchParams().get("courseId") || "";
-  const groupId = useSearchParams().get("groupId") || "";
-  const role = getUserRole();
+  // mount gate
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // read search params AFTER mount to avoid SSR/client mismatch
+  const sp = useSearchParams();
+  const [courseId, setCourseId] = useState("");
+  const [groupId, setGroupId] = useState("");
+  useEffect(() => {
+    if (!sp) return;
+    setCourseId(sp.get("courseId") || "");
+    setGroupId(sp.get("groupId") || "");
+  }, [sp]);
+
+  // read role AFTER mount
+  const [role, setRole] = useState<string | null>(null);
+  useEffect(() => {
+    setRole(getUserRole());
+  }, []);
+
   const isStudent = role === "student";
   const isStaff = role === "staff" || role === "SUPER_ADMIN";
-  const [studentData, setStudentData] = useState<getAllAssignments.AssignmentbyOpenTaskandSubmitted | null>(null);
-  const [lecturerData, setLecturerData] = useState<getAllAssignments.allAssignment[] | null>(null);
-  const [canUpload, setCanUpload] = useState(false);
+
+  const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
+  const [studentAssignment, setStudentAssignment] = useState<getAllAssignments.studentAssignment[]>([]);
+  const [lecturerData, setLecturerData] = useState<getAllAssignments.getStfAndLecAssignment[] | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Modal state  
+  // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creatingAssignment, setCreatingAssignment] = useState(false);
+  const [creatingAssignment] = useState(false);
 
-  const pickRelevantDateISO = (a: {
-    dueDate?: string | null;
-    endDate: string;
-    schedule?: string | null;
-  }) => (a.dueDate ?? a.schedule ?? a.endDate)!;
+  // Helpers (wrapped to be hydration-safe)
+  const safeDate = (iso: string) =>
+    mounted ? new Date(iso) : null;
 
-  const formatDateGroup = (iso: string) =>
-    new Date(iso).toLocaleDateString(undefined, {
-      day: "numeric",
-      month: "long",
-    });
+  const safeFormatDateGroup = (iso: string) => {
+    const d = safeDate(iso);
+    if (!d) return "—";
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "Asia/Bangkok" });
+  };
 
-  const formatTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  const safeFormatTime = (iso: string) => {
+    const d = safeDate(iso);
+    if (!d) return "—";
+    return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Bangkok" });
+  };
 
   const computeOpenStatus = (dueISO: string | null): "missed" | "upcoming" => {
-    if (!dueISO) return "upcoming";
+    if (!mounted || !dueISO) return "upcoming"; // before mount, keep stable
     return new Date(dueISO).getTime() < Date.now() ? "missed" : "upcoming";
   };
 
-  const fetchAssignmentsforStudent = async () => {
-    try {
-      if (!courseId || !groupId) return;
-      const cid = Number(courseId);
-      const gid = Number(groupId);
-      if (!Number.isFinite(cid) || !Number.isFinite(gid)) return;
-      setLoading(true);
-      const res = await getAssignmentByOpenTaskandSubmittedAPI(cid, gid);
-      setStudentData(res.data);
-    } catch (e) {
-      console.error("Failed to fetch student assignments", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAssignmentsforLecturer = async () => {
-    try {
-      if (!courseId) return;
-      const cid = Number(courseId);
-      if (!Number.isFinite(cid)) return;
-      setLoading(true);
-      const res = await getAllAssignmentsAPI(cid);
-      setLecturerData(res.data);
-    } catch (e) {
-      console.error("Failed to fetch lecturer assignments", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateAssignment = async (data: AssignmentPayload) => {
-    try {
-      setCreatingAssignment(true);
-
-      if (!courseId) {
-        throw new Error("Course ID is required");
-      }
-
-      console.log("Creating assignment for course:", courseId, data);
-
-      // Convert the modal data to API format
-      const assignmentDueDates: createAssignment.CreateAssignmentDueDatePayload[] = [
-        {
-          id: 0, // Will be set by backend
-          assignmentId: 0, // Will be set by backend
-          groupId: Number(groupId) || 0, // Use current group or default
-          dueDate: data.dueAt || data.endAt || "",
-          createdAt: new Date().toISOString(),
-        }
-      ];
-
-      // ✅ FIXED: Proper handling of file types without accessing non-existent properties
-      const deliverables: createAssignment.CreateDeliverablePayload[] = data.deliverables.map((d, index) => ({
-        id: 0, // Will be set by backend
-        name: String(d.name || ""), // Ensure it's a string
-        assignmentId: 0, // Will be set by backend
-        allowedFileTypes: d.requiredTypes.map((type, typeIndex) => {
-          // Map common file types to MIME types
-          const getMimeType = (fileType: any): string => {
-            const typeStr = String(fileType.value || fileType.label || fileType || "").toLowerCase();
-
-            switch (typeStr) {
-              case 'pdf':
-                return 'application/pdf';
-              case 'doc':
-              case 'docx':
-                return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-              case 'xls':
-              case 'xlsx':
-                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-              case 'ppt':
-              case 'pptx':
-                return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
-              case 'txt':
-                return 'text/plain';
-              case 'jpg':
-              case 'jpeg':
-                return 'image/jpeg';
-              case 'png':
-                return 'image/png';
-              case 'gif':
-                return 'image/gif';
-              case 'zip':
-                return 'application/zip';
-              case 'rar':
-                return 'application/x-rar-compressed';
-              default:
-                return 'application/octet-stream'; // Generic binary file type
-            }
-          };
-
-          const getTypeLabel = (fileType: any): string => {
-            return String(fileType.label || fileType.value || fileType || "").toUpperCase();
-          };
-
-          return {
-            id: 0, // Will be set by backend
-            mime: getMimeType(type), // ✅ Generate MIME type from file type
-            type: getTypeLabel(type), // ✅ Get readable type label
-            deliverableId: 0, // Will be set by backend
-          };
-        }),
-      }));
-
-      console.log("Processed deliverables:", deliverables);
-
-      // Call the API
-      const response = await createAssignmentAPI(
-        courseId,
-        data.title,
-        data.descriptionHtml,
-        data.endAt || "",
-        data.scheduleAt || "",
-        assignmentDueDates,
-        deliverables
-      );
-
-      console.log("Assignment created successfully:", response.data);
-
-      // Show success message
-      alert("Assignment created successfully!");
-
-      // Refresh the assignments list
-      if (isStudent) {
-        await fetchAssignmentsforStudent();
-      } else {
-        await fetchAssignmentsforLecturer();
-      }
-
-      // Close the modal
-      setShowCreateModal(false);
-
-    } catch (error: any) {
-      console.error("Error creating assignment:", error);
-
-      let errorMessage = "Failed to create assignment";
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Error: ${errorMessage}`);
-    } finally {
-      setCreatingAssignment(false);
-    }
-  };
-
-  const handleCloseModal = () => {
-    if (!creatingAssignment) {
-      setShowCreateModal(false);
-    }
-  };
-
   useEffect(() => {
-    if (isStudent) {
-      fetchAssignmentsforStudent();
-    } else {
-      fetchAssignmentsforLecturer();
-      setActiveTab("open");
-    }
-  }, [courseId, groupId, isStudent]);
+    if (!mounted || !courseId) return;
+    const run = async () => {
+      try {
+        if (isStudent) {
+          const res = await getStudentAssignmentAPI(courseId);
+          if (Array.isArray(res.data.assignments)) {
+            setStudentAssignment(res.data.assignments);
+          } else {
+            setStudentAssignment([]);
+          }
+        } else if (role) {
+          setLoading(true);
+          const res = await getAllAssignmentsAPI(courseId);
+          setLecturerData(res.data.assignments);
+        }
+        setActiveTab("open");
+      } catch (e) {
+        console.error("Failed to fetch assignments", e);
+        if (isStudent) setStudentAssignment([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+  }, [mounted, courseId, isStudent, role]);
 
+  // Build cards (guard against missing fields)
   const openCards: CardAssignment[] = useMemo(() => {
-    if (!studentData) return [];
-    return studentData.openTasks.map((a) => {
-      console.log("OPENCARD",a);
-      
-      const whenISO = pickRelevantDateISO(a);
-      return {
-        id: a.id,
-        title: a.name,
-        dueDate: formatTime(whenISO),
-        status: computeOpenStatus(a.dueDate ?? whenISO),
-        dateGroup: formatDateGroup(whenISO),
-      };
-    });
-  }, [studentData]);
+    if (!studentAssignment) return [];
+    return studentAssignment
+      .map((a) => {
+        const ot = a.openTasks?.[0];
+        if (!ot) return null;
+        const whenISO = ot.dueDate ?? ot.schedule ?? "";
+        if (!whenISO) return null;
+        return {
+          id: String(ot.id),
+          title: ot.name ?? "(Untitled)",
+          dueDate: safeFormatTime(whenISO),
+          status: computeOpenStatus(ot.endDate ?? whenISO),
+          dateGroup: safeFormatDateGroup(whenISO),
+        };
+      })
+      .filter(Boolean) as CardAssignment[];
+  }, [studentAssignment, mounted]);
 
   const submittedCards: CardAssignment[] = useMemo(() => {
-    if (!studentData) return [];
-    return studentData.submitted.map((a) => {
-      const whenISO = pickRelevantDateISO(a);
-      return {
-        id: a.id,
-        title: a.name,
-        dueDate: formatTime(whenISO),
-        status: "submitted",
-        dateGroup: formatDateGroup(whenISO),
-      };
-    });
-  }, [studentData]);
+    if (!studentAssignment) return [];
+    return studentAssignment
+      .map((a) => {
+        // If your submitted list has different shape, adapt here
+        const whenISO = (a as any).dueDate ?? (a as any).schedule ?? (a as any).endDate ?? "";
+        if (!whenISO) return null;
+        return {
+          id: String((a as any).id ?? ""),
+          title: (a as any).name ?? "(Untitled)",
+          dueDate: safeFormatTime(whenISO),
+          status: "submitted",
+          dateGroup: safeFormatDateGroup(whenISO),
+        };
+      })
+      .filter(Boolean) as CardAssignment[];
+  }, [studentAssignment, mounted]);
 
   const lecturerCards: CardAssignment[] = useMemo(() => {
     if (!lecturerData) return [];
-    return lecturerData.map((a) => {
-      console.log("LECTURERCARD",a);
-      
-      const whenISO = (a.endDate ?? a.schedule)!;
-      return {
-        id: a.id,
-        title: a.name,
-        dueDate: formatTime(whenISO),
-        status: computeOpenStatus(whenISO),
-        dateGroup: formatDateGroup(whenISO),
-      };
-    });
-  }, [lecturerData]);
+    return lecturerData
+      .map((a) => {
+        const whenISO = (a.endDate ?? a.schedule) as string | undefined;
+        if (!whenISO) return null;
+        return {
+          id: String(a.id),
+          title: a.name ?? "(Untitled)",
+          dueDate: safeFormatTime(whenISO),
+          status: computeOpenStatus(whenISO),
+          dateGroup: safeFormatDateGroup(whenISO),
+        };
+      })
+      .filter(Boolean) as CardAssignment[];
+  }, [lecturerData, mounted]);
 
   const getCardStyle = (status: CardAssignment["status"]) => {
     switch (status) {
-      // case "missed":
-      //   return "bg-red-100 border border-red-300";
       case "upcoming":
         return "bg-orange-100 border border-orange-200";
       case "submitted":
@@ -297,47 +177,39 @@ export default function AssignmentPage() {
       : submittedCards
     : lecturerCards;
 
-    
+  const grouped = groupedAssignments(displayedData);
 
-  const grouped = groupedAssignments(displayedData);  
-
-  const detailHref = (assignmentId: number) =>
+  // Keep href types stable (ids are strings here)
+  const detailHref = (assignmentId: string) =>
     isStudent
-      ? {
-        pathname: "/assignments/detail",
-        query: { courseId, assignmentId, groupId },
-      }
+      ? { pathname: "/assignments/detail", query: { courseId, assignmentId, groupId } }
       : { pathname: "/assignments/detail", query: { courseId, assignmentId } };
 
-  const openCount = isStudent
-    ? studentData?.counts.open ?? 0
-    : lecturerData?.length ?? 0;
-  const submittedCount = isStudent ? studentData?.counts.submitted ?? 0 : 0;
+  const openCount = isStudent ? (studentAssignment as any)?.counts?.open ?? 0 : lecturerData?.length ?? 0;
+  const submittedCount = isStudent ? (studentAssignment as any)?.counts?.submitted ?? 0 : 0;
+
+  // Keep header structure identical SSR/CSR:
+  // Render both buttons; hide "Submitted" until we know it's a student.
+  const showSubmittedTab = mounted && isStudent;
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
       <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
         <button
-          className={`pb-2 ${activeTab === "open"
-              ? "border-b-2 border-black text-black"
-              : "text-gray-500"
-            }`}
-          onClick={() => setActiveTab("open")}
+          className={`pb-2 ${activeTab === "open" && mounted ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+          onClick={mounted ? () => setActiveTab("open") : undefined}
         >
-          Open Tasks ({openCount})
+          Open Tasks ({mounted ? openCount : 0})
         </button>
 
-        {isStudent && (
-          <button
-            className={`pb-2 ${activeTab === "submitted"
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500"
-              }`}
-            onClick={() => setActiveTab("submitted")}
-          >
-            Submitted ({submittedCount})
-          </button>
-        )}
+        <button
+          className={`pb-2 ${showSubmittedTab && activeTab === "submitted" ? "border-b-2 border-black text-black" : "text-gray-500"} ${showSubmittedTab ? "" : "invisible"}`}
+          onClick={showSubmittedTab ? () => setActiveTab("submitted") : undefined}
+          aria-hidden={!showSubmittedTab}
+          tabIndex={showSubmittedTab ? 0 : -1}
+        >
+          Submitted ({mounted ? submittedCount : 0})
+        </button>
       </div>
 
       {loading && <div className="text-gray-500">Loading assignments…</div>}
@@ -359,32 +231,22 @@ export default function AssignmentPage() {
             {tasks.map((task) => (
               <Link href={detailHref(task.id)} key={task.id}>
                 <div
-                  className={`${getCardStyle(
-                    task.status
-                  )} p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition`}
+                  className={`${getCardStyle(task.status)} p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition`}
                 >
                   <div className="flex justify-between items-center">
                     <div>
                       <div className="font-semibold text-xl">{task.title}</div>
-                      <div className="text-lg text-gray-600">
-                        Due at {task.dueDate}
-                      </div>
+                      <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
                     </div>
 
                     {task.status === "missed" && (
-                      <div className="text-red-600 font-semibold text-lg">
-                        Missed
-                      </div>
+                      <div className="text-red-600 font-semibold text-lg">Missed</div>
                     )}
                     {task.status === "submitted" && (
-                      <div className="text-black font-semibold text-lg">
-                        Submitted
-                      </div>
+                      <div className="text-black font-semibold text-lg">Submitted</div>
                     )}
                     {task.status === "approved" && (
-                      <div className="text-green-800 font-semibold text-lg">
-                        Approved
-                      </div>
+                      <div className="text-green-800 font-semibold text-lg">Approved</div>
                     )}
                   </div>
                 </div>
@@ -395,28 +257,26 @@ export default function AssignmentPage() {
       </div>
 
       {/* FAB for creating new assignment - only show for non-students */}
-      {isStaff && (
-        <button
-          onClick={() => setShowCreateModal(true)}
-          disabled={creatingAssignment}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
-                     bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
-                     hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
-                     active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="hidden sm:inline">
-            {creatingAssignment ? "Creating..." : "Add New Assignment"}
-          </span>
-        </button>
-      )}
+      <button
+        onClick={mounted && isStaff ? () => setShowCreateModal(true) : undefined}
+        disabled={!mounted || !isStaff || creatingAssignment}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
+                   bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
+                   hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                   active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Plus className="h-5 w-5" />
+        <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
+      </button>
 
-      {/* Assignment Creation Modal */}
-      <AssignmentModal
-        open={showCreateModal}
-        onClose={handleCloseModal}
-        onSubmit={handleCreateAssignment}
-      />
+      {/* If you wire the modal later, render it conditionally */}
+      {/* {showCreateModal && (
+        <AssignmentModal
+          open={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSubmit={...}
+        />
+      )} */}
     </main>
   );
 }

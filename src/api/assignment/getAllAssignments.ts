@@ -2,7 +2,7 @@ import { getAllAssignments } from "@/types/api/assignment";
 import { Axios } from "@/util/AxiosInstance";
 
 export const getAllAssignmentsAPI = (courseId: string) => {
-    const response = Axios.get<getAllAssignments.getAllAssignmentResponse>(`/assignment/getAllAssignments/course/${courseId}`);
+    const response = Axios.get<getAllAssignments.getAllAssignments>(`/assignment/getAllAssignments/course/${courseId}`);
     return response;
 }
 

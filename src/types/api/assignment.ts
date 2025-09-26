@@ -1,5 +1,23 @@
 export namespace getAllAssignments {
 
+    export type getStudentAssignments = {
+        message: string;
+        assignments: studentAssignment[];
+    }
+
+    export type studentAssignment = {
+        courseId: string;
+        groupId: string;
+        counts: Count;
+        openTasks: openTasks[];
+        submitted: submittedTasks[];
+    }
+
+    export type getAllAssignments = {
+        message: string;
+        assignments: allAssignment[];
+    }
+
     export type allAssignment = {
         id: string;
         name: string;
@@ -9,9 +27,20 @@ export namespace getAllAssignments {
         courseId: string;
     }
 
-    export type getAllAssignmentResponse = {
+    export type getStfAndLecAssignment = {
         message: string;
-        assignments: allAssignment[];
+        assignments: stfAssignment[];
+    }
+
+    export type stfAssignment = {
+        id: string;
+        name: string;
+        description: string;
+        endDate: string;
+        schedule: string | null;
+        courseId: string;
+        createdAt: string;
+        updatedAt: string;
     }
 
     export type AssignmentbyOpenTaskandSubmitted ={
@@ -30,8 +59,8 @@ export namespace getAllAssignments {
         name: string;
         description: string;
         endDate: string;
-        schedule: string;
-        dueDate: string;
+        schedule: string | null;
+        dueDate: string | null;
     } 
     type submittedTasks = {
         id: string;
