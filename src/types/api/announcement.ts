@@ -1,6 +1,11 @@
 //http://localhost:8000/announcement/course/:courseId
 export namespace Announcement {
     export type Announcement = {
+        message: string;
+        announcements: Announcements[];
+    }
+
+    export type Announcements = {
         id: string;
         courseId: string;
         name: string;
@@ -10,7 +15,7 @@ export namespace Announcement {
         createById: number;
         files: file[];
         createdBy: createById;
-    }
+    };
 }
 
 export namespace createAnnouncement {

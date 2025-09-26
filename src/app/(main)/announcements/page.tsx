@@ -12,31 +12,25 @@ import { isCanUpload } from "@/util/RoleHelper";
 import { getUserRole } from "@/util/cookies";
 
 export default function AnnouncementPage() {
-  const [announcements, setAnnouncements] = useState<
-    Announcement.Announcement[]
-  >([]);
+  const [announcements, setAnnouncements] = useState<Announcement.Announcements[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
   const [canUpload, setCanUpload] = useState(false);
 
-  console.log(getUserRole());
-  
-
   const fetchAnnouncements = async () => {
     try {
-      if (!courseId) return;
-
       if (!courseId) {
         setError("Invalid courseId in URL");
         return;
       }
+      console.log("Fetching announcements for courseId:", courseId);
       const response = await getAllAnnouncementByCourseIdAPI(courseId);
 
-      const sortedAnnouncements = response.data.sort((a, b) => {
+      const sortedAnnouncements = (response.data.announcements || []).sort((a, b) => {
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
-        return dateB - dateA; // Latest first (descending order)
+        return dateB - dateA;
       });
       setAnnouncements(sortedAnnouncements);
     } catch (e) {
@@ -45,12 +39,10 @@ export default function AnnouncementPage() {
   };
 
   const handleDownload = (file: file, announcementAuthor: string) => {
-    // For now, just show alert - replace with actual download logic later
     alert(`Download clicked for: ${file.name} from announcement by: ${announcementAuthor}`);
     setOpenDropdown(null);
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
 
@@ -78,7 +70,7 @@ export default function AnnouncementPage() {
           <div className="flex justify-between items-center">
             <div>
               <div className="text-2xl font-semibold">
-                {data.createdBy.name}
+                {data.name}
               </div>
               <div className="text-base text-gray-500">{data.createdAt}</div>
             </div>

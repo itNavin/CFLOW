@@ -22,7 +22,7 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [menuItems, setMenuItems] = useState<MenuItems>([]);
   const courseId = useSearchParams().get("courseId") || "";
-  const id = Number(courseId);
+  const id = String(courseId);
   const role = getUserRole();
   const isStudent = role === "student";
 
@@ -31,17 +31,17 @@ export default function Sidebar() {
       if (!courseId) return;
       const id = String(courseId);
       const response = await getMyProjectByCourseAPI(id);
-      setProject(response.data);      
+      setProject(response.data);    
     } catch (error) {}
   };
 
   const getMenuItems = (role: UserRole): MenuItems => {
     switch (role) {
       case "student": {
-        if (project === undefined) {
-          console.log("projectName is undefined");
-          return [];
-        }
+        if (!project || !project.group) {
+        console.log("project or project.group is null/undefined");
+        return [];
+      }
         return [
           { name: project?.group?.productName ?? project?.group.projectName ?? "Unknown", href: "/student" },
           { name: "Announcements", href: "/announcements" },

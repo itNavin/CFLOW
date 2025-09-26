@@ -111,7 +111,7 @@ export default function CourseInfo({
     !showHeader ? null : (
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-2xl font-semibold">{title}</h2>
-        <button
+        {canEdit && <button
           onClick={canEdit ? handleEditCourse : undefined}
           disabled={loading || !canEdit}
           className={`p-2 rounded-md ${loading || !canEdit ? "bg-gray-100 cursor-not-allowed" : "hover:bg-gray-100"}`}
@@ -119,7 +119,7 @@ export default function CourseInfo({
           aria-disabled={loading || !canEdit}
         >
           <Pencil className={`w-4 h-4 ${loading || !canEdit ? "text-gray-400" : "text-gray-700"}`} />
-        </button>
+        </button>}
       </div>
     );
 

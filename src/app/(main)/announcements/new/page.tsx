@@ -27,7 +27,6 @@ export default function NewAnnouncement() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Get courseId from URL parameters
   useEffect(() => {
     const id = searchParams.get("courseId") || "";
     setCourseId(id);
@@ -38,7 +37,6 @@ export default function NewAnnouncement() {
     setSelectedFiles(files);
   };
 
-  // Combine date and time into a single Date object
   const getScheduledDateTime = (): Date => {
     if (!date) return new Date();
 
@@ -49,7 +47,6 @@ export default function NewAnnouncement() {
     return scheduledDate;
   };
 
-  // Generate time options (every 15 minutes)
   const generateTimeOptions = () => {
     const options = [];
     for (let hour = 0; hour < 24; hour++) {
@@ -75,7 +72,7 @@ export default function NewAnnouncement() {
     setError(null);
 
     try {
-      if (Number.isNaN(courseId)) {
+      if (!courseId) {
         throw new Error("Invalid course ID");
       }
 
@@ -83,7 +80,6 @@ export default function NewAnnouncement() {
         ? getScheduledDateTime().toISOString()
         : null;
 
-      // Create the announcement first
       const newAnnouncement = await createAnnouncementByCourseIdAPI(
         courseId,
         title.trim(),
@@ -91,7 +87,6 @@ export default function NewAnnouncement() {
         scheduleDate,
       );
 
-      // Upload files and get file URLs (only if files are selected)
       let uploadedFiles: uploadCourseFile.uploadCourseFilePayload[] = [];
       if (selectedFiles.length > 0) {
         try {
@@ -103,7 +98,6 @@ export default function NewAnnouncement() {
 
           console.log("Uploaded files response:", uploadedFiles);
 
-          // Check the actual structure of your response
           uploadedFiles.forEach((file, index) => {
             console.log(`File ${index}:`, file);
           });
@@ -111,14 +105,12 @@ export default function NewAnnouncement() {
         } catch (fileUploadError: any) {
           console.error("File upload failed:", fileUploadError);
 
-          // Check if it's a permission error
           if (fileUploadError?.response?.data?.error?.includes('ADVISOR and ADMIN only')) {
             setError("You don't have permission to upload files. Only ADVISOR and ADMIN can upload files.");
           } else {
             setError("Announcement created but file upload failed: " + (fileUploadError?.response?.data?.error || fileUploadError?.message));
           }
 
-          // Continue without files instead of failing completely
         }
       }
 

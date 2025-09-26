@@ -37,7 +37,7 @@ export default function CourseTab() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [group, setGroup] = useState<getGroup.GroupList>([]);
-  const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
+  const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo | null>(null);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [selectedGroupData, setSelectedGroupData] = useState<Dashboard.studentInfo | null>(null);
@@ -45,7 +45,7 @@ export default function CourseTab() {
   const courseId = searchParams.get("courseId") || "";
 
   const handleChartGroupChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const groupId = String(e.target.value);
+    const groupId = e.target.value;
     if (groupId === "-1") {
       setSelectedGroupId(null);
       setSelectedGroupData(null);
@@ -62,9 +62,8 @@ export default function CourseTab() {
     }
   };
 
-  // ✅ FIXED: Simplified assignment change handler
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const assignmentId = String(e.target.value);
+    const assignmentId = e.target.value;
 
     console.log("Selected assignment ID:", assignmentId); // Debug log
 
@@ -79,13 +78,8 @@ export default function CourseTab() {
   const fetchGroupInformation = async () => {
     try {
       if (!courseId) return;
-
-      if (Number.isNaN(courseId)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
       const response = await getGroupInformation(courseId);
-      setGroupInfo(response.data);
+      setGroupInfo(response.data[0]);
       console.log("Group information:", response.data); // Debug log
     } catch (error) {
       console.error("Failed to load group information:", error);
@@ -184,28 +178,13 @@ export default function CourseTab() {
       <div className="xl:col-span-2 space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-1">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-semibold">Class Information</h2>
-            </div>
             <CourseInfo courseId={courseId} />
-            {/* {dashboard && (
-              <>
-                <InfoRow label="Class Name" value={dashboard.course?.name ?? "Unknown"} />
-                <InfoRow label="Description" value={dashboard?.course.description ?? "No description available"} />
-                <InfoRow label="Program Type" value={dashboard?.course.program ?? "Unknown"} />
-                <InfoRow label="Created Date" value={formatUploadAt(dashboard?.course.createdAt ?? "")} />
-                <InfoRow label="Created By" value={dashboard?.course.createdBy.name ?? "Unknown"} />
-              </>
-            )} */}
           </div>
 
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 lg:col-span-2">
-            {/* ✅ FIXED: Reordered filters and improved layout */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
               <h2 className="text-2xl font-semibold">Dashboard</h2>
-
               <div className="flex flex-col sm:flex-row gap-4">
-                {/* Assignment Filter */}
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Assignment:</label>
                   <select
@@ -221,8 +200,6 @@ export default function CourseTab() {
                     ))}
                   </select>
                 </div>
-
-                {/* Group Filter */}
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Group:</label>
                   <select
@@ -231,11 +208,11 @@ export default function CourseTab() {
                     className="border border-gray-300 rounded px-2 py-1 text-base min-w-[180px]"
                   >
                     <option value={-1}>All Groups</option>
-                    {groupInfo.map((groupItem) => (
-                      <option key={groupItem.id} value={groupItem.id}>
-                        {groupItem.projectName || `Group ${groupItem.id}`}
+                    {groupInfo && (
+                      <option key={groupInfo.id} value={groupInfo.id}>
+                        {groupInfo.projectName || `Group ${groupInfo.id}`}
                       </option>
-                    ))}
+                    )}
                   </select>
                 </div>
               </div>
@@ -331,21 +308,21 @@ export default function CourseTab() {
             </li>
           </ul>
         </div> */}
-        {groupInfo.map((group, index) => {
-          return <GroupInformationCard
-            key={index}
+        {groupInfo && (
+          <GroupInformationCard
+            key={groupInfo.id}
             data={{
-              id: group?.id.toString() || "N/A",
-              projectTitle: group?.projectName || "-",
-              productTitle: group?.productName || "-",
-              members: group?.members?.map(member =>
+              id: groupInfo.id.toString() || "N/A",
+              projectTitle: groupInfo.projectName || "-",
+              productTitle: groupInfo.productName || "-",
+              members: groupInfo.members?.map(member =>
                 `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
               ) || [],
-              advisor: group?.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
+              advisor: groupInfo.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
             }}
             onEdit={() => console.log("Edit group")}
           />
-        })}
+        )}
       </div>
     </div>
   );
