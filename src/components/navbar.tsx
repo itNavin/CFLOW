@@ -60,11 +60,12 @@ export default function Navbar() {
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
         <div className="flex items-center gap-4">
           <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={230} height={40} />          
-          {courseId && courseData?.coursename && (
+          {/* {courseId && courseData?.coursename && (
             <span className="text-4xl font-semibold">
               {courseData.coursename}
             </span>
-          )}
+          )} */}
+          <h1 className="text-4xl font-semibold">Capstone Report Submission System</h1>
         </div>
 
         <div className="flex items-center gap-6">

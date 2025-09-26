@@ -223,7 +223,7 @@ export default function UpdateGroupModal({
     <>
       <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-50" />
       <div className="fixed inset-0 z-50 grid place-items-center p-4">
-        <div ref={panelRef} className="w-full max-w-xl rounded-2xl border bg-white shadow-xl">
+        <div ref={panelRef} className="w-full max-w-xl rounded-2xl border bg-white shadow-xl overflow-y-auto max-h-full">
           <div className="flex items-center justify-between border-b px-6 py-4">
             <h2 className="text-2xl font-semibold">Edit Group</h2>
             <button
