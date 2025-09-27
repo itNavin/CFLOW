@@ -4,7 +4,10 @@ export namespace Dashboard{
         message: string;
         course: courses;
     }
-    export type studentInfo = group
+    export type studentInfo ={
+        message: string;
+        groupInformation: group[];
+    }
 }
 
 type courses = {
@@ -13,7 +16,7 @@ type courses = {
     submissions: submissions;
 }
 
-type group = {
+export type group = {
     id: string;
     codeNumber: string;
     projectName: string;

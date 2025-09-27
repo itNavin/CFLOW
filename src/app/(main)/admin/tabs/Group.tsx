@@ -96,7 +96,7 @@ export default function GroupTab() {
 
   const handleDownloadAll = () => {
     const pageTitle = course?.program
-      ? `${course.program.toUpperCase()} Student Group Data`
+      ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
       : "Student Group Data";
 
     const headerRow = [

@@ -131,7 +131,10 @@ export default function CreateGroupModal({
     const q = qAdvisor.trim().toLowerCase();
     if (!q) return [];
     return availableAdvisors
-      .filter((a) => a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q))
+      .filter((a) =>
+      (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
+      a.name !== coAdvisor 
+    )
       .slice(0, 6);
   }, [qAdvisor, availableAdvisors]);
 
@@ -139,8 +142,10 @@ export default function CreateGroupModal({
     const q = qCoAdvisor.trim().toLowerCase();
     if (!q) return [];
     return availableAdvisors
-      .filter((a) => a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q))
-      .slice(0, 6);
+      .filter((a) =>
+        (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
+        a.name !== advisor 
+      ).slice(0, 6);
   }, [qCoAdvisor, availableAdvisors]);
 
   const addMember = (m: Member) => {
@@ -165,6 +170,10 @@ export default function CreateGroupModal({
   };
 
   const addCoAdvisor = (a: Advisor) => {
+    if (advisor && advisor === a.name) {
+      alert("Advisor and Co-Advisor cannot be the same person.");
+      return;
+    }
     setCoAdvisor(a.name);
     setQCoAdvisor("");
   };
@@ -181,6 +190,11 @@ export default function CreateGroupModal({
   };
 
   const handleSave = async () => {
+    if (advisor && coAdvisor && advisor === coAdvisor) {
+      alert("Advisor and Co-Advisor cannot be the same person.");
+      return;
+    }
+
     try {
       setIsCreating(true);
 
