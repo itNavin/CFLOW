@@ -39,7 +39,6 @@ export default function CourseTab() {
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [group, setGroup] = useState<getGroup.GroupList>([]);
-  const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo[]>([]);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -94,22 +93,11 @@ export default function CourseTab() {
       } else {
         console.error("Selected assignment not found in assignments list:", assignmentId);
         setError(`Selected assignment not found: ${assignmentId}`);
-        // Reset to "All Assignments"
         setSelectedAssignmentChartId(null);
       }
     }
   };
 
-  const fetchGroupInformation = async () => {
-    try {
-      if (!courseId) return;
-      const response = await getGroupInformation(courseId);
-      setGroupInfo(response.data);
-    } catch (error) {
-      console.error("Failed to load group information:", error);
-      setError("Failed to load group information");
-    }
-  };
 
   const fetchDashboardData = async () => {
     try {
@@ -174,7 +162,6 @@ export default function CourseTab() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      await fetchGroupInformation();
       await fetchDashboardData();
       await fetchAssignments();
       await fetchAllGroup();

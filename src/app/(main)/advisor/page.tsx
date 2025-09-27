@@ -64,9 +64,6 @@ export default function CourseTab() {
 
   const handleChartAssignmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const assignmentId = e.target.value;
-
-    console.log("Selected assignment ID:", assignmentId); // Debug log
-
     setSelectedAssignmentChartId(assignmentId === "-1" ? null : assignmentId);
 
     fetchDashboardDataWithQuery({
@@ -79,8 +76,7 @@ export default function CourseTab() {
     try {
       if (!courseId) return;
       const response = await getGroupInformation(courseId);
-      setGroupInfo(response.data[0]);
-      console.log("Group information:", response.data); // Debug log
+      setGroupInfo(response.data);
     } catch (error) {
       console.error("Failed to load group information:", error);
       setError("Failed to load group information");
@@ -97,7 +93,6 @@ export default function CourseTab() {
       }
       const response = await getDashboardData(courseId);
       setDashboard(response.data);
-      console.log("Dashboard data:", response.data); // Debug log
     } catch (error) {
       setError("Failed to load dashboard data");
     }
@@ -112,11 +107,7 @@ export default function CourseTab() {
         setError("Invalid courseId in URL");
         return;
       }
-
-      console.log("Fetching dashboard with query:", query); // Debug log
-
       const response = await getDashboardData(courseId, query);
-      console.log("Dashboard response with query:", response.data);
 
       setDashboard(response.data);
     } catch (error) {
@@ -136,28 +127,9 @@ export default function CourseTab() {
         return;
       }
       const response = await getAllAssignmentsAPI(courseId);
-      console.log("Assignments:", response.data); // Debug log
       setAssignments(response.data.assignments);
     } catch (error) {
-      console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
-    }
-  };
-
-  const fetchAllGroup = async () => {
-    try {
-      if (!courseId) return;
-
-      if (Number.isNaN(courseId)) {
-        setError("Invalid courseId in URL");
-        return;
-      }
-      const response = await getAllGroupAPI(courseId);
-      console.log("All groups:", response.data); // Debug log
-      setGroup(response.data.groups);
-    } catch (error) {
-      console.error("Failed to load groups:", error);
-      setError("Failed to load groups");
     }
   };
 
@@ -167,7 +139,6 @@ export default function CourseTab() {
       await fetchGroupInformation();
       await fetchDashboardData();
       await fetchAssignments();
-      await fetchAllGroup();
       setLoading(false);
     };
     fetchData();
@@ -208,10 +179,12 @@ export default function CourseTab() {
                     className="border border-gray-300 rounded px-2 py-1 text-base min-w-[180px]"
                   >
                     <option value={-1}>All Groups</option>
-                    {groupInfo && (
-                      <option key={groupInfo.id} value={groupInfo.id}>
-                        {groupInfo.projectName || `Group ${groupInfo.id}`}
-                      </option>
+                    {groupInfo && groupInfo.groupInformation.length > 0 && (
+                      groupInfo.groupInformation.map(info => (
+                        <option key={info.id} value={info.id}>
+                          {info.projectName || `Group ${info.id}`}
+                        </option>
+                      ))
                     )}
                   </select>
                 </div>
@@ -237,14 +210,14 @@ export default function CourseTab() {
                 )}
               </ul>
             </div>
-            
+
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
           <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
           <ul className="space-y-2 text-[#326295] text-lg">
-            
+
             <li>
               <Link href={`/announcements/new?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
                 <Megaphone className="w-5 h-5" /> Create Announcement
@@ -308,21 +281,20 @@ export default function CourseTab() {
             </li>
           </ul>
         </div> */}
-        {groupInfo && (
+        {groupInfo && groupInfo.groupInformation.map(info => (
           <GroupInformationCard
-            key={groupInfo.id}
+            key={info.id}
             data={{
-              id: groupInfo.id.toString() || "N/A",
-              projectTitle: groupInfo.projectName || "-",
-              productTitle: groupInfo.productName || "-",
-              members: groupInfo.members?.map(member =>
-                `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
+              id: info.codeNumber || "N/A",
+              projectTitle: info.projectName || "-",
+              productTitle: info.productName || "-",
+              members: info.members?.map(member =>
+                `${member.courseMember.user.id} ${member.courseMember.user.name}`
               ) || [],
-              advisor: groupInfo.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
+              advisor: info.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
             }}
-            onEdit={() => console.log("Edit group")}
           />
-        )}
+        ))}
       </div>
     </div>
   );
