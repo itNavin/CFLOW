@@ -151,17 +151,21 @@ export default function UpdateGroupModal({
     const q = qAdvisor.trim().toLowerCase();
     if (!q) return [];
     return availableAdvisors.filter(a =>
-      a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
-    ).slice(0, 6);
+      (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
+      a.name !== coAdvisor
+    )
+      .slice(0, 6);
   }, [qAdvisor, availableAdvisors]);
 
   const coAdvisorSuggestions = useMemo(() => {
     const q = qCoAdvisor.trim().toLowerCase();
     if (!q) return [];
     return availableAdvisors.filter(a =>
-      a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)
-    ).slice(0, 6);
-  }, [qCoAdvisor, availableAdvisors]);
+      (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
+      a.name !== advisor
+    )
+      .slice(0, 6);
+  }, [qCoAdvisor, availableAdvisors, advisor]);
 
   const addMember = (m: Member) => {
     setMembers((prev) => {
@@ -178,12 +182,15 @@ export default function UpdateGroupModal({
   const extractAdvisorId = (advisorString: string): { id: string }[] => {
     if (!advisorString) return [];
     const advisor = availableAdvisors.find(a => advisorString.includes(a.name));
-    // return advisor?.id || "";
     if (!advisor) return [];
     return [{ id: advisor?.courseMemberId }];
   };
 
   const handleSave = async () => {
+    if (advisor && coAdvisor && advisor === coAdvisor) {
+      alert("Advisor and Co-Advisor cannot be the same person.");
+      return;
+    }
     try {
       setIsUpdating(true);
 
@@ -346,6 +353,10 @@ export default function UpdateGroupModal({
                           key={a.id}
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
+                            if (advisor && advisor === a.name) {
+                              alert("Advisor and Co-Advisor cannot be the same person.");
+                              return;
+                            }
                             setAdvisor(a.name);
                             setQAdvisor("");
                           }}
@@ -386,6 +397,10 @@ export default function UpdateGroupModal({
                           key={a.id}
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
+                            if (advisor && advisor === a.name) {
+                              alert("Advisor and Co-Advisor cannot be the same person.");
+                              return;
+                            }
                             setCoAdvisor(a.name);
                             setQCoAdvisor("");
                           }}
