@@ -22,7 +22,7 @@ export default function NewAnnouncement() {
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isScheduled, setIsScheduled] = useState(false); // Add scheduling toggle
-  const [userId, setUserId] = useState<number>(1);
+  const [userId, setUserId] = useState<string>("1");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -87,7 +87,7 @@ export default function NewAnnouncement() {
         scheduleDate,
       );
 
-      let uploadedFiles: uploadCourseFile.uploadCourseFilePayload[] = [];
+      let uploadedFiles: uploadCourseFile.uploadCourseFileResponse[] = [];
       if (selectedFiles.length > 0) {
         try {
           uploadedFiles = await uploadAnnouncementFileAPI(

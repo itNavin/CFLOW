@@ -36,7 +36,6 @@ export default function CourseTab() {
   const [loading, setLoading] = useState(true);
   const [dashboardLoading, setDashboardLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [group, setGroup] = useState<getGroup.GroupList>([]);
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo | null>(null);
   const [assignments, setAssignments] = useState<getAllAssignments.allAssignment[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);

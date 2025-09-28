@@ -36,6 +36,7 @@ export namespace getAllAssignments {
         id: string;
         name: string;
         description: string;
+        dueDate: string | null;
         endDate: string;
         schedule: string | null;
         courseId: string;

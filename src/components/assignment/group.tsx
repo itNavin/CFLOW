@@ -9,23 +9,19 @@ export default function AssignmentGroup() {
   const courseId = useSearchParams().get("courseId") || "";
   const [groups, setGroups] = useState<getAllAssignments.getGroupByLecturer>();
   console.log("groups", groups);
-  const [selectedGroup, setSelectedGroup] = useState<number>();
+  const [selectedGroup, setSelectedGroup] = useState<string>();
 
   const fetchGroupByAdvisor = async () => {
     try {
-      const cid = Number(courseId);
-
-      if (Number.isNaN(cid)) {
-        console.error("Invalid courseId in URL");
-        return;
-      }
-      const response = await getGroupByLecturerAPI(cid);
+      if (!courseId) return;
+      const response = await getGroupByLecturerAPI(courseId);
       console.log("response", response.data);
       setGroups(response.data);
       setSelectedGroup(response.data[0]?.id);
     } catch (e) {
       console.error("Error fetching group by advisor:", e);
     }
+    
   };
   useEffect(() => {
     fetchGroupByAdvisor();
@@ -33,7 +29,6 @@ export default function AssignmentGroup() {
 
   useEffect(() => {
     if (!selectedGroup) return;
-    // TODO: fetch selected group data
   }, [selectedGroup]);
 
   return (

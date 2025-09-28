@@ -45,7 +45,7 @@ export default function StudentDashboard() {
     if (!assignmentId) {
       fetchDashboardDataWithQuery({
         assignmentId: assignmentId > "0" ? assignmentId : undefined,
-        groupId: groupInfo?.id
+        groupId: groupInfo?.groupInformation[0].id
       });
     }
   };
@@ -59,7 +59,7 @@ export default function StudentDashboard() {
       const response = await getGroupInformation(courseId);
       console.log("Group information:", response.data);
 
-      setGroupInfo(response.data[0]);
+      setGroupInfo(response.data);
     } catch (error) {
       console.error("Failed to load group information:", error);
       setError("Failed to load group information");
@@ -120,17 +120,20 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     if (!groupInfo) return;
-    fetchDashboardDataWithQuery({ groupId: String(groupInfo.id) });
+    fetchDashboardDataWithQuery({ groupId: groupInfo.groupInformation[0].id });
   }, [groupInfo])
 
   useEffect(() => {
-    if (groupInfo?.id) {
+    if (
+    !groupInfo ||
+    !Array.isArray(groupInfo.groupInformation) ||
+    groupInfo.groupInformation.length === 0
+  ) return;
       fetchDashboardDataWithQuery({ 
         assignmentId: selectedAssignmentChartId || undefined,
-        groupId: String(groupInfo.id) 
+        groupId: String(groupInfo.groupInformation[0].id)
       });
-    }
-  }, [groupInfo?.id, selectedAssignmentChartId]);
+  }, [groupInfo?.groupInformation[0].id, selectedAssignmentChartId]);
 
   const getStatusCounts = () => {
     if (!dashboard?.course?.submissions?.statusCounts) {
@@ -196,7 +199,7 @@ export default function StudentDashboard() {
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
               <li>
-                <Link href={`/assignments?courseId=${courseId}&groupId=${groupInfo?.id || ''}`} className="inline-flex items-center gap-2 hover:underline text-lg">
+                <Link href={`/assignments?courseId=${courseId}&groupId=${groupInfo?.groupInformation[0].id || ''}`} className="inline-flex items-center gap-2 hover:underline text-lg">
                   View All Assignments
                 </Link>
               </li>
@@ -215,15 +218,15 @@ export default function StudentDashboard() {
 
           <GroupInformationCard
             data={{
-              id: groupInfo?.codeNumber || "No Group",
-              projectTitle: groupInfo?.projectName || "-",
-              productTitle: groupInfo?.productName || "-",
-              company: groupInfo?.company || "-",
-              members: groupInfo?.members?.map(member =>
+              id: groupInfo?.groupInformation[0].codeNumber || "No Group",
+              projectTitle: groupInfo?.groupInformation[0].projectName || "-",
+              productTitle: groupInfo?.groupInformation[0].productName || "-",
+              company: groupInfo?.groupInformation[0].company || "-",
+              members: groupInfo?.groupInformation[0].members?.map(member =>
                 `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
               ) || [],
-              advisor: groupInfo?.advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
-              codeNumber: groupInfo?.codeNumber || "-",
+              advisor: groupInfo?.groupInformation[0].advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
+              codeNumber: groupInfo?.groupInformation[0].codeNumber || "-",
             }}
             onEdit={() => console.log("Edit group")}
           />
