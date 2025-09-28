@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Plus } from "lucide-react";
-import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
+import { getAllAssignmentsAPI, getAllAssignmentsStfLecAPI } from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
 import AssignmentModal from "@/components/assignmentModal";
@@ -40,17 +40,16 @@ export default function AssignmentPage() {
 
   const isStudent = role === "student";
   const isStaff = role === "staff" || role === "SUPER_ADMIN";
+  const isAdvisor = role === "advisor";
 
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
   const [studentAssignment, setStudentAssignment] = useState<getAllAssignments.studentAssignment[]>([]);
-  const [lecturerData, setLecturerData] = useState<getAllAssignments.getStfAndLecAssignment[] | null>(null);
+  const [lecturerData, setLecturerData] = useState<getAllAssignments.stfAssignment[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creatingAssignment] = useState(false);
 
-  // Helpers (wrapped to be hydration-safe)
   const safeDate = (iso: string) =>
     mounted ? new Date(iso) : null;
 
@@ -84,7 +83,7 @@ export default function AssignmentPage() {
           }
         } else if (role) {
           setLoading(true);
-          const res = await getAllAssignmentsAPI(courseId);
+          const res = await getAllAssignmentsStfLecAPI(courseId);
           setLecturerData(res.data.assignments);
         }
         setActiveTab("open");
@@ -137,33 +136,22 @@ export default function AssignmentPage() {
   }, [studentAssignment, mounted]);
 
   const lecturerCards: CardAssignment[] = useMemo(() => {
-    if (!lecturerData) return [];
-    return lecturerData
-      .map((a) => {
-        const whenISO = (a.endDate ?? a.schedule) as string | undefined;
-        if (!whenISO) return null;
-        return {
-          id: String(a.id),
-          title: a.name ?? "(Untitled)",
-          dueDate: safeFormatTime(whenISO),
-          status: computeOpenStatus(whenISO),
-          dateGroup: safeFormatDateGroup(whenISO),
-        };
-      })
-      .filter(Boolean) as CardAssignment[];
-  }, [lecturerData, mounted]);
-
-  const getCardStyle = (status: CardAssignment["status"]) => {
-    switch (status) {
-      case "upcoming":
-        return "bg-orange-100 border border-orange-200";
-      case "submitted":
-      case "approved":
-        return "bg-green-100 border border-green-300";
-      default:
-        return "bg-white border border-gray-300";
-    }
-  };
+  if (!lecturerData) return [];
+  return lecturerData
+    .map((a) => {
+      // Use dueDate, endDate, or schedule as available
+      const whenISO = a.dueDate ?? a.endDate ?? a.schedule ?? "";
+      if (!whenISO) return null;
+      return {
+        id: a.id,
+        title: a.name ?? "(Untitled)",
+        dueDate: safeFormatTime(whenISO),
+        status: computeOpenStatus(whenISO),
+        dateGroup: safeFormatDateGroup(whenISO),
+      };
+    })
+    .filter(Boolean) as CardAssignment[];
+}, [lecturerData, mounted]);
 
   const groupedAssignments = (data: CardAssignment[]) =>
     data.reduce<Record<string, CardAssignment[]>>((acc, curr) => {
@@ -179,7 +167,6 @@ export default function AssignmentPage() {
 
   const grouped = groupedAssignments(displayedData);
 
-  // Keep href types stable (ids are strings here)
   const detailHref = (assignmentId: string) =>
     isStudent
       ? { pathname: "/assignments/detail", query: { courseId, assignmentId, groupId } }
@@ -188,86 +175,119 @@ export default function AssignmentPage() {
   const openCount = isStudent ? (studentAssignment as any)?.counts?.open ?? 0 : lecturerData?.length ?? 0;
   const submittedCount = isStudent ? (studentAssignment as any)?.counts?.submitted ?? 0 : 0;
 
-  // Keep header structure identical SSR/CSR:
-  // Render both buttons; hide "Submitted" until we know it's a student.
+  
   const showSubmittedTab = mounted && isStudent;
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
-      <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
-        <button
-          className={`pb-2 ${activeTab === "open" && mounted ? "border-b-2 border-black text-black" : "text-gray-500"}`}
-          onClick={mounted ? () => setActiveTab("open") : undefined}
-        >
-          Open Tasks ({mounted ? openCount : 0})
-        </button>
+      {isStudent ? (
+        <>
+          <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
+            <button
+              className={`pb-2 ${activeTab === "open" && mounted ? "border-b-2 border-black text-black" : "text-gray-500"}`}
+              onClick={mounted ? () => setActiveTab("open") : undefined}
+            >
+              Open Tasks ({mounted ? openCount : 0})
+            </button>
 
-        <button
-          className={`pb-2 ${showSubmittedTab && activeTab === "submitted" ? "border-b-2 border-black text-black" : "text-gray-500"} ${showSubmittedTab ? "" : "invisible"}`}
-          onClick={showSubmittedTab ? () => setActiveTab("submitted") : undefined}
-          aria-hidden={!showSubmittedTab}
-          tabIndex={showSubmittedTab ? 0 : -1}
-        >
-          Submitted ({mounted ? submittedCount : 0})
-        </button>
-      </div>
+            <button
+              className={`pb-2 ${showSubmittedTab && activeTab === "submitted" ? "border-b-2 border-black text-black" : "text-gray-500"} ${showSubmittedTab ? "" : "invisible"}`}
+              onClick={showSubmittedTab ? () => setActiveTab("submitted") : undefined}
+              aria-hidden={!showSubmittedTab}
+              tabIndex={showSubmittedTab ? 0 : -1}
+            >
+              Submitted ({mounted ? submittedCount : 0})
+            </button>
+          </div>
 
-      {loading && <div className="text-gray-500">Loading assignments…</div>}
+          {loading && <div className="text-gray-500">Loading assignments…</div>}
 
-      {!loading && displayedData.length === 0 && (
-        <div className="text-gray-500">
-          {isStudent
-            ? activeTab === "open"
-              ? "No open tasks for this group."
-              : "No submitted assignments yet."
-            : "No open tasks."}
-        </div>
-      )}
+          {!loading && displayedData.length === 0 && (
+            <div className="text-gray-500">
+              {activeTab === "open"
+                ? "No open tasks for this group."
+                : "No submitted assignments yet."}
+            </div>
+          )}
 
-      <div className="space-y-6">
-        {Object.entries(grouped).map(([date, tasks]) => (
-          <div key={date}>
-            <div className="text-2xl font-semibold mb-3">{date}</div>
-            {tasks.map((task) => (
-              <Link href={detailHref(task.id)} key={task.id}>
-                <div
-                  className={`${getCardStyle(task.status)} p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition`}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="font-semibold text-xl">{task.title}</div>
-                      <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
+          <div className="space-y-6">
+            {Object.entries(grouped).map(([date, tasks]) => (
+              <div key={date}>
+                <div className="text-2xl font-semibold mb-3">{date}</div>
+                {tasks.map((task) => (
+                  <Link href={detailHref(task.id)} key={task.id}>
+                    <div
+                      className={`${task.status === "upcoming"
+                          ? "bg-orange-100 border border-orange-200"
+                          : task.status === "submitted" || task.status === "approved"
+                            ? "bg-green-100 border-green-300"
+                            : "bg-white border border-gray-300"
+                        } p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold text-xl">{task.title}</div>
+                          <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
+                        </div>
+                        {task.status === "missed" && (
+                          <div className="text-red-600 font-semibold text-lg">Missed</div>
+                        )}
+                        {task.status === "submitted" && (
+                          <div className="text-black font-semibold text-lg">Submitted</div>
+                        )}
+                        {task.status === "approved" && (
+                          <div className="text-green-800 font-semibold text-lg">Approved</div>
+                        )}
+                      </div>
                     </div>
-
-                    {task.status === "missed" && (
-                      <div className="text-red-600 font-semibold text-lg">Missed</div>
-                    )}
-                    {task.status === "submitted" && (
-                      <div className="text-black font-semibold text-lg">Submitted</div>
-                    )}
-                    {task.status === "approved" && (
-                      <div className="text-green-800 font-semibold text-lg">Approved</div>
-                    )}
-                  </div>
-                </div>
-              </Link>
+                  </Link>
+                ))}
+              </div>
             ))}
           </div>
-        ))}
-      </div>
+        </>
+      ) : (
+        <>
+          {loading && <div className="text-gray-500">Loading assignments…</div>}
 
-      {/* FAB for creating new assignment - only show for non-students */}
-      <button
-        onClick={mounted && isStaff ? () => setShowCreateModal(true) : undefined}
-        disabled={!mounted || !isStaff || creatingAssignment}
-        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
-                   bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
-                   hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
-                   active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Plus className="h-5 w-5" />
-        <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
-      </button>
+          {!loading && lecturerCards.length === 0 && (
+            <div className="text-gray-500">No assignments found.</div>
+          )}
+
+          <div className="space-y-6">
+            {Object.entries(groupedAssignments(lecturerCards)).map(([date, tasks]) => (
+              <div key={date}>
+                <div className="text-2xl font-semibold mb-3">{date}</div>
+                {tasks.map((task) => (
+                  <Link href={detailHref(task.id)} key={task.id}>
+                    <div className="bg-white border border-gray-300 p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold text-xl">{task.title}</div>
+                          <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
+                        </div>
+                        <div className="text-gray-600 font-medium text-lg">{task.status}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <button
+            onClick={mounted && isStaff ? () => setShowCreateModal(true) : undefined}
+            disabled={!mounted || !isStaff || creatingAssignment}
+            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
+                       bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
+                       hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                       active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
+          </button>
+        </>
+      )}
 
       {/* If you wire the modal later, render it conditionally */}
       {/* {showCreateModal && (

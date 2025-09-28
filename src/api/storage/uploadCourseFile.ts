@@ -4,11 +4,11 @@ import { Axios } from "@/util/AxiosInstance";
 export const uploadCourseFileAPI = async (
   courseId: string,
   files: File[]
-): Promise<uploadCourseFile.uploadCourseFilePayload[]> => {
+): Promise<uploadCourseFile.uploadCourseFileResponse[]> => {
   const promisesUpload = files.map(async (file, _) => {
     const formData = new FormData();
     formData.append("file", file);
-    const response = await Axios.post<uploadCourseFile.uploadCourseFilePayload>(
+    const response = await Axios.post<uploadCourseFile.uploadCourseFileResponse>(
       `/storage/upload/course/${courseId}`,
       formData,
       {

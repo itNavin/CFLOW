@@ -10,7 +10,7 @@ import { getUserById } from "@/api/user/getUserById";
 import { createGroupAPI } from "@/api/group/createGroup";
 import CreateGroupModal from "@/components/group/createGroup";
 import UpdateGroupModal from "@/components/group/updateGroupModal";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { Course } from "@/types/api/course";
 import { getStaffCourse } from "@/types/api/course";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
@@ -95,59 +95,100 @@ export default function GroupTab() {
   }, [openCreate]);
 
   const handleDownloadAll = () => {
-    const pageTitle = course?.program
-      ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
-      : "Student Group Data";
+  const pageTitle = course?.program
+    ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
+    : "Student Group Data";
 
-    const headerRow = [
-      "ID",
-      "Project Title",
-      "Product Title",
-      "Company",
-      "Members",
-      "Advisor",
-      "CoAdvisor"
-    ]
+  const fullNameUpper = (u?: { name?: string; surname?: string }) =>
+    [u?.name, u?.surname].filter(Boolean).join(" ").toUpperCase();
 
-    const dataRows = group.map(g => [
-      g.codeNumber,
-      g.projectName,
-      g.productName,
-      g.company,
-      g.members.map((m, idx) =>
-        `${idx + 1}. ${m.courseMember.user.id} ${m.courseMember.user.name}`
-      ).join("\n"), 
-      g.advisors[0]?.courseMember.user.name || "",
-      g.advisors[1]?.courseMember.user.name || ""
-    ]);
-    const excelData = [
-      [pageTitle],
-      headerRow,
-      ...dataRows
-    ];
-
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-
-    worksheet["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: headerRow.length - 1 } }];
-    worksheet['!cols'] = headerRow.map((_, colIdx) => ({
-      wch: Math.max(
-        ...[headerRow, ...dataRows].map(row => (row[colIdx] ? row[colIdx].toString().length : 10)),
-        10
-      )
-    }));
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Groups");
-
-    worksheet["A1"].s = { font: { bold: true, sz: 18 }, alignment: { horizontal: "center" } };
-
-    Object.keys(worksheet)
-      .filter(k => k.endsWith("2"))
-      .forEach((cellKey) => {
-        worksheet[cellKey].s = { font: { bold: true } };
-      });
-
-    XLSX.writeFile(workbook, `Course_${course?.name}_Groups_Data.xlsx`);
+  const formatMember = (m: any, idx: number) => {
+    const sid = String(m?.courseMember?.user?.id ?? "");
+    const nm = fullNameUpper(m?.courseMember?.user);
+    return `${idx + 1}. ${sid} ${nm}`.trim();
   };
+
+  const maxMembers = group.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
+
+  const front = ["ID", "Project Title", "Product Title", "Company"];
+  const membersHeader = ["Members", ...Array(Math.max(0, maxMembers - 1)).fill("")];
+  const tail = ["Advisor", "Co-Advisor"];
+  const headerRow = [...front, ...membersHeader, ...tail];
+
+  const dataRows = group.map((g) => {
+    const members = g.members ?? [];
+    const memberCells = Array.from({ length: maxMembers }, (_, i) =>
+      members[i] ? formatMember(members[i], i) : ""
+    );
+    return [
+      String(g.codeNumber ?? ""),
+      g.projectName ?? "",
+      g.productName ?? "",
+      g.company ?? "",
+      ...memberCells,
+      fullNameUpper(g.advisors?.[0]?.courseMember?.user) || "",
+      fullNameUpper(g.advisors?.[1]?.courseMember?.user) || "",
+    ];
+  });
+
+  const excelData = [[pageTitle], headerRow, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+  const totalCols = headerRow.length;
+  ws["!merges"] = ws["!merges"] || [];
+  ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+
+  const membersStartCol = front.length;
+  const membersEndCol = front.length + Math.max(0, maxMembers - 1);
+  if (maxMembers > 0) {
+    ws["!merges"].push({
+      s: { r: 1, c: membersStartCol },
+      e: { r: 1, c: membersEndCol },
+    });
+  }
+
+  ws["!cols"] = headerRow.map((_, colIdx) => {
+    const colValues = [headerRow[colIdx], ...dataRows.map((r) => r[colIdx] ?? "")];
+    const maxLen = Math.max(12, ...colValues.map((v) => (v ? String(v).length : 0)));
+    return { wch: Math.min(maxLen, 80) };
+  });
+
+  ws["!rows"] = ws["!rows"] || [];
+  ws["!rows"][0] = { hpt: 28 };
+  ws["!rows"][1] = { hpt: 22 }; 
+
+  const titleCellRef = "A1";
+  if (ws[titleCellRef]) {
+    ws[titleCellRef].s = {
+      font: { bold: true, sz: 16 },
+      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    };
+  }
+
+  headerRow.forEach((_, c) => {
+    const ref = XLSX.utils.encode_cell({ r: 1, c });
+    if (ws[ref]) {
+      ws[ref].s = {
+        font: { bold: true },
+        alignment: { horizontal: "center", vertical: "center", wrapText: true },
+        border: {
+          top:    { style: "thin", color: { rgb: "CCCCCC" } },
+          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+          left:   { style: "thin", color: { rgb: "CCCCCC" } },
+          right:  { style: "thin", color: { rgb: "CCCCCC" } },
+        },
+        fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } }, // light gray header bg
+      };
+    }
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Groups");
+  XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data.xlsx`);
+};
+
+
+
 
   const nextGroupNo = useMemo(() => {
     if (!Array.isArray(group) || group.length === 0) {
@@ -163,8 +204,8 @@ export default function GroupTab() {
   }, [group]);
 
   useEffect(() => {
-  console.log("openCreate changed:", openCreate);
-}, [openCreate]);
+    console.log("openCreate changed:", openCreate);
+  }, [openCreate]);
 
   return (
     <section className="min-h-[60vh]">
@@ -250,7 +291,7 @@ export default function GroupTab() {
                 <div className="grid grid-cols-[110px_1fr]">
                   <dt className="text-gray-900 text-xl">Advisor :</dt>
                   <dd className="text-xl">
-                      {data.advisors[0]?.courseMember.user.name}
+                    {data.advisors[0]?.courseMember.user.name}
                     {data.advisors[0]?.courseMember.user.surname}
                   </dd>
                 </div>

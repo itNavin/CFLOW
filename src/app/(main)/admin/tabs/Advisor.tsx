@@ -376,7 +376,7 @@ export default function AdvisorTab() {
                     type="checkbox"
                     checked={allChecked}
                     onChange={toggleAll}
-                    className="accent-[#326295]"
+                    className="accent-[#326295] mt-2"
                     disabled={deletingAdvisors}
                   />
                 </th>
@@ -394,7 +394,7 @@ export default function AdvisorTab() {
                       type="checkbox"
                       checked={!!(r.id != null && selected[r.id])}
                       onChange={() => r.id != null && toggleOne(r.id)}
-                      className="accent-[#326295]"
+                      className="accent-[#326295] mt-1.5"
                       disabled={deletingAdvisors}
                     />
                   </td>

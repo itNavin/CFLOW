@@ -315,9 +315,8 @@ export default function StudentTab() {
                     aria-label="Select all"
                     type="checkbox"
                     checked={allChecked}
-                    ref={(el) => { if (el) el.indeterminate = someChecked; }}
                     onChange={toggleAll}
-                    className="accent-[#326295] cursor-pointer"
+                    className="accent-[#326295] cursor-pointer mt-2"
                   />
                 </th>
                 <th className="py-3 text-xl">Student ID</th>
@@ -334,11 +333,10 @@ export default function StudentTab() {
                 <tr key={r.id} className="border-t">
                   <td className="py-3 pl-4 align-top">
                     <input
-                      aria-label={`Select ${r.user?.name || 'student'}`}
                       type="checkbox"
                       checked={!!selected[r.id]}
                       onChange={() => toggleOne(r.id)}
-                      className="accent-[#326295] cursor-pointer"
+                      className="accent-[#326295] cursor-pointer mt-1.5"
                     />
                   </td>
                   <td className="py-3 align-top text-gray-900 text-lg whitespace-nowrap">{r.user?.id || "-"}</td>
@@ -528,12 +526,12 @@ function AddStudentModal({
                     {filteredStudents.length > 0 ? (
                       filteredStudents.map((student) => (
                         <tr key={student.id} className="border-t hover:bg-gray-50">
-                          <td className="py-3 pl-4">
+                          <td className="py-3 pl-4 align-top">
                             <input
                               type="checkbox"
                               checked={!!selectedStudents[student.id]}
                               onChange={() => toggleStudent(student.id)}
-                              className="accent-[#326295] cursor-pointer"
+                              className="accent-[#326295] cursor-pointer mt-2"
                             />
                           </td>
                           <td className="py-3 text-gray-900">{student.id}</td>
