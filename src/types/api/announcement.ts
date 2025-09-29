@@ -11,7 +11,7 @@ export namespace Announcement {
         name: string;
         description: string;
         createdAt: string;
-        schedule: string;
+        schedule: string | null;
         createById: number;
         files: file[];
         createdBy: createById;
@@ -19,13 +19,17 @@ export namespace Announcement {
 }
 
 export namespace createAnnouncement {
-    export type createAnnouncementPayload = {
+    export type Response = {
+        message: string;
+        announcement: announcementItem;
+    }
+    export type announcementItem = {
         id: string;
         courseId: string;
         name: string;
         description: string;
         createdAt: string;
-        schedule: string;
+        schedule: string | null;
         createById: number;
         files: file[];
         createdBy: createById;

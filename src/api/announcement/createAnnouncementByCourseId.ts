@@ -8,6 +8,6 @@ export const createAnnouncementByCourseIdAPI = (courseId: string, name:string, d
         schedule: schedule,
         courseId: courseId
     }
-    const response = Axios.post<createAnnouncement.createAnnouncementPayload>(`/announcement/course/${courseId}`, body);
+    const response = Axios.post<createAnnouncement.Response>(`/announcement/course/${courseId}`, body);
     return response;
 }

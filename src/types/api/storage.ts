@@ -2,6 +2,7 @@ export namespace uploadCourseFile {
   export type uploadCourseFileResponse = {
     message: string;
     files: Files[];
+    accepted: accepted
   };
 
   export type Files = {
@@ -15,6 +16,12 @@ export namespace uploadCourseFile {
     createdBy: createdBy;
     course: course;
   };
+
+  export type accepted = {
+    ext: string;
+    mime: string;
+    size: number;
+  }
 }
 
 type createdBy = {

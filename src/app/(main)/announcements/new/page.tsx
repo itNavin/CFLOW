@@ -80,19 +80,30 @@ export default function NewAnnouncement() {
         ? getScheduledDateTime().toISOString()
         : null;
 
-      const newAnnouncement = await createAnnouncementByCourseIdAPI(
+      const res = await createAnnouncementByCourseIdAPI(
         courseId,
         title.trim(),
         description.trim(),
         scheduleDate,
       );
+      const announcementId =
+        res.data.announcement.id ??
+        null;
+
+      const isUuid = (v: unknown) =>
+        typeof v === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+
+      if (!isUuid(announcementId)) {
+        throw new Error("Announcement created, but announcementId is missing or not a UUID.");
+      }
 
       let uploadedFiles: uploadCourseFile.uploadCourseFileResponse[] = [];
       if (selectedFiles.length > 0) {
         try {
           uploadedFiles = await uploadAnnouncementFileAPI(
             courseId,
-            newAnnouncement.data.id,
+            announcementId,
             selectedFiles
           );
 
@@ -118,7 +129,6 @@ export default function NewAnnouncement() {
       console.log("Scheduled for:", scheduleDate);
       console.log("Files attached:", uploadedFiles.length);
 
-      // Navigate back to announcements page with courseId
       router.push(`/announcements?courseId=${courseId}`);
 
     } catch (err: any) {
@@ -156,7 +166,6 @@ export default function NewAnnouncement() {
         )}
 
         <form className="space-y-6" onSubmit={handleSubmit}>
-          {/* Title */}
           <div>
             <label className="block font-medium mb-1">
               Title <span className="text-red-500">*</span>
@@ -172,7 +181,6 @@ export default function NewAnnouncement() {
             />
           </div>
 
-          {/* Description */}
           <div>
             <label className="block font-medium mb-1">
               Description <span className="text-red-500">*</span>
@@ -198,26 +206,27 @@ export default function NewAnnouncement() {
               maxFileSize={10}
               disabled={isSubmitting}
               acceptedTypes={[
-                "image/*",
                 "application/pdf",
-                ".doc",
-                ".docx",
-                ".txt",
-                ".ppt",
-                ".pptx",
-                ".xls",
-                ".xlsx"
+                "text/plain",
+                "text/csv",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                "image/png",
+                "image/jpeg",
+                "image/webp",
+                "text/markdown",
+                "application/json",
+                "application/zip"
               ]}
             />
           </div>
 
-          {/* Post Timing - UPDATED SECTION */}
           <div>
             <label className="block font-medium mb-3">
               Post Timing
             </label>
 
-            {/* Toggle between immediate and scheduled */}
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
                 <label className="flex items-center">
@@ -244,11 +253,9 @@ export default function NewAnnouncement() {
                 </label>
               </div>
 
-              {/* Scheduled posting options */}
               {isScheduled && (
                 <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Date Picker */}
                     <div>
                       <label className="block font-medium mb-2">
                         Select Date <span className="text-red-500">*</span>
@@ -261,14 +268,13 @@ export default function NewAnnouncement() {
                         showOutsideDays
                         weekStartsOn={0}
                         disabled={[
-                          { before: new Date() }, // Disable past dates
+                          { before: new Date() }, 
                           ...(isSubmitting ? [{ after: new Date('2099-12-31') }] : [])
                         ]}
-                        fromDate={new Date()} // Start from today
+                        fromDate={new Date()}
                       />
                     </div>
 
-                    {/* Time Picker */}
                     <div>
                       <label className="block font-medium mb-2">
                         Select Time <span className="text-red-500">*</span>
@@ -290,7 +296,6 @@ export default function NewAnnouncement() {
                           </select>
                         </div>
 
-                        {/* Quick time buttons */}
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
@@ -326,7 +331,6 @@ export default function NewAnnouncement() {
                           </button>
                         </div>
 
-                        {/* Preview scheduled time */}
                         {date && time && (
                           <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
                             <strong>Scheduled for:</strong>{" "}
@@ -349,7 +353,6 @@ export default function NewAnnouncement() {
             </div>
           </div>
 
-          {/* Submit Button */}
           <div className="flex justify-end mt-6">
             <button
               type="submit"

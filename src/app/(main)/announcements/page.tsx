@@ -24,7 +24,6 @@ export default function AnnouncementPage() {
         setError("Invalid courseId in URL");
         return;
       }
-      console.log("Fetching announcements for courseId:", courseId);
       const response = await getAllAnnouncementByCourseIdAPI(courseId);
 
       const sortedAnnouncements = (response.data.announcements || []).sort((a, b) => {

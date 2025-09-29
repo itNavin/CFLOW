@@ -229,57 +229,9 @@ export default function CourseTab() {
             </li>
           </ul>
         </div>
-
-        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-2xl font-semibold mb-4">Alerts</h2>
-          <div className="divide-y">
-            <AlertRow
-              icon={<AlertTriangle className="w-6 h-6 text-yellow-600" />}
-              title="Assignment Missed"
-              desc="5 groups missed the submission for Assignment 1"
-              date="01/04/2025, 09:00 AM"
-            />
-            <AlertRow
-              icon={<span className="text-2xl">📣</span>}
-              title="Announcement Posted"
-              desc="New announcement posted by Thanatat Wongabut"
-              date="01/04/2025, 09:00 AM"
-            />
-          </div>
-        </div> */}
       </div>
 
       <div className="space-y-6">
-        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-2xl font-semibold mb-4">Summary</h2>
-          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-lg">
-            <DT label="Total Students" value={dashboard?.totals.students ?? 0} />
-            <DT label="Total Advisors" value={dashboard?.totals.advisors ?? 0} />
-            <DT label="Total Groups" value={dashboard?.totals.groups ?? 0} />
-            <DT label="Total Assignments" value={dashboard?.totals.assignments ?? 0} />
-          </dl>
-        </div> */}
-
-        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
-          <ul className="space-y-2 text-[#326295] text-lg">
-            <li>
-              <Link href={`/assignments/new?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
-                <FilePlus2 className="w-5 h-5" /> Create Assignment
-              </Link>
-            </li>
-            <li>
-              <Link href={`/announcements/new?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
-                <Megaphone className="w-5 h-5" /> Create Announcement
-              </Link>
-            </li>
-            <li>
-              <Link href={`/files/?courseId=${courseId}`} className="hover:underline inline-flex items-center gap-2">
-                <Upload className="w-5 h-5" /> Upload File
-              </Link>
-            </li>
-          </ul>
-        </div> */}
         {groupInfo && groupInfo.groupInformation.map(info => (
           <GroupInformationCard
             key={info.id}

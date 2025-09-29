@@ -9,8 +9,10 @@ export const uploadAnnouncementFileAPI = async (
   const promisesUpload = files.map(async (file, _) => {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("courseId", courseId);
+    formData.append("announcementId", announcementId);
     const response = await Axios.post<uploadCourseFile.uploadCourseFileResponse>(
-      `/storage/upload/course/${courseId}?announcementId=${announcementId}`,
+      `/storage/upload/file`,
       formData,
       {
         headers: {
