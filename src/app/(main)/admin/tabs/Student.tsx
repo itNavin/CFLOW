@@ -10,6 +10,10 @@ import { getStudentNotInCourseAPI } from "@/api/courseMember/getStudentNotInCour
 import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
+import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
+import DownloadTemplateButton from "@/components/downloadTemplateButton";
+
+type Program = "CS" | "DSI";
 
 export default function StudentTab() {
   const courseId = useSearchParams().get("courseId") || "";
@@ -24,6 +28,7 @@ export default function StudentTab() {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
+  const [courseProgram, setCourseProgram] = useState<Program | null>(null);
 
   const fetchStudentNotInCourse = async (courseId: string) => {
     try {
@@ -114,6 +119,26 @@ export default function StudentTab() {
       setAddingStudents(false);
     }
   };
+
+  useEffect(() => {
+    const fetchCourseProgram = async () => {
+      if (!courseId) return;
+      try {
+        const response = await getStaffCourseAPI();
+        // Find the course that matches the current courseId
+        const found = response.data?.course?.find((c: any) => c.id === courseId);
+        if (found && found.program) {
+          setCourseProgram(found.program as Program);
+        } else {
+          setCourseProgram(null);
+        }
+      } catch (error) {
+        console.error("Failed to fetch course program:", error);
+        setCourseProgram(null);
+      }
+    };
+    fetchCourseProgram();
+  }, [courseId]);
 
   useEffect(() => {
     fetchStudents();
@@ -259,7 +284,7 @@ export default function StudentTab() {
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
             onClick={() => setOpenCreate(true)}
-            disabled={addingStudents} // Disable while adding students
+            disabled={addingStudents}
           >
             <Plus className="w-4 h-4" />
             {addingStudents ? "Adding..." : "Add"}
@@ -273,13 +298,7 @@ export default function StudentTab() {
             Upload excel
           </button>
 
-          <button
-            className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
-            onClick={() => alert("TODO: download template")}
-          >
-            <Download className="w-4 h-4" />
-            Download template
-          </button>
+          <DownloadTemplateButton program={courseProgram} />
 
           <input
             ref={fileInputRef}

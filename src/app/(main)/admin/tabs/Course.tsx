@@ -98,7 +98,6 @@ export default function CourseTab() {
     }
   };
 
-
   const fetchDashboardData = async () => {
     try {
       if (!courseId) return;
@@ -133,12 +132,12 @@ export default function CourseTab() {
         setAssignments(response.data);
       } else {
         console.warn("Assignments data is not in expected format:", response.data);
-        setAssignments([]); // Set empty array as fallback
+        setAssignments([]);
       }
     } catch (error: any) {
       console.error("Failed to load assignments:", error);
       setError("Failed to load assignments");
-      setAssignments([]); // Set empty array on error
+      setAssignments([]); 
     }
   };
 

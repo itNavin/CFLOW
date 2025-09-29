@@ -11,15 +11,16 @@ export const uploadAnnouncementFileAPI = async (
     formData.append("file", file);
     formData.append("courseId", courseId);
     formData.append("announcementId", announcementId);
-    const response = await Axios.post<uploadCourseFile.uploadCourseFileResponse>(
-      `/storage/upload/file`,
-      formData,
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      }
-    );
+    const response =
+      await Axios.post<uploadCourseFile.uploadCourseFileResponse>(
+        `/storage/upload/file`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
     return response.data;
   });
 

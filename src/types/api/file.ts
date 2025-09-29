@@ -1,7 +1,7 @@
 // GET http://localhost:8000/file/course/2
 // POST http://localhost:8000/file/create/course/2
 export namespace File {
-    export type File = {
+    export type Files = {
         id: string;
         name: string;
         filepath: string;
@@ -31,6 +31,7 @@ type course = {
     program: "CS" | "DSI";
     createdById: string;
     createdAt: string;
+    updatedAt: string;
 }
 
 export namespace uploadSubmissionFile {
