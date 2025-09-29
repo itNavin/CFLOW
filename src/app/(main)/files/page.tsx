@@ -49,14 +49,12 @@ export default function FilePage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
-    const id = Number(courseId);
-    console.log("Selected files:", selectedFiles);
 
     try {
       const created = await Promise.all(
         Array.from(selectedFiles || []).map(async (f) => {
-          const res = await createFileByCourseIdAPI(id);
-          return res.data; // ApiFile.File
+          const res = await createFileByCourseIdAPI(courseId);
+          return res.data;
         })
       );
     } catch (error) {
@@ -69,14 +67,11 @@ export default function FilePage() {
 
   const fetchFiles = async () => {
     try {
-      if (!courseId) return;
-
-      const id = Number(courseId);
-      if (Number.isNaN(id)) {
+      if (!courseId) {
         return;
       }
 
-      const response = await getAllFileByCourseIdAPI(id);
+      const response = await getAllFileByCourseIdAPI(courseId);
       setFiles(response.data);
     } catch (error) {
       console.error("Error fetching files:", error);
@@ -88,10 +83,8 @@ export default function FilePage() {
     setOpenDropdown(null);
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Only close if we're not clicking on a dropdown button
       const target = event.target as HTMLElement;
       if (!target.closest('.dropdown-container')) {
         setOpenDropdown(null);
