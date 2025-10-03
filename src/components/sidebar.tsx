@@ -22,15 +22,14 @@ export default function Sidebar() {
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [menuItems, setMenuItems] = useState<MenuItems>([]);
   const courseId = useSearchParams().get("courseId") || "";
-  const id = String(courseId);
+  const id = courseId;
   const role = getUserRole();
   const isStudent = role === "student";
 
   const fetchProjectName = async () => {
     try {
       if (!courseId) return;
-      const id = String(courseId);
-      const response = await getMyProjectByCourseAPI(id);
+      const response = await getMyProjectByCourseAPI(courseId);
       setProject(response.data);    
     } catch (error) {}
   };
@@ -39,7 +38,6 @@ export default function Sidebar() {
     switch (role) {
       case "student": {
         if (!project || !project.group) {
-        console.log("project or project.group is null/undefined");
         return [];
       }
         return [
@@ -84,7 +82,7 @@ export default function Sidebar() {
     setMenuItems(getMenuItems(userRole as UserRole));
   }, [userRole, project]);
 
-  if (menuItems.length === 0) {
+  if (!menuItems || menuItems.length === 0) {
     console.log("No menu items, hiding sidebar");
     return null;
   }

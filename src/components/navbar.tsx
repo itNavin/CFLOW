@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState, useEffect } from "react";
 import Image from "next/image";
-import { Bell, Home, User } from "lucide-react";
+import { Bell, Home, User, Settings } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import NotificationPopup from "./notification";
 import { getCourse, Course } from "@/types/api/course";
@@ -10,10 +10,11 @@ import { getCourseAPI } from "@/api/course/getCourseByUser";
 import { getUserRole } from "@/util/cookies";
 import { getCourseNameAPI } from "@/api/course/getCourseName";
 import { getCoursename } from "@/types/api/course";
+import { isCanUpload } from "@/util/RoleHelper";
 
 export default function Navbar() {
   const searchParams = useSearchParams();
-  
+
   const courseId = searchParams.get("courseId");
 
   const [showNotification, setShowNotification] = useState(false);
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [courseData, setCourseData] = useState<getCoursename.CourseName | null>(null);
+  const [canUpload, setCanUpload] = useState(false);
 
   const fetchCourses = useCallback(async () => {
     if (!userRole || !courseId || courseId.trim() === "") {
@@ -53,6 +55,7 @@ export default function Navbar() {
 
   useEffect(() => {
     fetchCourses();
+    setCanUpload(isCanUpload());
   }, [fetchCourses]);
 
   return (
@@ -60,15 +63,11 @@ export default function Navbar() {
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
         <div className="flex items-center gap-4">
           <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={100} height={40} style={{ width: "auto", height: "auto" }} />
-          {/* {courseId && courseData?.coursename && (
-            <span className="text-4xl font-semibold">
-              {courseData.coursename}
-            </span>
-          )} */}
           <h1 className="text-4xl font-semibold">Capstone Report Submission System</h1>
         </div>
 
         <div className="flex items-center gap-6">
+          {canUpload && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
           <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
             <Bell className="w-6 h-6 text-black" />
             {/* <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span> */}

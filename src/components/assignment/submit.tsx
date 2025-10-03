@@ -28,9 +28,9 @@ export default function SubmitAssignment({
   const isStudent = (role ?? "") === "student";
   const [comment, setComment] = useState("");
   const searchParams = useSearchParams();
-  const courseId = Number(searchParams.get("courseId")) || 0;
-  const assignmentId = Number(searchParams.get("assignmentId")) || 0;
-  const groupId = Number(searchParams.get("groupId")) || 0;
+  const courseId = String(searchParams.get("courseId")) || "0";
+  const assignmentId = String(searchParams.get("assignmentId")) || "0";
+  const groupId = String(searchParams.get("groupId")) || "0";
 
   
   useEffect(() => {
@@ -102,12 +102,12 @@ export default function SubmitAssignment({
       const submissionId = createdSubmission.data.id;
       if (drafts && Object.keys(drafts).length > 0) {
         Object.entries(drafts).forEach(async ([delId, aftMap]) => {
-          const deliverableId = Number(delId);
-          if (Number.isNaN(deliverableId)) return;
+          const deliverableId = delId;
+          if (!deliverableId) return;
 
           Object.entries(aftMap).forEach(async ([aftId, draft]) => {
             const createdSubmissionFile = await uploadSubmissionFileAPI(courseId, assignmentId, deliverableId, groupId, submissionId, draft.file)
-            if (createdSubmissionFile.id === -1) {
+            if (createdSubmissionFile.id === "-1") {
               alert("Failed to upload submission file");
               return;
             }

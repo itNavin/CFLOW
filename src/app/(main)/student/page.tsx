@@ -23,7 +23,7 @@ export function formatUploadAt(
     year: "numeric",
     month: "short",
     day: "2-digit",
-    timeZone: "Asia/Bangkok", 
+    timeZone: "Asia/Bangkok",
   });
 }
 
@@ -74,7 +74,7 @@ export default function StudentDashboard() {
       if (!id) {
         setError("Invalid courseId in URL");
         return;
-      }          
+      }
       const response = await getDashboardData(courseId, {
         assignmentId: query.assignmentId !== undefined ? String(query.assignmentId) : undefined,
         groupId: query.groupId !== undefined ? String(query.groupId) : undefined,
@@ -119,21 +119,25 @@ export default function StudentDashboard() {
   }, [courseId]);
 
   useEffect(() => {
-    if (!groupInfo) return;
+    if (
+      !groupInfo ||
+      !Array.isArray(groupInfo.groupInformation) ||
+      groupInfo.groupInformation.length === 0
+    ) return;
     fetchDashboardDataWithQuery({ groupId: groupInfo.groupInformation[0].id });
-  }, [groupInfo])
+  }, [groupInfo]);
 
   useEffect(() => {
     if (
-    !groupInfo ||
-    !Array.isArray(groupInfo.groupInformation) ||
-    groupInfo.groupInformation.length === 0
-  ) return;
-      fetchDashboardDataWithQuery({ 
-        assignmentId: selectedAssignmentChartId || undefined,
-        groupId: String(groupInfo.groupInformation[0].id)
-      });
-  }, [groupInfo?.groupInformation[0].id, selectedAssignmentChartId]);
+      !groupInfo ||
+      !Array.isArray(groupInfo.groupInformation) ||
+      groupInfo.groupInformation.length === 0
+    ) return;
+    fetchDashboardDataWithQuery({
+      assignmentId: selectedAssignmentChartId || undefined,
+      groupId: String(groupInfo.groupInformation[0].id)
+    });
+  }, [groupInfo, selectedAssignmentChartId]);
 
   const getStatusCounts = () => {
     if (!dashboard?.course?.submissions?.statusCounts) {
@@ -161,8 +165,8 @@ export default function StudentDashboard() {
                 <h2 className="text-2xl font-semibold">Dashboard</h2>
                 <div className="flex items-center gap-2">
                   <label className="text-lg text-gray-600 whitespace-nowrap">Assignment:</label>
-                  <select 
-                    onChange={handleChartAssignmentChange} 
+                  <select
+                    onChange={handleChartAssignmentChange}
                     value={selectedAssignmentChartId || -1}
                     className="border border-gray-300 rounded px-2 py-1 text-base min-w-[160px]"
                   >
@@ -178,17 +182,17 @@ export default function StudentDashboard() {
 
               <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                 <div className="flex items-center justify-center">
-                  <MultiColorDonut 
+                  <MultiColorDonut
                     statusCounts={getStatusCounts()}
                     loading={dashboardLoading}
                   />
                 </div>
                 <ul className="space-y-2 text-lg">
-                      <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
-                      <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
-                      <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
-                      <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
-                      <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
+                  <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
+                  <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
+                  <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
+                  <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
+                  <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
                 </ul>
               </div>
             </section>
@@ -199,7 +203,9 @@ export default function StudentDashboard() {
             <h2 className="text-2xl font-semibold mb-4">Quick Actions</h2>
             <ul className="space-y-2 text-[#326295]">
               <li>
-                <Link href={`/assignments?courseId=${courseId}&groupId=${groupInfo?.groupInformation[0].id || ''}`} className="inline-flex items-center gap-2 hover:underline text-lg">
+                <Link
+                  href={`/assignments?courseId=${courseId}&groupId=${(groupInfo?.groupInformation && groupInfo.groupInformation.length > 0) ? groupInfo.groupInformation[0].id : ''}`}
+                >
                   View All Assignments
                 </Link>
               </li>
@@ -218,15 +224,51 @@ export default function StudentDashboard() {
 
           <GroupInformationCard
             data={{
-              id: groupInfo?.groupInformation[0].codeNumber || "No Group",
-              projectTitle: groupInfo?.groupInformation[0].projectName || "-",
-              productTitle: groupInfo?.groupInformation[0].productName || "-",
-              company: groupInfo?.groupInformation[0].company || "-",
-              members: groupInfo?.groupInformation[0].members?.map(member =>
-                `${member.courseMember.user.id} ${member.courseMember.user.name} (${member.workRole})`
-              ) || [],
-              advisor: groupInfo?.groupInformation[0].advisors?.[0]?.courseMember?.user?.name || "No Advisor Assigned",
-              codeNumber: groupInfo?.groupInformation[0].codeNumber || "-",
+              id:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].codeNumber
+                  ? groupInfo.groupInformation[0].codeNumber
+                  : "No Group",
+              projectTitle:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].projectName
+                  ? groupInfo.groupInformation[0].projectName
+                  : "-",
+              productTitle:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].productName
+                  ? groupInfo.groupInformation[0].productName
+                  : "-",
+              company:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].company
+                  ? groupInfo.groupInformation[0].company
+                  : "-",
+              members:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].members
+                  ? groupInfo.groupInformation[0].members.map(member =>
+                    `${member.courseMember.user.id} ${member.courseMember.user.name}`
+                  )
+                  : [],
+              advisor:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].advisors &&
+                  groupInfo.groupInformation[0].advisors[0]?.courseMember?.user?.name
+                  ? groupInfo.groupInformation[0].advisors[0].courseMember.user.name
+                  : "No Advisor Assigned",
+              codeNumber:
+                groupInfo?.groupInformation &&
+                  groupInfo.groupInformation.length > 0 &&
+                  groupInfo.groupInformation[0].codeNumber
+                  ? groupInfo.groupInformation[0].codeNumber
+                  : "-",
             }}
             onEdit={() => console.log("Edit group")}
           />
@@ -308,9 +350,9 @@ function MultiColorDonut({
       const degrees = (count / total) * 360;
       const startAngle = currentAngle;
       const endAngle = currentAngle + degrees;
-      
+
       currentAngle = endAngle;
-      
+
       return {
         status,
         count,
@@ -331,8 +373,8 @@ function MultiColorDonut({
       <div
         className="relative w-48 h-48 rounded-full"
         style={{
-          background: segments.length > 0 
-            ? `conic-gradient(${gradientSegments})` 
+          background: segments.length > 0
+            ? `conic-gradient(${gradientSegments})`
             : '#e5e7eb',
           transform: 'rotate(-90deg)' // Start from top instead of right
         }}

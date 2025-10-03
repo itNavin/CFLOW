@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import React from "react";
 import UserDetailCard from "@/components/profile/userDetail";
 import CourseDetailCard from "@/components/profile/courseDetail";
+import Navbar from "@/components/navbar";
 
 export default function ProfilePage() {
   const navigator = useRouter()
@@ -16,12 +17,14 @@ export default function ProfilePage() {
     navigator.replace("/auth/login")
   }
   return (
-    <main className="min-h-screen bg-white p-6 font-dbheavent">
-      <h2 className="text-2xl font-semibold mb-6">Profile</h2>
+    <>
+      <Navbar />
+      <main className="min-h-screen bg-white p-6 font-dbheavent">
+
+        <h2 className="text-2xl font-semibold mb-6">Profile</h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <UserDetailCard />
-
         <CourseDetailCard />
       </div>
 
@@ -31,5 +34,6 @@ export default function ProfilePage() {
         </button>
       </div>
     </main>
+  </>
   );
 }

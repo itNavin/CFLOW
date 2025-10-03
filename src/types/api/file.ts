@@ -42,3 +42,26 @@ export namespace uploadSubmissionFile {
         fileUrl: string[];
     }
 }
+
+export namespace deleteCourseFile {
+    export type DeleteCourseFilePayload = {
+        message: string;
+        file: deleteFile;
+    }
+    export type deleteFile = {
+        id: string;
+        name: string;
+        filepath: string;
+        createdById: string;
+        courseId: string;
+        announcementId: number | null;
+        uploadAt: string;
+    }
+}
+
+export namespace downloadCourseFile {
+    export type DownloadCourseFilePayload = {
+        message: string;
+        url: string;
+    }
+}

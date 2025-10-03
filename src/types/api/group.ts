@@ -128,3 +128,9 @@ type Student = {
   createdAt: string;
 }
     
+
+export namespace deleteGroup {
+  export type DeleteGroupPayload = {
+    message: string;
+  };
+}

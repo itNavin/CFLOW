@@ -15,14 +15,12 @@ type CardAssignment = {
   dueDate: string;
   status: "missed" | "upcoming" | "submitted" | "approved";
   dateGroup: string;
+  sortKey: number;
 };
 
 export default function AssignmentPage() {
-  // mount gate
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  // read search params AFTER mount to avoid SSR/client mismatch
   const sp = useSearchParams();
   const [courseId, setCourseId] = useState("");
   const [groupId, setGroupId] = useState("");
@@ -32,7 +30,6 @@ export default function AssignmentPage() {
     setGroupId(sp.get("groupId") || "");
   }, [sp]);
 
-  // read role AFTER mount
   const [role, setRole] = useState<string | null>(null);
   useEffect(() => {
     setRole(getUserRole());
@@ -43,7 +40,7 @@ export default function AssignmentPage() {
   const isAdvisor = role === "advisor";
 
   const [activeTab, setActiveTab] = useState<"open" | "submitted">("open");
-  const [studentAssignment, setStudentAssignment] = useState<getAllAssignments.studentAssignment[]>([]);
+  const [studentAssignment, setStudentAssignment] = useState<getAllAssignments.studentAssignment | null>(null);
   const [lecturerData, setLecturerData] = useState<getAllAssignments.stfAssignment[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -76,11 +73,13 @@ export default function AssignmentPage() {
       try {
         if (isStudent) {
           const res = await getStudentAssignmentAPI(courseId);
-          if (Array.isArray(res.data.assignments)) {
-            setStudentAssignment(res.data.assignments);
+          const a = res?.data?.assignment;
+          if (a && typeof a === "object") {
+            setStudentAssignment(a as getAllAssignments.studentAssignment);
           } else {
-            setStudentAssignment([]);
+            setStudentAssignment(null);
           }
+          console.log("Student assignments:", res.data.assignment);
         } else if (role) {
           setLoading(true);
           const res = await getAllAssignmentsStfLecAPI(courseId);
@@ -89,7 +88,7 @@ export default function AssignmentPage() {
         setActiveTab("open");
       } catch (e) {
         console.error("Failed to fetch assignments", e);
-        if (isStudent) setStudentAssignment([]);
+        if (isStudent) setStudentAssignment(null);
       } finally {
         setLoading(false);
       }
@@ -97,61 +96,73 @@ export default function AssignmentPage() {
     run();
   }, [mounted, courseId, isStudent, role]);
 
-  // Build cards (guard against missing fields)
+  const pickDueISO = (obj: { dueDate?: string | null; endDate?: string | null }) =>
+    obj.dueDate ?? obj.endDate ?? "";
+
   const openCards: CardAssignment[] = useMemo(() => {
-    if (!studentAssignment) return [];
-    return studentAssignment
-      .map((a) => {
-        const ot = a.openTasks?.[0];
-        if (!ot) return null;
-        const whenISO = ot.dueDate ?? ot.schedule ?? "";
-        if (!whenISO) return null;
+    if (!studentAssignment?.openTasks) return [];
+    return studentAssignment.openTasks
+      .map((ot) => {
+        const dueISO = pickDueISO(ot);         // ← dueDate first, else endDate
+        if (!dueISO) return null;
+        const ms = new Date(dueISO).getTime();
+        if (Number.isNaN(ms)) return null;
+
         return {
           id: String(ot.id),
           title: ot.name ?? "(Untitled)",
-          dueDate: safeFormatTime(whenISO),
-          status: computeOpenStatus(ot.endDate ?? whenISO),
-          dateGroup: safeFormatDateGroup(whenISO),
+          dueDate: safeFormatTime(dueISO),      // display from dueISO
+          status: computeOpenStatus(dueISO),    // status from dueISO
+          dateGroup: safeFormatDateGroup(dueISO), // group from dueISO
+          sortKey: ms,                          // sort by dueISO
         };
       })
       .filter(Boolean) as CardAssignment[];
   }, [studentAssignment, mounted]);
 
+  // SUBMITTED (students)
   const submittedCards: CardAssignment[] = useMemo(() => {
-    if (!studentAssignment) return [];
-    return studentAssignment
+    if (!studentAssignment?.submitted) return [];
+    return studentAssignment.submitted
       .map((a) => {
-        // If your submitted list has different shape, adapt here
-        const whenISO = (a as any).dueDate ?? (a as any).schedule ?? (a as any).endDate ?? "";
-        if (!whenISO) return null;
+        const dueISO = pickDueISO(a);
+        if (!dueISO) return null;
+        const ms = new Date(dueISO).getTime();
+        if (Number.isNaN(ms)) return null;
+
         return {
-          id: String((a as any).id ?? ""),
-          title: (a as any).name ?? "(Untitled)",
-          dueDate: safeFormatTime(whenISO),
+          id: String(a.id ?? ""),
+          title: a.name ?? "(Untitled)",
+          dueDate: safeFormatTime(dueISO),
           status: "submitted",
-          dateGroup: safeFormatDateGroup(whenISO),
+          dateGroup: safeFormatDateGroup(dueISO),
+          sortKey: ms,
         };
       })
       .filter(Boolean) as CardAssignment[];
   }, [studentAssignment, mounted]);
 
+  // lecturerCards
   const lecturerCards: CardAssignment[] = useMemo(() => {
-  if (!lecturerData) return [];
-  return lecturerData
-    .map((a) => {
-      // Use dueDate, endDate, or schedule as available
-      const whenISO = a.dueDate ?? a.endDate ?? a.schedule ?? "";
-      if (!whenISO) return null;
-      return {
-        id: a.id,
-        title: a.name ?? "(Untitled)",
-        dueDate: safeFormatTime(whenISO),
-        status: computeOpenStatus(whenISO),
-        dateGroup: safeFormatDateGroup(whenISO),
-      };
-    })
-    .filter(Boolean) as CardAssignment[];
-}, [lecturerData, mounted]);
+    if (!lecturerData) return [];
+    return lecturerData
+      .map((a) => {
+        const whenISO = a.dueDate ?? a.endDate ?? a.schedule ?? "";
+        if (!whenISO) return null;
+        const ms = new Date(whenISO).getTime();            // ← define ms
+        if (Number.isNaN(ms)) return null;
+        return {
+          id: a.id,
+          title: a.name ?? "(Untitled)",
+          dueDate: safeFormatTime(whenISO),
+          status: computeOpenStatus(whenISO),
+          dateGroup: safeFormatDateGroup(whenISO),
+          sortKey: ms,                                      // ← use it
+        };
+      })
+      .filter(Boolean) as CardAssignment[];
+  }, [lecturerData, mounted]);
+
 
   const groupedAssignments = (data: CardAssignment[]) =>
     data.reduce<Record<string, CardAssignment[]>>((acc, curr) => {
@@ -165,7 +176,12 @@ export default function AssignmentPage() {
       : submittedCards
     : lecturerCards;
 
-  const grouped = groupedAssignments(displayedData);
+  const sorted = useMemo(
+    () => [...displayedData].sort((a, b) => a.sortKey - b.sortKey),
+    [displayedData]
+  );
+
+  const grouped = useMemo(() => groupedAssignments(sorted), [sorted]);
 
   const detailHref = (assignmentId: string) =>
     isStudent
@@ -175,7 +191,7 @@ export default function AssignmentPage() {
   const openCount = isStudent ? (studentAssignment as any)?.counts?.open ?? 0 : lecturerData?.length ?? 0;
   const submittedCount = isStudent ? (studentAssignment as any)?.counts?.submitted ?? 0 : 0;
 
-  
+
   const showSubmittedTab = mounted && isStudent;
 
   return (
@@ -214,14 +230,14 @@ export default function AssignmentPage() {
             {Object.entries(grouped).map(([date, tasks]) => (
               <div key={date}>
                 <div className="text-2xl font-semibold mb-3">{date}</div>
-                {tasks.map((task) => (
-                  <Link href={detailHref(task.id)} key={task.id}>
+                {tasks.map((task, idx) => (
+                  <Link href={detailHref(task.id)} key={`${task.id}-${task}-${idx}`}>
                     <div
                       className={`${task.status === "upcoming"
-                          ? "bg-orange-100 border border-orange-200"
-                          : task.status === "submitted" || task.status === "approved"
-                            ? "bg-green-100 border-green-300"
-                            : "bg-white border border-gray-300"
+                        ? "bg-orange-100 border border-orange-200"
+                        : task.status === "submitted" || task.status === "approved"
+                          ? "bg-green-100 border-green-300"
+                          : "bg-white border border-gray-300"
                         } p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition`}
                     >
                       <div className="flex justify-between items-center">
@@ -253,20 +269,18 @@ export default function AssignmentPage() {
           {!loading && lecturerCards.length === 0 && (
             <div className="text-gray-500">No assignments found.</div>
           )}
-
           <div className="space-y-6">
-            {Object.entries(groupedAssignments(lecturerCards)).map(([date, tasks]) => (
+            {Object.entries(grouped).map(([date, tasks]) => (
               <div key={date}>
                 <div className="text-2xl font-semibold mb-3">{date}</div>
-                {tasks.map((task) => (
-                  <Link href={detailHref(task.id)} key={task.id}>
+                {tasks.map((task, idx) => (
+                  <Link href={detailHref(task.id)} key={`${task.id}--${task.sortKey}-${idx}`}>
                     <div className="bg-white border border-gray-300 p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition">
                       <div className="flex justify-between items-center">
                         <div>
                           <div className="font-semibold text-xl">{task.title}</div>
                           <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
                         </div>
-                        <div className="text-gray-600 font-medium text-lg">{task.status}</div>
                       </div>
                     </div>
                   </Link>

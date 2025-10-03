@@ -6,6 +6,9 @@ import { getGroup } from "@/types/api/group";
 import { updateGroupAPI } from "@/api/group/updateGroup";
 import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
+import { deleteGroupAPI } from "@/api/group/deleteGroup";
+import { Trash2 } from "lucide-react";
+
 
 interface Member {
   studentId: string;
@@ -415,8 +418,7 @@ export default function UpdateGroupModal({
               </div>
             </Field>
           </div>
-
-          <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
+          <div className="flex items-center justify-end border-t px-6 py-4">
             <button
               onClick={onCancel}
               disabled={isUpdating}
@@ -468,7 +470,7 @@ function Field({
   label,
   required,
   children,
-  htmlFor, // optional input id
+  htmlFor,
 }: {
   label: string;
   required?: boolean;

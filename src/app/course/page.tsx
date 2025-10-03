@@ -326,9 +326,9 @@ export default function CoursePage() {
                     >
                       Edit
                     </button>
-                    <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100">
+                    {/* <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100">
                       Hide
-                    </button>
+                    </button> */}
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                       onClick={() => {

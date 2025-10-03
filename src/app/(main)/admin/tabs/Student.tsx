@@ -2,7 +2,7 @@
 
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Upload, Download, Search, X } from "lucide-react";
+import { Plus, Upload, Download, Search, X, Trash2 } from "lucide-react";
 import { getStudentMemberAPI } from "@/api/courseMember/getStudentMember";
 import { getStudentMember, getStudentNotInCourse, studentMember, studentNotInCourse } from "@/types/api/courseMember";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -12,6 +12,7 @@ import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import DownloadTemplateButton from "@/components/downloadTemplateButton";
+import { uploadTemplateAPI } from "@/api/excel/uploadTemplate";
 
 type Program = "CS" | "DSI";
 
@@ -120,12 +121,28 @@ export default function StudentTab() {
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    console.log("files selected:", files);
+    if (!files.length || !courseId) return;
+    try {
+      setLoading(true);
+      const result = await uploadTemplateAPI(courseId, files);
+      console.log("Uploaded files:", result);
+      alert("Files uploaded successfully");
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      alert("Failed to upload files");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchCourseProgram = async () => {
       if (!courseId) return;
       try {
         const response = await getStaffCourseAPI();
-        // Find the course that matches the current courseId
         const found = response.data?.course?.find((c: any) => c.id === courseId);
         if (found && found.program) {
           setCourseProgram(found.program as Program);
@@ -245,13 +262,6 @@ export default function StudentTab() {
     }
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    console.log("Selected file:", file.name, file.type, file.size);
-    e.target.value = "";
-  };
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
@@ -303,7 +313,7 @@ export default function StudentTab() {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".xlsx,.xls,.csv"
+            accept=".xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
           />
@@ -370,10 +380,18 @@ export default function StudentTab() {
                     {r.groupMembers?.[0]?.group?.productName || <span className="text-gray-400">-</span>}
                   </td>
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    <button
+                    {/* <button
                       onClick={() => deleteSingleStudent(r)}
                       className="text-red-500 hover:underline text-lg">
                       {deletingStudent ? "Deleting..." : "Delete"}
+                    </button> */}
+                    <button
+                      title="Delete"
+                      className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                      onClick={() => deleteSingleStudent(r)}
+                      disabled={loading}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -393,12 +411,20 @@ export default function StudentTab() {
         <div>{selectedCount} selected</div>
 
         {selectedCount > 0 && (
+          // <button
+          //   className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+          //   onClick={deleteSelectedStudents}
+          //   disabled={addingStudents || deletingStudent}
+          // >
+          //   {deletingStudent ? "Removing..." : `Delete`}
+          // </button>
           <button
-            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+            title="Delete"
+            className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4"
             onClick={deleteSelectedStudents}
-            disabled={addingStudents || deletingStudent}
+            disabled={loading}
           >
-            {deletingStudent ? "Removing..." : `Delete`}
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>

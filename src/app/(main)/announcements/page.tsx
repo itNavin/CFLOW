@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { file } from "@/types/api/announcement";
 import { isCanUpload } from "@/util/RoleHelper";
-import { getUserRole } from "@/util/cookies";
+import { downloadCourseFileAPI } from "@/api/file/downloadCourseFile";
 
 export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<Announcement.Announcements[]>([]);
@@ -37,10 +37,32 @@ export default function AnnouncementPage() {
     }
   };
 
-  const handleDownload = (file: file, announcementAuthor: string) => {
-    alert(`Download clicked for: ${file.name} from announcement by: ${announcementAuthor}`);
+  const handleDownload = async (file: file, announcementAuthor: string) => {
+  try {
+    console.log(`Attempting to download file: ${file.id} from announcement by: ${announcementAuthor}`);
+    const res = await downloadCourseFileAPI(file.id);
+    console.log("API response:", res);
+
+    const url = res.data.url;
+    if (url) {
+      window.open(url, "_blank");
+      console.log("Opened download URL:", url);
+    } else {
+      alert("Download link not found.");
+      console.error("No download URL in response:", res.data);
+    }
     setOpenDropdown(null);
-  };
+  } catch (error: any) {
+    setOpenDropdown(null);
+    if (error.response && error.response.status === 404) {
+      alert("File not found (404).");
+      console.error("Download failed: File not found (404)", error);
+    } else {
+      alert("Failed to get download link.");
+      console.error("Download failed:", error);
+    }
+  }
+};
 
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
