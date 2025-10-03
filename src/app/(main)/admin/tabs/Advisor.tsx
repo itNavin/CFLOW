@@ -97,7 +97,7 @@ export default function AdvisorTab() {
 
         if (deletedIds && deletedIds.includes(advisor.id)) {
           alert(`Successfully removed ${advisorName} from the course.`);
-          await fetchAdvisors(); 
+          await fetchAdvisors();
         } else if (notFoundIds && notFoundIds.includes(advisor.id)) {
           alert(`Error: Advisor ${advisorName} was not found in the course.`);
         } else if (blocked && blocked.includes(advisor.id)) {
@@ -157,23 +157,23 @@ export default function AdvisorTab() {
       const response = await deleteCourseMemberAPI(selectedIds);
       if (response.data?.result) {
         const { deletedIds, notFoundIds, blocked } = response.data.result;
-        
+
         let message = "";
-        
+
         if (deletedIds && deletedIds.length > 0) {
           message += `Successfully removed ${deletedIds.length} advisor(s).`;
         }
-        
+
         if (blocked && blocked.length > 0) {
           message += `\n${blocked.length} advisor(s) could not be removed (may be supervising groups or have assignments).`;
         }
-        
+
         if (notFoundIds && notFoundIds.length > 0) {
           message += `\n${notFoundIds.length} advisor(s) were not found.`;
         }
 
         alert(message || "Operation completed.");
-        
+
       } else if (response.data?.message) {
         alert(response.data.message);
       } else {
@@ -188,7 +188,7 @@ export default function AdvisorTab() {
       console.error("Error deleting advisors from course:", error);
 
       let errorMessage = "Failed to remove advisors from course";
-      
+
       if (error?.response?.status === 400) {
         errorMessage = error?.response?.data?.message || "Bad request - check if advisors can be removed";
       } else if (error?.response?.data?.message) {
@@ -417,12 +417,20 @@ export default function AdvisorTab() {
                   </td>
 
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    <button
+                    {/* <button
                       onClick={() => deleteSingleAdvisor(r)}
                       className="text-red-500 hover:underline text-lg"
                       disabled={deletingAdvisors}
                     >
                       {deletingAdvisors ? "Deleting..." : "Delete"}
+                    </button> */}
+                    <button
+                      title="Delete"
+                      className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                      onClick={() => deleteSingleAdvisor(r)}
+                      disabled={loading}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -443,12 +451,20 @@ export default function AdvisorTab() {
         <div>{selectedCount} selected</div>
 
         {selectedCount > 0 && (
+          // <button
+          //   className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+          //   onClick={deleteSelectedAdvisors}
+          //   disabled={addingAdvisors || deletingAdvisors}
+          // >
+          //   {deletingAdvisors ? "Removing..." : `Delete`}
+          // </button>
           <button
-            className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
+            title="Delete"
+            className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4"
             onClick={deleteSelectedAdvisors}
-            disabled={addingAdvisors || deletingAdvisors}
+            disabled={loading}
           >
-            {deletingAdvisors ? "Removing..." : `Delete`}
+            <Trash2 className="h-4 w-4" />
           </button>
         )}
       </div>

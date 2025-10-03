@@ -2,7 +2,7 @@ export namespace getAllAssignments {
 
     export type getStudentAssignments = {
         message: string;
-        assignments: studentAssignment[];
+        assignment: studentAssignment;
     }
 
     export type studentAssignment = {
@@ -153,13 +153,21 @@ export namespace getAllAssignments {
 }
 
 export namespace createAssignment {
+    export type CreateAssignmentResponse = {
+        message: string;
+        assignment: CreateAssignmentPayload;
+    }
+
     export type CreateAssignmentPayload = {
         id: string;
         name: string;
         description: string | null;
         endDate: string;
         schedule: string | null;
+        duedate: string | null;
         courseId: string;
+        createdAt: string;
+        updatedAt: string;
         deliverables: CreateDeliverablePayload[];
         assignmentDueDates: CreateAssignmentDueDatePayload[];
     }
@@ -168,6 +176,8 @@ export namespace createAssignment {
         id: string;
         name: string;
         assignmentId: string;
+        createdAt: string;
+        updatedAt: string;
         allowedFileTypes: CreateAllowedFileTypePayload[];
     }
 
@@ -176,6 +186,8 @@ export namespace createAssignment {
         mime: string;
         type: string;
         deliverableId: string;
+        createdAt: string;
+        updatedAt: string;
     }
 
     export type CreateAssignmentDueDatePayload = {
@@ -184,5 +196,67 @@ export namespace createAssignment {
         groupId: number;
         dueDate: string;
         createdAt: string;
+        updatedAt: string;
     }
+}
+
+export namespace assignmentDetail {
+    export type AssignmentStudentDetail = {
+        message: string;
+        assignment: AssignmentStudentPayload;
+    }
+}
+
+export type AssignmentStudentPayload = {
+    id: string;
+    name: string;
+    description: string;
+    duedate: string;
+    endDate: string;
+    schedule: string;
+    courseId: string;
+    createdAt: string;
+    updatedAt: string;
+    deliverables: Deliverable[];
+    assignmentDueDates: AssignmentDueDate[];
+    submissions: Submission[];
+}
+
+export type Deliverable = {
+    id: string;
+    name: string;
+    assignmentId: string;
+    createdAt: string;
+    updatedAt: string;
+    allowedFileTypes: AllowedFileType[];
+}
+
+export type AllowedFileType = {
+    id: string;
+    mime: string;
+    type: string;
+    deliverableId: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export type AssignmentDueDate = {
+    id: string;
+    assignmentId: string;
+    groupId: number;
+    dueDate: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+//need to edit
+export type Submission = {
+    id: string;
+    submittedAt: string;
+    assignmentId: string;
+    groupId: number;
+    comment: string;
+    status: string;
+    missed: boolean;
+    version: number;
 }

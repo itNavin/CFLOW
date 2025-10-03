@@ -53,7 +53,7 @@ export default function LoginPage() {
   <div className="relative z-20 w-full max-w-md bg-white rounded-2xl shadow border border-neutral-200">
         <div className="p-8 sm:p-10">
           <h1 className="text-4xl font-semibold leading-snug text-neutral-900 font-dbheavent">
-            Login to Capstone Report Submission System
+            Log In to Capstone Report Submission System
           </h1>
           <form onSubmit={onSubmit} className="mt-8 space-y-5">
             <input

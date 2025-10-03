@@ -8,37 +8,53 @@ import AssignmentGroup from "@/components/assignment/group";
 import { get } from "http";
 import { getUserRole } from "@/util/cookies";
 import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
-import { getAllAssignments } from "@/types/api/assignment";
+import { assignmentDetail, getAllAssignments } from "@/types/api/assignment";
+import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 
 
 export default function AssignmentDetailPage() {
   const router = useRouter();
-  const assignmentId = Number(useSearchParams().get("assignmentId")) || 0;
-  const groupId = Number(useSearchParams().get("groupId")) || 0;
-  const courseId = Number(useSearchParams().get("courseId")) || 0;
+  const assignmentId = String(useSearchParams().get("assignmentId")) || "0";
+  const groupId = String(useSearchParams().get("groupId")) || "0";
+  const courseId = String(useSearchParams().get("courseId")) || "0";
   const role = getUserRole();
   const isStudent = (role ?? "") === "student";
   const isLecturer = (role ?? "") === "lecturer";
   const isStaff = (role ?? "") === "staff";
-    const [data, setData] = useState<getAllAssignments.getAssignmentWithSubmission>();
+  const [data, setData] = useState<getAllAssignments.getAssignmentWithSubmission>();
+  const [getDetail, setGetDetail] = useState<assignmentDetail.AssignmentStudentDetail>();
   console.log("data:", data);
 
   const fetchAssignmentAndSubmission = async () => {
-        try {
-          console.log("get in submit")
-          if (!assignmentId || !courseId) return;      
-    
-          const response = await getAssignmentWithSubmissionAPI(courseId, assignmentId);
-          setData(response.data);
-          console.log("Assignment with submission response:", response.data);
-        } catch (e) {
-          console.error("Error fetching assignment and submission:", e);
-        }
-      };
-      useEffect(() => {
-        fetchAssignmentAndSubmission();
-      }, [courseId, assignmentId]);
-  
+    try {
+      console.log("get in submit")
+      if (!assignmentId || !courseId) return;
+
+      const response = await getAssignmentWithSubmissionAPI(courseId, assignmentId);
+      setData(response.data);
+      console.log("Assignment with submission response:", response.data);
+    } catch (e) {
+      console.error("Error fetching assignment and submission:", e);
+    }
+  };
+  useEffect(() => {
+    fetchAssignmentAndSubmission();
+  }, [courseId, assignmentId]);
+
+  // const fetchSubmissionDetailStudent = async () => {
+  //   try {
+  //     if (!isStudent || !data) return;
+
+  //     const response = await getStdAssignmentDetailAPI(courseId, assignmentId);
+  //     setGetDetail(response.data);
+  //     console.log("Submission detail response:", response.data);
+  //   } catch (e) {
+  //     console.error("Error fetching submission detail:", e);
+  //   }
+  // };
+  // useEffect(() => {
+  //   fetchSubmissionDetailStudent();
+  // }, [courseId, assignmentId]);
 
   return (
     <div>
@@ -49,7 +65,7 @@ export default function AssignmentDetailPage() {
         data={data}
       />
 
-      
+
     </div>
   );
 }

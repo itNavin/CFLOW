@@ -14,6 +14,8 @@ import * as XLSX from "xlsx-js-style";
 import { Course } from "@/types/api/course";
 import { getStaffCourse } from "@/types/api/course";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
+import { Trash2 } from "lucide-react";
+import { deleteGroupAPI } from "@/api/group/deleteGroup";
 
 export default function GroupTab() {
   const courseId = useSearchParams().get("courseId") || "";
@@ -95,100 +97,97 @@ export default function GroupTab() {
   }, [openCreate]);
 
   const handleDownloadAll = () => {
-  const pageTitle = course?.program
-    ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
-    : "Student Group Data";
+    const pageTitle = course?.program
+      ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
+      : "Student Group Data";
 
-  const fullNameUpper = (u?: { name?: string; surname?: string }) =>
-    [u?.name, u?.surname].filter(Boolean).join(" ").toUpperCase();
+    const fullNameUpper = (u?: { name?: string; surname?: string }) =>
+      [u?.name, u?.surname].filter(Boolean).join(" ").toUpperCase();
 
-  const formatMember = (m: any, idx: number) => {
-    const sid = String(m?.courseMember?.user?.id ?? "");
-    const nm = fullNameUpper(m?.courseMember?.user);
-    return `${idx + 1}. ${sid} ${nm}`.trim();
-  };
-
-  const maxMembers = group.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
-
-  const front = ["ID", "Project Title", "Product Title", "Company"];
-  const membersHeader = ["Members", ...Array(Math.max(0, maxMembers - 1)).fill("")];
-  const tail = ["Advisor", "Co-Advisor"];
-  const headerRow = [...front, ...membersHeader, ...tail];
-
-  const dataRows = group.map((g) => {
-    const members = g.members ?? [];
-    const memberCells = Array.from({ length: maxMembers }, (_, i) =>
-      members[i] ? formatMember(members[i], i) : ""
-    );
-    return [
-      String(g.codeNumber ?? ""),
-      g.projectName ?? "",
-      g.productName ?? "",
-      g.company ?? "",
-      ...memberCells,
-      fullNameUpper(g.advisors?.[0]?.courseMember?.user) || "",
-      fullNameUpper(g.advisors?.[1]?.courseMember?.user) || "",
-    ];
-  });
-
-  const excelData = [[pageTitle], headerRow, ...dataRows];
-  const ws = XLSX.utils.aoa_to_sheet(excelData);
-
-  const totalCols = headerRow.length;
-  ws["!merges"] = ws["!merges"] || [];
-  ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
-
-  const membersStartCol = front.length;
-  const membersEndCol = front.length + Math.max(0, maxMembers - 1);
-  if (maxMembers > 0) {
-    ws["!merges"].push({
-      s: { r: 1, c: membersStartCol },
-      e: { r: 1, c: membersEndCol },
-    });
-  }
-
-  ws["!cols"] = headerRow.map((_, colIdx) => {
-    const colValues = [headerRow[colIdx], ...dataRows.map((r) => r[colIdx] ?? "")];
-    const maxLen = Math.max(12, ...colValues.map((v) => (v ? String(v).length : 0)));
-    return { wch: Math.min(maxLen, 80) };
-  });
-
-  ws["!rows"] = ws["!rows"] || [];
-  ws["!rows"][0] = { hpt: 28 };
-  ws["!rows"][1] = { hpt: 22 }; 
-
-  const titleCellRef = "A1";
-  if (ws[titleCellRef]) {
-    ws[titleCellRef].s = {
-      font: { bold: true, sz: 16 },
-      alignment: { horizontal: "center", vertical: "center", wrapText: true },
+    const formatMember = (m: any, idx: number) => {
+      const sid = String(m?.courseMember?.user?.id ?? "");
+      const nm = fullNameUpper(m?.courseMember?.user);
+      return `${idx + 1}. ${sid} ${nm}`.trim();
     };
-  }
 
-  headerRow.forEach((_, c) => {
-    const ref = XLSX.utils.encode_cell({ r: 1, c });
-    if (ws[ref]) {
-      ws[ref].s = {
-        font: { bold: true },
+    const maxMembers = group.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
+
+    const front = ["ID", "Project Title", "Product Title", "Company"];
+    const membersHeader = ["Members", ...Array(Math.max(0, maxMembers - 1)).fill("")];
+    const tail = ["Advisor", "Co-Advisor"];
+    const headerRow = [...front, ...membersHeader, ...tail];
+
+    const dataRows = group.map((g) => {
+      const members = g.members ?? [];
+      const memberCells = Array.from({ length: maxMembers }, (_, i) =>
+        members[i] ? formatMember(members[i], i) : ""
+      );
+      return [
+        String(g.codeNumber ?? ""),
+        g.projectName ?? "",
+        g.productName ?? "",
+        g.company ?? "",
+        ...memberCells,
+        fullNameUpper(g.advisors?.[0]?.courseMember?.user) || "",
+        fullNameUpper(g.advisors?.[1]?.courseMember?.user) || "",
+      ];
+    });
+
+    const excelData = [[pageTitle], headerRow, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+    const totalCols = headerRow.length;
+    ws["!merges"] = ws["!merges"] || [];
+    ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+
+    const membersStartCol = front.length;
+    const membersEndCol = front.length + Math.max(0, maxMembers - 1);
+    if (maxMembers > 0) {
+      ws["!merges"].push({
+        s: { r: 1, c: membersStartCol },
+        e: { r: 1, c: membersEndCol },
+      });
+    }
+
+    ws["!cols"] = headerRow.map((_, colIdx) => {
+      const colValues = [headerRow[colIdx], ...dataRows.map((r) => r[colIdx] ?? "")];
+      const maxLen = Math.max(12, ...colValues.map((v) => (v ? String(v).length : 0)));
+      return { wch: Math.min(maxLen, 80) };
+    });
+
+    ws["!rows"] = ws["!rows"] || [];
+    ws["!rows"][0] = { hpt: 28 };
+    ws["!rows"][1] = { hpt: 22 };
+
+    const titleCellRef = "A1";
+    if (ws[titleCellRef]) {
+      ws[titleCellRef].s = {
+        font: { bold: true, sz: 16 },
         alignment: { horizontal: "center", vertical: "center", wrapText: true },
-        border: {
-          top:    { style: "thin", color: { rgb: "CCCCCC" } },
-          bottom: { style: "thin", color: { rgb: "CCCCCC" } },
-          left:   { style: "thin", color: { rgb: "CCCCCC" } },
-          right:  { style: "thin", color: { rgb: "CCCCCC" } },
-        },
-        fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } }, // light gray header bg
       };
     }
-  });
 
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Groups");
-  XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data.xlsx`);
-};
+    headerRow.forEach((_, c) => {
+      const ref = XLSX.utils.encode_cell({ r: 1, c });
+      if (ws[ref]) {
+        ws[ref].s = {
+          font: { bold: true },
+          alignment: { horizontal: "center", vertical: "center", wrapText: true },
+          border: {
+            top: { style: "thin", color: { rgb: "CCCCCC" } },
+            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+            left: { style: "thin", color: { rgb: "CCCCCC" } },
+            right: { style: "thin", color: { rgb: "CCCCCC" } },
+          },
+          fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } }, // light gray header bg
+        };
+      }
+    });
 
-
-
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Groups");
+    XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data.xlsx`);
+  };
 
   const nextGroupNo = useMemo(() => {
     if (!Array.isArray(group) || group.length === 0) {
@@ -202,6 +201,20 @@ export default function GroupTab() {
 
     return String(maxNo + 1).padStart(4, '0');
   }, [group]);
+
+  const handleDeleteGroup = async (groupId: string) => {
+    if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) return;
+    try {
+      setLoading(true);
+      await deleteGroupAPI(groupId);
+      alert("Group deleted successfully!");
+      fetchGroup();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || "Failed to delete group");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     console.log("openCreate changed:", openCreate);
@@ -245,13 +258,23 @@ export default function GroupTab() {
               key={data.id}
               className="relative rounded-lg border bg-white p-5 shadow-sm"
             >
-              <button
-                title="Edit"
-                className="absolute right-3 top-3 inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50"
-                onClick={() => setEditTarget(data)}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
+              <div className="absolute top-3 right-3 flex gap-3">
+                <button
+                  title="Edit"
+                  className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50"
+                  onClick={() => setEditTarget(data)}
+                >
+                  <Pencil className="h-4 w-6" />
+                </button>
+                <button
+                  title="Delete"
+                  className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                  onClick={() => handleDeleteGroup(data.id)}
+                  disabled={loading}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
 
               <h3 className="font-semibold text-xl text-gray-800 mb-2">{data.projectName}</h3>
 
