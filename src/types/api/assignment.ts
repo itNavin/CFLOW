@@ -249,7 +249,6 @@ export type AssignmentDueDate = {
     updatedAt: string;
 }
 
-//need to edit
 export type Submission = {
     id: string;
     submittedAt: string;
@@ -259,4 +258,44 @@ export type Submission = {
     status: string;
     missed: boolean;
     version: number;
+}
+
+export namespace submitAssignment {
+    export type SubmitAssignmentPayload = {
+        message: string;
+        submission: SubmissionPayload;
+    }
+}
+
+export type SubmissionPayload = {
+    id: string;
+    submittedAt: string;
+    assignmentId: string;
+    groupId: number;
+    comment: string;
+    status: string;
+    missed: boolean;
+    version: number;
+}
+
+export namespace submitAssignmentWithFile {
+    export type SubmitAssignmentWithFilePayload = {
+        message: string;
+        file: file;
+        accepted: accepted;
+    }
+}
+
+export type file = {
+    id: string;
+    submissionId: string;
+    deliverableId: string;
+    fileUrl: string[];
+    createdAt: string;
+}
+
+export type accepted = {
+    mime : string;
+    ext: string;
+    size: number;
 }

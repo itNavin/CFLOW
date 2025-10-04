@@ -1,57 +1,92 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { useSearchParams } from "next/navigation";
-import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
+import React, { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
-import { createAssignmentAPI } from "@/api/assignment/createAssignment";
-import { createAssignment } from "@/types/api/assignment";
-import { uploadSubmissionFileAPI } from "@/api/submission/createSubmission";
-import { uploadSubmissionFile } from "@/types/api/file";
-import { createSubmissionAPI } from "@/api/submission/createSubmission";
+import { submitAssignmentAPI } from "@/api/assignment/submitAssignment";
+import type { submitAssignment, SubmissionPayload } from "@/types/api/assignment";
+import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
+import type { assignmentDetail } from "@/types/api/assignment";
+import { submitAssignmentFileAPI } from "@/api/assignment/submitAssignmentFile";
 
-
-interface SubmitAssignmentProps {
+type SubmitAssignmentProps = {
   data: getAllAssignments.getAssignmentWithSubmission | undefined;
-}
+  onSubmitted?: () => void; // <-- NEW
+};
 
-export default function SubmitAssignment({
-  data,
-  
-}: SubmitAssignmentProps) {
+const clean = (v: string | null | undefined) =>
+  v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
+
+type DraftState = Record<string, Record<string, { file: File; mime: string }>>;
+
+const getLatestSubmission = (subs: any[] | undefined) => {
+  if (!Array.isArray(subs) || subs.length === 0) return null;
+  return [...subs].sort((a, b) => {
+    const v = (b.version ?? 0) - (a.version ?? 0);
+    if (v !== 0) return v;
+    return new Date(b.submittedAt ?? 0).getTime() - new Date(a.submittedAt ?? 0).getTime();
+  })[0];
+};
+
+export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignmentProps) {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
-    const [isClient, setIsClient] = useState(false);    
+  const [isClient, setIsClient] = useState(false);
   const isStudent = (role ?? "") === "student";
   const [comment, setComment] = useState("");
-  const searchParams = useSearchParams();
-  const courseId = String(searchParams.get("courseId")) || "0";
-  const assignmentId = String(searchParams.get("assignmentId")) || "0";
-  const groupId = String(searchParams.get("groupId")) || "0";
+  const [uploadingFiles, setUploadingFiles] = useState(false);
 
-  
+  const sp = useSearchParams();
+  const courseId = useMemo(() => clean(sp.get("courseId")) ?? data?.courseId, [sp, data?.courseId]);
+  const assignmentId = useMemo(() => clean(sp.get("assignmentId")) ?? data?.id, [sp, data?.id]);
+
   useEffect(() => {
     setRole(getUserRole());
     setIsClient(true);
   }, []);
 
-  type DraftState = Record<
-    number, 
-    Record<number, { file: File; mime: string }> 
-  >;
+  // Detail (for deliverables and latest status)
+  const [detail, setDetail] = useState<assignmentDetail.AssignmentStudentDetail["assignment"] | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isClient || !courseId || !assignmentId) return;
+    let cancelled = false;
+    setLoadingDetail(true);
+    setDetailError(null);
+
+    (async () => {
+      try {
+        const res = await getStdAssignmentDetailAPI(courseId, assignmentId);
+        if (!cancelled) setDetail(res.data.assignment);
+      } catch (e: any) {
+        if (!cancelled) {
+          const msg = e?.response?.data?.message || e?.message || "Failed to load assignment detail.";
+          setDetailError(msg);
+          console.error("[getStdAssignmentDetailAPI] error:", e);
+        }
+      } finally {
+        if (!cancelled) setLoadingDetail(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isClient, courseId, assignmentId]);
+
+  const deliverables = detail?.deliverables ?? data?.deliverables ?? [];
+  const latest = getLatestSubmission(detail?.submissions);
+  const canSubmit = !latest || latest.status !== "SUBMITTED"; // gate
 
   const [drafts, setDrafts] = useState<DraftState>({});
-  const [submitting, setSubmitting] = useState(false);
-
   const onDraftSelect =
-    (deliverableId: number, aftId: number, mime: string) =>
+    (deliverableId: string, aftId: string, mime: string) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
       setDrafts((prev) => ({
         ...prev,
         [deliverableId]: {
@@ -59,11 +94,9 @@ export default function SubmitAssignment({
           [aftId]: { file, mime },
         },
       }));
-
-      e.target.value = ""; 
+      e.target.value = "";
     };
-
-  const removeDraft = (deliverableId: number, aftId: number) => {
+  const removeDraft = (deliverableId: string, aftId: string) => {
     setDrafts((prev) => {
       const next = { ...prev };
       const map = { ...(next[deliverableId] ?? {}) };
@@ -74,56 +107,79 @@ export default function SubmitAssignment({
     });
   };
 
-  if (!isClient) {
-    return (
-      <div className="p-6 space-y-6 font-dbheavent bg-white min-h-screen">
-        <div className="text-lg">Loading assignment...</div>
-      </div>
-    );
-  }
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [submission, setSubmission] = useState<SubmissionPayload | null>(null);
+
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
-      if (!courseId || !assignmentId || !groupId) {
-        alert("Missing courseId, assignmentId, or groupId");
-        return;
-      }
-      const createdSubmission = await createSubmissionAPI(
-        courseId,
-        assignmentId,
-        comment
-      );
-      console.log("createdSubmissionStatus: ", createdSubmission.status);
-      
-      if (createdSubmission.status !== 201) {
-        alert("Failed to create submission");
-        return;
-      }
-      const submissionId = createdSubmission.data.id;
-      if (drafts && Object.keys(drafts).length > 0) {
-        Object.entries(drafts).forEach(async ([delId, aftMap]) => {
-          const deliverableId = delId;
-          if (!deliverableId) return;
+      setUploadingFiles(false);
+      setSubmitError(null);
+      setSubmitSuccess(null);
 
-          Object.entries(aftMap).forEach(async ([aftId, draft]) => {
-            const createdSubmissionFile = await uploadSubmissionFileAPI(courseId, assignmentId, deliverableId, groupId, submissionId, draft.file)
-            if (createdSubmissionFile.id === "-1") {
-              alert("Failed to upload submission file");
-              return;
-            }
-          });
-        });
+      if (!assignmentId) {
+        setSubmitError("Missing assignmentId from URL.");
+        return;
       }
-    } catch (error) {
-      console.error("Error submitting assignment:", error);
+      if (!canSubmit) {
+        setSubmitError("You cannot submit while your latest status is SUBMITTED. Please wait for review.");
+        return;
+      }
+
+      const res: submitAssignment.SubmitAssignmentPayload = await submitAssignmentAPI(
+        assignmentId,
+        comment ?? ""
+      );
+      const submissionId = res.submission.id;
+      setSubmission(res.submission);
+
+      const uploads: Promise<any>[] = [];
+      for (const [deliverableId, aftMap] of Object.entries(drafts)) {
+        for (const { file } of Object.values(aftMap)) {
+          uploads.push(submitAssignmentFileAPI(submissionId, file, deliverableId));
+        }
+      }
+
+      if (uploads.length > 0) {
+        setUploadingFiles(true);
+        const results = await Promise.allSettled(uploads);
+        setUploadingFiles(false);
+        const failures = results.filter((r) => r.status === "rejected");
+        if (failures.length > 0) {
+          setSubmitError(`Uploaded with ${failures.length} error(s).`);
+        }
+      }
+
+      setSubmitSuccess(res.message || "Submitted successfully.");
+      setDrafts({});
+
+      // tell parent to re-fetch and swap to the view
+      onSubmitted?.();
+
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || "Failed to submit.";
+      setSubmitError(msg);
+      console.error("[handleSubmit] error:", e);
     } finally {
       setSubmitting(false);
+      setUploadingFiles(false);
     }
+  };
+
+  if (!isClient) {
+    return <div className="p-6 space-y-6">Loading assignment…</div>;
   }
 
   return (
-    <div className="p-6 space-y-6 font-dbheavent bg-white min-h-screen">
-      
+    <div className="p-6 space-y-6">
+      {!canSubmit && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-3 text-sm">
+          You’ve already submitted this version. Please wait for review (status: <b>SUBMITTED</b>).
+          You’ll be able to submit again after it changes to <b>REJECT</b> or <b>APPROVE_WITH_FEEDBACK</b>.
+        </div>
+      )}
 
       <label htmlFor="comment" className="text-lg text-black font-semibold">
         Comment
@@ -137,74 +193,86 @@ export default function SubmitAssignment({
         onChange={(e) => setComment(e.target.value)}
       />
 
-      {data?.deliverables && data.deliverables.length > 0 ? (
-        data.deliverables.map((del) => (
-          <div
-            key={del.id}
-            className="border border-gray-300 rounded-md p-4 space-y-2 mt-4"
-          >
-            <div className="font-semibold text-xl">{del.name}</div>
-            <div className="space-y-2">
-              {del.allowedFileTypes && del.allowedFileTypes.length > 0 ? (
-                del.allowedFileTypes.map((aft) => {
-                  const selected = drafts[del.id]?.[aft.id];
-                  return (
-                    <div
-                      className="text-lg flex items-center gap-3 flex-wrap"
-                      key={aft.id}
-                    >
-                      <span className="font-bold">{aft.type}</span>
-                      <label className="text-blue-600 underline cursor-pointer">
-                        {selected ? "Replace" : "Upload"}
-                        <input
-                          type="file"
-                          accept={aft.mime}
-                          onChange={onDraftSelect(del.id, aft.id, aft.mime)}
-                          className="hidden"
-                        />
-                      </label>
-
-                      {selected && (
-                        <>
-                          <span className="text-sm break-all bg-gray-100 px-2 py-1 rounded">
-                            {selected.file.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => removeDraft(del.id, aft.id)}
-                            className="text-red-600 text-sm underline"
-                          >
-                            remove
-                          </button>
-                        </>
-                      )}
-
-                      {!selected && (
-                        <span className="text-sm text-gray-500">
-                          No file selected
-                        </span>
-                      )}
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-gray-500 text-sm">
-                  No file types specified for this deliverable
-                </div>
-              )}
-            </div>
-          </div>
-        ))
-      ) : (
-        <div className="text-gray-500 text-lg mt-4">
-          {data ? "No deliverables found for this assignment" : "Loading deliverables..."}
+      {submitError && <div className="text-red-600 text-sm">{submitError}</div>}
+      {submitSuccess && (
+        <div className="text-green-700 text-sm">
+          {submitSuccess}
+          {submission && (
+            <span className="ml-2 text-gray-600">
+              (submission ID: {submission.id}, version {submission.version})
+            </span>
+          )}
         </div>
       )}
+
+      {loadingDetail && <div className="text-gray-500 text-sm mt-2">Loading deliverables…</div>}
+      {detailError && <div className="text-red-600 text-sm mt-2">Error: {detailError}</div>}
+
+      {deliverables.length > 0 ? (
+        deliverables.map((del) => {
+          const selectedForDel = drafts[del.id] ?? {};
+          return (
+            <div key={del.id} className="border border-gray-300 rounded-md p-4 space-y-2 mt-4">
+              <div className="font-semibold text-xl">{del.name}</div>
+              <div className="space-y-2">
+                {del.allowedFileTypes?.length ? (
+                  del.allowedFileTypes.map((aft) => {
+                    const chosen = selectedForDel[aft.id];
+                    return (
+                      <div className="text-lg flex items-center gap-3 flex-wrap" key={aft.id}>
+                        <span className="font-bold">{aft.type}</span>
+                        <label className="text-blue-600 underline cursor-pointer">
+                          {chosen ? "Replace" : "Upload"}
+                          <input
+                            type="file"
+                            accept={aft.mime}
+                            onChange={onDraftSelect(del.id, aft.id, aft.mime)}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {chosen ? (
+                          <>
+                            <span className="text-sm break-all bg-gray-100 px-2 py-1 rounded">
+                              {chosen.file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => removeDraft(del.id, aft.id)}
+                              className="text-red-600 text-sm underline"
+                            >
+                              remove
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-sm text-gray-500">No file selected</span>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="text-gray-500 text-sm">No file types specified</div>
+                )}
+              </div>
+            </div>
+          );
+        })
+      ) : (
+        <div className="text-gray-500 text-lg mt-4">
+          {detail ? "No deliverables found for this assignment" : "Loading deliverables..."}
+        </div>
+      )}
+
       <div className="flex justify-end mt-6">
-        <button className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow" onClick={handleSubmit} disabled={submitting}>
-          Turn in
+        <button
+          className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow disabled:opacity-50"
+          onClick={handleSubmit}
+          disabled={submitting || !assignmentId || !canSubmit}
+        >
+          {submitting ? "Submitting…" : "Turn in"}
         </button>
       </div>
     </div>
   );
 }
+
