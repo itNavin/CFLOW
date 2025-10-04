@@ -13,7 +13,6 @@ export default function CourseDetailCard() {
         setLoading(true);
         setError(null);
         const response = await getProfileAPI();
-        // Adjust based on your API response structure
         setCourses(response.data.profile?.courseNames ?? []);
       } catch (err: any) {
         console.error("Error fetching courses:", err);
@@ -54,7 +53,7 @@ export default function CourseDetailCard() {
           </p>
         ))
       ) : (
-        <p><strong>Course</strong><br />No courses enrolled</p>
+        <p>No courses enrolled</p>
       )}
     </div>
   );
