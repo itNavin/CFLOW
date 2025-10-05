@@ -79,7 +79,6 @@ export default function AssignmentPage() {
           } else {
             setStudentAssignment(null);
           }
-          console.log("Student assignments:", res.data.assignment);
         } else if (role) {
           setLoading(true);
           const res = await getAllAssignmentsStfLecAPI(courseId);

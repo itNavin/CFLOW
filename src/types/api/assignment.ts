@@ -205,6 +205,26 @@ export namespace assignmentDetail {
         message: string;
         assignment: AssignmentStudentPayload;
     }
+
+    export type AssignmentLecStfDetail = {
+        message: string;
+        assignment: AssignmentPayload;
+    }
+}
+
+export type AssignmentPayload = {
+    id: string;
+    name: string;
+    description: string;
+    dueDate: string | null;
+    endDate: string;
+    schedule: string | null;
+    courseId: string;
+    createdAt: string;
+    updatedAt: string;
+    deliverables: Deliverable[];
+    assignmentDueDates: AssignmentDueDate[];
+    submissions: Submission[];
 }
 
 export type AssignmentStudentPayload = {
@@ -258,6 +278,39 @@ export type Submission = {
     status: string;
     missed: boolean;
     version: number;
+    submissionFiles: SubmissionFile[];
+    feedbacks: Feedback[];
+}
+
+export type SubmissionFile = {
+    id: string;
+    submissionId: string;
+    deliverableId: string;
+    fileUrl: string[];
+    createdAt: string;
+    deliverable: DeliverableOfSubmissionFile;
+}
+
+export type Feedback = {
+    id: string;
+    submissionId: string;
+    comment: string;
+    createdAt: string;
+    feedbackFiles: FeedbackFile[];
+}
+
+export type FeedbackFile = {
+    id: string;
+    feedbackId: string;
+    deliverableId: string;
+}
+
+export type DeliverableOfSubmissionFile = {
+    id: string;
+    name: string;
+    assignmentId: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export namespace submitAssignment {
@@ -298,4 +351,52 @@ export type accepted = {
     mime : string;
     ext: string;
     size: number;
+}
+
+export namespace getGroups{
+    export type groups = {
+        message: string;
+        groups: group[];
+    }
+
+    export type group = {
+        id: string;
+        courseId: string;
+        codeNumber: string;
+        projectName: string;
+        productName: string | null;
+        company: string | null;
+        createdAt: string;
+        updatedAt: string;
+    }
+}
+
+export namespace uploadFeedbackFile {
+    export type UploadFeedbackFilePayload = {
+        message: string;
+        file: FeedbackFilePayload;
+        accepted: accepted;
+    }
+}
+
+export type FeedbackFilePayload = {
+    id: string;
+    feedbackId: string;
+    deliverableId: string;
+    fileUrl: string[];
+    createdAt: string;
+}
+
+export namespace giveFeedback {
+    export type GiveFeedbackPayload = {
+        message: string;
+        feedback: FeedbackPayload;
+    }
+}
+
+export type FeedbackPayload = {
+    id: string;
+    submissionId: string;
+    comment: string;
+    createdAt: string;
 }

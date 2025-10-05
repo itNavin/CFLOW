@@ -1,4 +1,3 @@
-// AssignmentDetailPage.tsx
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -10,7 +9,8 @@ import { getUserRole } from "@/util/cookies";
 import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 import type { assignmentDetail, getAllAssignments } from "@/types/api/assignment";
-import ViewSubmissionVersions from "@/components/assignment/version";
+import ViewSubmissionVersions from "@/components/assignment/versionStd";
+import GiveFeedback from "@/components/assignment/feedback";
 
 const clean = (v: string | null | undefined) =>
   v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
@@ -30,7 +30,6 @@ export default function AssignmentDetailPage() {
 
   const assignmentId = useMemo(() => clean(sp.get("assignmentId")), [sp]);
   const courseId = useMemo(() => clean(sp.get("courseId")), [sp]);
-
   const role = getUserRole();
   const isStudent = (role ?? "") === "student";
 
@@ -38,6 +37,9 @@ export default function AssignmentDetailPage() {
     useState<getAllAssignments.getAssignmentWithSubmission | undefined>(undefined);
   const [detail, setDetail] =
     useState<assignmentDetail.AssignmentStudentDetail["assignment"] | null>(null);
+
+  // --- Add selectedGroup state here ---
+  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
 
   // ---- fetchers ----
   const fetchBase = useCallback(async () => {
@@ -68,19 +70,24 @@ export default function AssignmentDetailPage() {
   const latest = latestOf(detail?.submissions);
   const waitingReview = isStudent && latest?.status === "SUBMITTED";
 
-  // When submit finishes inside the modal, re-fetch; the conditional below will auto-close the modal
   const handleSubmitted = useCallback(async () => {
     await Promise.all([fetchDetail(), fetchBase()]);
-    // After this, latest?.status should be SUBMITTED; JSX below will switch to <ViewSubmission />
   }, [fetchDetail, fetchBase]);
 
   return (
     <div>
-      <AssignmentInformation data={data} />
-      <ViewSubmissionVersions />
+      <AssignmentInformation
+        data={data}
+        selectedGroup={selectedGroup}
+        setSelectedGroup={setSelectedGroup}
+        courseId={courseId}
+        assignmentId={assignmentId}
+        role={role}
+      />
 
       {isStudent && (
         <>
+          <ViewSubmissionVersions />
           {detail === null
             ? <div className="p-6 text-gray-500">Loading assignment details…</div>
             : waitingReview
