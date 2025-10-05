@@ -1,17 +1,22 @@
 "use client";
 
+import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
-import { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
-import AssignmentGroup from "./group";
+import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
-import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
+import { getAllAssignments, assignmentDetail } from "@/types/api/assignment";
+import AssignmentGroup from "./groupSelector";
+import { ArrowLeft } from "lucide-react";
+import ViewSubmissionVersionsStfLec from "./versionStfLec";
 
 interface InformationAssignmentProps {
-  // if parent ever passes it, we’ll use it; otherwise we’ll fetch it here
   data?: getAllAssignments.getAssignmentWithSubmission | undefined;
+  selectedGroup?: string;
+  setSelectedGroup?: React.Dispatch<React.SetStateAction<string | undefined>>;
+  courseId: string;
+  assignmentId?: string;
+  role?: string;
 }
 
 const clean = (v: string | null | undefined) =>
@@ -22,9 +27,9 @@ const formatDateTime = (
   locale: string = "en-GB",
   timeZone: string = "Asia/Bangkok"
 ) => {
-  if (!input) return "Not set";
+  if (!input) return "-";
   const d = new Date(input);
-  if (Number.isNaN(d.getTime())) return String(input);
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleString(locale, {
     weekday: "short",
     year: "numeric",
@@ -41,56 +46,43 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
   const router = useRouter();
   const sp = useSearchParams();
 
-  const [role, setRole] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+  const assignmentId = useMemo(() => clean(sp.get("assignmentId")), [sp]);
+  const courseId = useMemo(() => clean(sp.get("courseId")), [sp]);
+  const role = getUserRole();
 
-  // local copies so this component works even if `data` is not passed
-  const [baseData, setBaseData] = useState<getAllAssignments.getAssignmentWithSubmission | undefined>(undefined);
-  const [getDetail, setGetDetail] = useState<any>(null);
-
-  const [loadingBase, setLoadingBase] = useState(false);
+  const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
+  const [lecStfDetail, setLecStfDetail] = useState<assignmentDetail.AssignmentLecStfDetail | null>(null);
+  const [stdDetail, setStdDetail] = useState<assignmentDetail.AssignmentStudentDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
-  const isStudent = (role ?? "") === "student";
-
-  // IDs from URL
-  const courseId = useMemo(() => clean(sp.get("courseId")) ?? data?.courseId, [sp, data?.courseId]);
-  const assignmentId = useMemo(() => clean(sp.get("assignmentId")) ?? data?.id, [sp, data?.id]);
-
-  // client + role
   useEffect(() => {
-    setRole(getUserRole());
-    setIsClient(true);
-  }, []);
-
-  // Fetch general assignment (for title/description/dates) if not passed in
-  useEffect(() => {
-    if (!isClient || data || !courseId || !assignmentId) return;
+    if (
+      !["lecturer", "advisor", "staff"].includes(role ?? "") ||
+      !courseId ||
+      !assignmentId ||
+      !selectedGroup
+    ) return;
 
     let cancelled = false;
-    setLoadingBase(true);
+    setLoadingDetail(true);
 
     (async () => {
       try {
-        const res = await getAssignmentWithSubmissionAPI(courseId, assignmentId);
-        if (!cancelled) {
-          setBaseData(res.data);
-        }
+        const res = await getLecStfAssignmentDetailAPI(courseId, assignmentId, selectedGroup);
+        if (!cancelled) setLecStfDetail(res.data);
       } catch (e) {
-        console.error("[assignmentWithSubmission] error:", e);
+        console.error("[lec/stf detail] error:", e);
       } finally {
-        if (!cancelled) setLoadingBase(false);
+        if (!cancelled) setLoadingDetail(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isClient, data, courseId, assignmentId]);
+    return () => { cancelled = true; };
+  }, [role, courseId, assignmentId, selectedGroup]);
 
-  // Fetch student-specific detail when student
+  // Fetch for student
   useEffect(() => {
-    if (!isClient || !isStudent || !courseId || !assignmentId) return;
+    if ((role ?? "") !== "student" || !courseId || !assignmentId) return;
 
     let cancelled = false;
     setLoadingDetail(true);
@@ -98,50 +90,44 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
     (async () => {
       try {
         const res = await getStdAssignmentDetailAPI(courseId, assignmentId);
-        if (!cancelled) {
-          const payload = res.data?.assignment ?? res.data;
-          setGetDetail(payload);
-        }
+        if (!cancelled) setStdDetail(res.data);
       } catch (e) {
-        console.error("[std detail] error:", e);
+        console.error("[student detail] error:", e);
       } finally {
         if (!cancelled) setLoadingDetail(false);
       }
     })();
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isClient, isStudent, courseId, assignmentId]);
+    return () => { cancelled = true; };
+  }, [role, courseId, assignmentId]);
 
-  if (!isClient) {
-    return (
-      <div>
-        <div className="flex items-center gap-2 text-3xl font-semibold text-black">
-          <button onClick={() => router.back()} className="text-lg text-black hover:text-gray-600">
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-          <h2>Loading...</h2>
-        </div>
-        <p className="text-lg text-gray-600 font-medium">
-          <strong className="mr-2">Due date</strong> Loading...
-        </p>
-        <p className="text-lg text-gray-700">Loading description...</p>
-        <hr className="my-4" />
-      </div>
-    );
+  // Choose the correct source for assignment info
+  let assignmentObj: any = null;
+  if (["lecturer", "advisor", "staff"].includes(role ?? "")) {
+    assignmentObj =
+      (lecStfDetail as assignmentDetail.AssignmentLecStfDetail)?.assignment ??
+      (data as getAllAssignments.getAssignmentWithSubmission);
+  } else if ((role ?? "") === "student") {
+    assignmentObj =
+      (stdDetail as assignmentDetail.AssignmentStudentDetail)?.assignment ??
+      (data as getAllAssignments.getAssignmentWithSubmission);
+  } else {
+    assignmentObj = data as getAllAssignments.getAssignmentWithSubmission;
   }
 
-  const source = getDetail ?? data ?? baseData;
+  const title = assignmentObj?.name ?? "-";
+  const description = assignmentObj?.description ?? "-";
+  const dueDate = assignmentObj?.dueDate ?? null;
+  const endDate = assignmentObj?.endDate ?? null;
 
-  const title = source?.name ?? "Assignment";
-  const dueDate =
-    source?.dueDate ??
-    source?.assignmentDueDates?.[0]?.dueDate ??
-    null;
-
-  const endDate = source?.endDate ?? null;
-  const description = source?.description ?? "No description available";
+  const sortedSubmissions =
+    (["lecturer", "advisor"].includes(role ?? "") &&
+      Array.isArray(assignmentObj?.submissions))
+      ? [...assignmentObj.submissions].sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+      : [];
 
   return (
     <div>
@@ -152,12 +138,10 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
         <h2>{title}</h2>
       </div>
 
-      {role !== "student" && <AssignmentGroup />}
-
       <p className="text-lg text-gray-600 font-medium">
         <strong className="mr-2">Due date</strong>
         {formatDateTime(dueDate)}{" "}
-        {!isStudent && endDate && (
+        {role !== "student" && endDate && (
           <>
             <strong className="ml-3 mr-2">End date</strong>
             {formatDateTime(endDate)}
@@ -167,6 +151,25 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
 
       <p className="text-lg text-gray-700">Description : {description}</p>
       <hr className="my-4" />
+
+      {["lecturer", "advisor", "staff"].includes(role ?? "") && (
+        <AssignmentGroup
+          selectedGroup={selectedGroup}
+          setSelectedGroup={setSelectedGroup}
+          role={role}
+          courseId={courseId!}
+        />
+      )}
+
+      {["lecturer", "advisor", "staff"].includes(role ?? "") && selectedGroup && (
+        <ViewSubmissionVersionsStfLec
+          groupId={selectedGroup}
+          courseId={courseId}
+          assignmentId={assignmentId}
+        />
+      )}
+
+      {loadingDetail && <div>Loading assignment detail...</div>}
     </div>
   );
 }

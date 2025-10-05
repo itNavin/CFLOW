@@ -1,0 +1,267 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
+import type { assignmentDetail } from "@/types/api/assignment";
+
+type FileLink = { name: string; href: string };
+type FeedbackItem = { chapter: string; title?: string; comments?: string[]; files?: FileLink[] };
+type WorkItem = { chapter: string; files: FileLink[] };
+type StatusVariant = "approved" | "not_approved" | "pending";
+
+type VersionProps = {
+  versionLabel: string;
+  statusText: string;
+  statusVariant?: StatusVariant;
+  feedback?: FeedbackItem[];
+  workDescription: string;
+  work?: WorkItem[];
+  className?: string;
+};
+
+const tone = (v: StatusVariant = "pending") =>
+  v === "approved" ? "text-green-600" : v === "not_approved" ? "text-red-600" : "text-amber-600";
+
+const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
+
+function Version({
+  versionLabel,
+  statusText,
+  statusVariant = "pending",
+  feedback = [],
+  workDescription,
+  work = [],
+  className = "",
+}: VersionProps) {
+  return (
+    <div className={`font-dbheavent ${className}`}>
+      <div className="mb-3">
+        <h1 className="text-[18px] font-semibold text-[#e74c3c]">{versionLabel}</h1>
+        <p className={`mt-1 text-sm ${tone(statusVariant)}`}>Status: {statusText}</p>
+      </div>
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <section className="p-6 border-b">
+          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
+          {feedback.length === 0 ? (
+            <p className="text-sm text-gray-500">No feedback yet.</p>
+          ) : (
+            <div className="space-y-5 text-[14px] leading-relaxed text-gray-800">
+              {feedback.map((f, idx) => {
+                const comments = arr(f.comments);
+                const files = arr(f.files);
+                return (
+                  <div key={idx}>
+                    <div className="text-gray-800">
+                      <span className="font-medium">{f.chapter}</span>
+                      {f.title ? <span className="mx-1">: {f.title}</span> : null}
+                    </div>
+                    {comments.length > 0 ? (
+                      <ul className="mt-2 list-disc list-inside space-y-1">
+                        {comments.map((c, i) => (
+                          <li key={i}>{c}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {f.files !== undefined && (
+                      <div className="mt-4">
+                        <div className="font-medium text-[16px]">{f.chapter}</div>
+                        <div className="mt-1 space-y-1">
+                          {files.length > 0 ? (
+                            files.map((file, i) => (
+                              <a key={i} href={file.href} className="block text-[#326295] hover:underline">
+                                {file.name}
+                              </a>
+                            ))
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+        <section className="p-6">
+          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Submission</h2>
+          <p className="text-[14px] text-gray-800 mb-4">{workDescription || "—"}</p>
+          {work.length === 0 ? (
+            <p className="text-sm text-gray-500">No submissions yet.</p>
+          ) : (
+            <div className="space-y-4 text-[14px]">
+              {work.map((w, idx) => {
+                const files = arr(w.files);
+                return (
+                  <div key={idx}>
+                    <div className="font-medium text-[16px]">{w.chapter}</div>
+                    <div className="mt-1 space-y-1">
+                      {files.length > 0 ? (
+                        files.map((file, i) => (
+                          <a key={i} href={file.href} className="block text-[#326295] hover:underline">
+                            {file.name}
+                          </a>
+                        ))
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+type Props = { groupId: string; courseId?: string; assignmentId?: string };
+
+const clean = (v: string | null | undefined) =>
+  v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
+
+const padV = (n?: number) => `Version ${String(n ?? 1).padStart(2, "0")}`;
+
+const urls = (x: string[] | string | null | undefined) => (!x ? [] : Array.isArray(x) ? x : [x]);
+
+const fileName = (u: string) => {
+  try {
+    const tail = u.split("?")[0].split("#")[0].split("/").pop();
+    return decodeURIComponent(tail || u);
+  } catch {
+    return u;
+  }
+};
+
+const statusMap: Record<string, StatusVariant> = {
+  APPROVED: "approved",
+  APPROVE_WITH_FEEDBACK: "approved",
+  REJECT: "not_approved",
+  NOT_APPROVED: "not_approved",
+  SUBMITTED: "pending",
+};
+
+export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assignmentId }: Props) {
+  const [detail, setDetail] =
+    useState<assignmentDetail.AssignmentLecStfDetail["assignment"] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
+  useEffect(() => {
+    if (!courseId || !assignmentId || !groupId) return;
+    let off = false;
+    setLoading(true);
+    setErr(null);
+    (async () => {
+      try {
+        const res = await getLecStfAssignmentDetailAPI(courseId, assignmentId, groupId);
+        if (!off) setDetail(res.data.assignment);
+      } catch (e: any) {
+        if (!off) setErr(e?.response?.data?.message || e?.message || "Failed to load.");
+      } finally {
+        if (!off) setLoading(false);
+      }
+    })();
+    return () => {
+      off = true;
+    };
+  }, [courseId, assignmentId, groupId]);
+
+  const subs = useMemo(() => {
+    const s = (detail as any)?.submissions ?? [];
+    return [...s].sort((a, b) => {
+      const dv = (b?.version ?? 0) - (a?.version ?? 0);
+      return dv !== 0
+        ? dv
+        : new Date(b?.submittedAt ?? 0).getTime() - new Date(a?.submittedAt ?? 0).getTime();
+    });
+  }, [detail]);
+
+  if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
+  if (err) return <div className="text-sm text-red-600">Error: {err}</div>;
+  if (!subs.length) return <div className="text-sm text-gray-500">No submissions yet.</div>;
+
+  const deliverableNames: Record<string, string> = {};
+  (detail?.deliverables ?? []).forEach((d: any) => {
+    deliverableNames[d.id] = d.name;
+  });
+
+  const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
+  const visible = showAll ? feedbackVersions : feedbackVersions.slice(0, 1);
+  const hasMore = feedbackVersions.length > 1;
+
+  console.log("groupId:", groupId, "courseId:", courseId, "assignmentId:", assignmentId);
+console.log("detail:", detail);
+console.log("submissions:", detail?.submissions);
+
+  return (
+    <div className="space-y-3">
+      {visible.map((sub: any) => {
+        const allComments: string[] = [];
+        const fbFiles: Record<string, FileLink[]> = {};
+        (sub?.feedbacks ?? []).forEach((fb: any) => {
+          String(fb?.comment || "")
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .forEach((c) => allComments.push(c));
+
+          (fb?.feedbackFiles ?? []).forEach((ff: any) => {
+            const links = urls(ff?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+            const k = String(ff?.deliverableId ?? "");
+            (fbFiles[k] ??= []).push(...links);
+          });
+        });
+
+        const feedbackItems: FeedbackItem[] = [
+          { chapter: "Feedback", comments: allComments },
+          ...Object.entries(fbFiles).map(([dId, links]) => ({
+            chapter: deliverableNames[dId] || "Deliverable",
+            files: links,
+          })),
+        ];
+
+        // group submission files by deliverable
+        const workGrouped: Record<string, FileLink[]> = {};
+        (sub?.submissionFiles ?? []).forEach((sf: any) => {
+          const links = urls(sf?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+          const k = String(sf?.deliverableId ?? "");
+          (workGrouped[k] ??= []).push(...links);
+        });
+        const workItems: WorkItem[] = Object.entries(workGrouped).map(([dId, files]) => ({
+          chapter: deliverableNames[dId] || "Deliverable",
+          files,
+        }));
+
+        return (
+          <Version
+            key={sub.id}
+            className="bg-white"
+            versionLabel={padV(sub?.version)}
+            statusText={sub?.status ?? "—"}
+            statusVariant={statusMap[sub?.status as string] ?? "pending"}
+            feedback={feedbackItems}
+            workDescription={sub?.comment || "No description from your submission."}
+            work={workItems}
+          />
+        );
+      })}
+
+      {hasMore && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => setShowAll((s) => !s)}
+            className="text-sm text-blue-700 underline"
+          >
+            {showAll ? "See less ▲" : "See more ▼"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

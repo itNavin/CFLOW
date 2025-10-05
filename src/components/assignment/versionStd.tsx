@@ -25,7 +25,7 @@ const tone = (v: StatusVariant = "pending") =>
 
 const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
 
-function Version({
+export function Version({
   versionLabel,
   statusText,
   statusVariant = "pending",

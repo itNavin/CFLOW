@@ -1,3 +1,4 @@
+// app/solar/update-password/page.tsx
 import { redirect } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
@@ -16,7 +17,10 @@ export default async function Page({
   ).catch(() => null);
 
   const data = await res?.json().catch(() => null);
-  if (!data?.valid) redirect("/solar/link-expired");
+
+  if (!data?.valid || !data?.user) {
+    redirect("/solar/link-expired");
+  }
 
   return (
     <UpdatePasswordForm
@@ -26,5 +30,4 @@ export default async function Page({
   );
 }
 
-// Import the client form
 import UpdatePasswordForm from "./updatePasswordForm";
