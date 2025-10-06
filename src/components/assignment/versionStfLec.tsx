@@ -17,13 +17,13 @@ type VersionProps = {
   workDescription: string;
   work?: WorkItem[];
   className?: string;
+  deliverables?: any[];
 };
 
 const tone = (v: StatusVariant = "pending") =>
   v === "approved" ? "text-green-600" : v === "not_approved" ? "text-red-600" : "text-amber-600";
 
 const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
-
 function Version({
   versionLabel,
   statusText,
@@ -32,6 +32,7 @@ function Version({
   workDescription,
   work = [],
   className = "",
+  deliverables = [],
 }: VersionProps) {
   return (
     <div className={`font-dbheavent ${className}`}>
@@ -52,15 +53,14 @@ function Version({
                 return (
                   <div key={idx}>
                     <div className="text-gray-800">
-                      <span className="font-medium">{f.chapter}</span>
                       {f.title ? <span className="mx-1">: {f.title}</span> : null}
                     </div>
                     {comments.length > 0 ? (
-                      <ul className="mt-2 list-disc list-inside space-y-1">
+                      <div className="mt-2 list-disc list-inside space-y-1">
                         {comments.map((c, i) => (
-                          <li key={i}>{c}</li>
+                          <div key={i}>{c}</div>
                         ))}
-                      </ul>
+                      </div>
                     ) : null}
                     {f.files !== undefined && (
                       <div className="mt-4">
@@ -68,9 +68,12 @@ function Version({
                         <div className="mt-1 space-y-1">
                           {files.length > 0 ? (
                             files.map((file, i) => (
-                              <a key={i} href={file.href} className="block text-[#326295] hover:underline">
-                                {file.name}
-                              </a>
+                              <div key={i} className="flex items-center gap-2">
+                                <span>{getFileTypeLabel(deliverables, f.chapter, file.name)}</span>
+                                <a href={file.href} className="text-[#326295] hover:underline">
+                                  {file.name}
+                                </a>
+                              </div>
                             ))
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -95,13 +98,16 @@ function Version({
                 const files = arr(w.files);
                 return (
                   <div key={idx}>
-                    <div className="font-medium text-[16px]">{w.chapter}</div>
+                    <div className="font-medium  text-[16px]">{w.chapter}</div>
                     <div className="mt-1 space-y-1">
                       {files.length > 0 ? (
                         files.map((file, i) => (
-                          <a key={i} href={file.href} className="block text-[#326295] hover:underline">
-                            {file.name}
-                          </a>
+                          <div key={i} className="flex items-center gap-2">
+                            <span>{getFileTypeLabel(deliverables, w.chapter, file.name)}</span>
+                            <a href={file.href} className="text-[#326295] hover:underline">
+                              {file.name}
+                            </a>
+                          </div>
                         ))
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -143,6 +149,19 @@ const statusMap: Record<string, StatusVariant> = {
   NOT_APPROVED: "not_approved",
   SUBMITTED: "pending",
 };
+
+function getFileTypeLabel(deliverables: any[], chapter: string, fileName: string) {
+  const deliverable = deliverables.find(d => d.name === chapter);
+  if (!deliverable) return "";
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  const typeObj = deliverable.allowedFileTypes?.find((t: any) => {
+    if (t.type === "PDF" && ext === "pdf") return true;
+    if (t.type === "Word Document" && (ext === "docx" || ext === "doc")) return true;
+    // Add more types if needed
+    return false;
+  });
+  return typeObj?.type ? `${typeObj.type} ` : `.${ext}`;
+}
 
 export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assignmentId }: Props) {
   const [detail, setDetail] =
@@ -195,8 +214,8 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
   const hasMore = feedbackVersions.length > 1;
 
   console.log("groupId:", groupId, "courseId:", courseId, "assignmentId:", assignmentId);
-console.log("detail:", detail);
-console.log("submissions:", detail?.submissions);
+  console.log("detail:", detail);
+  console.log("submissions:", detail?.submissions);
 
   return (
     <div className="space-y-3">
@@ -244,6 +263,8 @@ console.log("submissions:", detail?.submissions);
             versionLabel={padV(sub?.version)}
             statusText={sub?.status ?? "—"}
             statusVariant={statusMap[sub?.status as string] ?? "pending"}
+            deliverables={detail?.deliverables ?? []}
+
             feedback={feedbackItems}
             workDescription={sub?.comment || "No description from your submission."}
             work={workItems}

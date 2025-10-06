@@ -6,11 +6,12 @@ import AssignmentInformation from "@/components/assignment/information";
 import SubmitAssignment from "@/components/assignment/submit";
 import ViewSubmission from "@/components/assignment/getSubmission";
 import { getUserRole } from "@/util/cookies";
-import { getAssignmentWithSubmissionAPI } from "@/api/assignment/getAssignmentWithSubmission";
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 import type { assignmentDetail, getAllAssignments } from "@/types/api/assignment";
 import ViewSubmissionVersions from "@/components/assignment/versionStd";
 import GiveFeedback from "@/components/assignment/feedback";
+import GiveFeedbackLecturer from "@/components/assignment/feedback";
+import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
 
 const clean = (v: string | null | undefined) =>
   v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
@@ -41,16 +42,15 @@ export default function AssignmentDetailPage() {
   // --- Add selectedGroup state here ---
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
 
-  // ---- fetchers ----
   const fetchBase = useCallback(async () => {
-    if (!courseId || !assignmentId) return;
+    if (!courseId || !assignmentId || !selectedGroup) return;
     try {
-      const res = await getAssignmentWithSubmissionAPI(courseId, assignmentId);
-      setData(res.data);
+      const res = await getLecStfAssignmentDetailAPI(courseId, assignmentId, selectedGroup);
+      setData(res.data.assignment);
     } catch (e) {
-      console.error("[getAssignmentWithSubmissionAPI] error:", e);
+      console.error("[getLecStfAssignmentDetailAPI] error:", e);
     }
-  }, [courseId, assignmentId]);
+  }, [courseId, assignmentId, selectedGroup]);
 
   const fetchDetail = useCallback(async () => {
     if (!courseId || !assignmentId) return;
@@ -74,16 +74,28 @@ export default function AssignmentDetailPage() {
     await Promise.all([fetchDetail(), fetchBase()]);
   }, [fetchDetail, fetchBase]);
 
+  // console.log("selectedGroup:", selectedGroup, "courseId:", courseId, "assignmentId:", assignmentId, "role:", role);
+
+
   return (
     <div>
       <AssignmentInformation
         data={data}
         selectedGroup={selectedGroup}
         setSelectedGroup={setSelectedGroup}
-        courseId={courseId}
+        courseId={courseId!}
         assignmentId={assignmentId}
         role={role}
       />
+
+      {["lecturer", "advisor", "staff"].includes(role ?? "") && selectedGroup && (
+  <GiveFeedbackLecturer
+  courseId={courseId ?? ""}
+  assignmentId={assignmentId ?? ""}
+  groupId={selectedGroup}
+  onFeedbackGiven={() => { /* refresh or show message */ }}
+/>
+)}
 
       {isStudent && (
         <>

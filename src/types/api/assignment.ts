@@ -77,7 +77,7 @@ export namespace getAllAssignments {
         name: string;
         description: string;
         endDate: string;
-        schedule: string;
+        schedule: string | null;
         courseId: string;
         deliverables: Deliverable[];
         assignmentDueDates: AssignmentDueDate[];
@@ -216,7 +216,7 @@ export type AssignmentPayload = {
     id: string;
     name: string;
     description: string;
-    dueDate: string | null;
+    dueDate: string;
     endDate: string;
     schedule: string | null;
     courseId: string;

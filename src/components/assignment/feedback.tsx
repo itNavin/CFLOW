@@ -1,0 +1,301 @@
+"use client";
+
+import React, { useEffect, useMemo, useState } from "react";
+import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
+import { giveFeedbackAPI } from "@/api/assignment/giveFeedback";
+import { uploadFeedbackFileAPI } from "@/api/assignment/uploadFeedbackFile";
+import type { assignmentDetail } from "@/types/api/assignment";
+import { Upload } from "lucide-react";
+
+type Props = {
+  courseId: string;
+  assignmentId: string;
+  groupId: string;
+  role: string;
+  onFeedbackGiven?: () => void;
+};
+
+export default function GiveFeedbackLecturer({
+  courseId,
+  assignmentId,
+  groupId,
+  role,
+  onFeedbackGiven,
+}: Props) {
+  const [detail, setDetail] = useState<assignmentDetail.AssignmentLecStfDetail["assignment"] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Feedback state
+  const [comment, setComment] = useState("");
+  const [files, setFiles] = useState<Record<string, File[]>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
+  const [newStatus, setNewStatus] = useState("APPROVED");
+  const [newDueDate, setNewDueDate] = useState("");
+
+  useEffect(() => {
+    if (!courseId || !assignmentId || !groupId) return;
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    (async () => {
+      try {
+        const res = await getLecStfAssignmentDetailAPI(courseId, assignmentId, groupId);
+        if (!cancelled) setDetail(res.data.assignment);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.response?.data?.message || e?.message || "Failed to load assignment detail.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, assignmentId, groupId]);
+
+  // Find latest submission
+  const latestSubmission = useMemo(() => {
+    const subs = detail?.submissions ?? [];
+    if (!subs.length) return null;
+    return [...subs].sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
+  }, [detail]);
+
+  // Deliverables
+  const deliverables = detail?.deliverables ?? [];
+
+  // Handle file selection for feedback
+  const handleFileChange = (deliverableId: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
+    setFiles((prev) => ({
+      ...prev,
+      [deliverableId]: selectedFiles,
+    }));
+    e.target.value = "";
+  };
+
+  // Remove a feedback file
+  const removeFeedbackFile = (deliverableId: string, idx: number) => {
+    setFiles((prev) => {
+      const arr = [...(prev[deliverableId] ?? [])];
+      arr.splice(idx, 1);
+      return { ...prev, [deliverableId]: arr };
+    });
+  };
+
+  // Submit feedback
+  const handleSubmitFeedback = async () => {
+    if (!latestSubmission) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    try {
+      // 1. Post feedback comment using your API
+      const feedbackRes = await giveFeedbackAPI(
+        latestSubmission.id,
+        comment,
+        newDueDate,
+        newStatus
+      );
+      const feedbackId = feedbackRes.feedback.id;
+
+      // 2. Upload feedback files for each deliverable
+      const uploads: Promise<any>[] = [];
+      for (const [deliverableId, fileArr] of Object.entries(files)) {
+        for (const file of fileArr) {
+          uploads.push(
+            uploadFeedbackFileAPI(file, deliverableId, groupId, feedbackId)
+          );
+        }
+      }
+
+      if (uploads.length > 0) {
+        const results = await Promise.allSettled(uploads);
+        const failures = results.filter((r) => r.status === "rejected");
+        if (failures.length > 0) {
+          setSubmitError(`Uploaded with ${failures.length} error(s).`);
+        }
+      }
+
+      setSubmitSuccess("Feedback submitted successfully.");
+      setComment("");
+      setFiles({});
+      onFeedbackGiven?.();
+    } catch (e: any) {
+      setSubmitError(e?.response?.data?.message || e?.message || "Failed to submit feedback.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="p-6">Loading assignment detail…</div>;
+  if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
+  if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
+  if (latestSubmission?.feedbacks && latestSubmission.feedbacks.length > 0) {
+    return (
+      <div className="p-6 text-gray-500">
+        Feedback already given for this version.
+        Please wait for new version submission.
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+      {/* Student Work Zone */}
+      <div className="border-b pb-6 mb-6">
+        <div className="font-bold text-xl mb-2">Student Work</div>
+        <div className="mb-4">
+          <div className="font-semibold">Comment:</div>
+          <div>{latestSubmission.comment || "—"}</div>
+        </div>
+        {deliverables.map((del) => {
+          const submittedFiles = (latestSubmission.submissionFiles ?? []).filter(
+            (sf: any) => sf.deliverableId === del.id
+          );
+          return (
+            <div key={del.id} className="mb-4">
+              <div className="font-semibold">{del.name}</div>
+              <div className="flex flex-col gap-1 mt-1">
+                {del.allowedFileTypes?.map((t: any, idx: number) => (
+                  <div key={idx}>
+                    {t.type}
+                    {submittedFiles.length > 0 &&
+                      submittedFiles.map((sf: any) =>
+                        (sf.fileUrl ?? []).filter((url: string) =>
+                          url.toLowerCase().endsWith(
+                            t.type === "PDF"
+                              ? ".pdf"
+                              : t.type === "Word Document"
+                                ? ".docx"
+                                : ""
+                          )
+                        ).map((url: string, i: number) => (
+                          <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm">
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-700 underline"
+                            >
+                              {url.split("/").pop()}
+                            </a>
+                          </span>
+                        ))
+                      )
+                    }
+                  </div>
+                ))}
+                {submittedFiles.length === 0 && (
+                  <span className="text-gray-500">No files submitted</span>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Feedback Zone */}
+      <div>
+        <div className="font-bold text-xl mb-2">Feedback</div>
+        {role === "staff" && (!latestSubmission.feedbacks || latestSubmission.feedbacks.length === 0) && (
+          <div className="text-gray-500 mb-4">Lecturer haven't give feedback</div>
+        )}
+        {role !== "staff" && (
+          <>
+            <div className="mb-4">
+              <label htmlFor="feedbackComment" className="font-semibold mb-1 block">
+                Comment
+              </label>
+              <textarea
+                id="feedbackComment"
+                className="w-full border border-gray-300 rounded-md p-3 text-lg"
+                placeholder="Write your feedback here..."
+                rows={4}
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+              />
+            </div>
+            {deliverables.map((del) => (
+              <div key={del.id} className="mb-4">
+                <div className="font-semibold">{del.name}</div>
+                <label
+                  htmlFor={`feedback-file-${del.id}`}
+                  className="inline-flex items-center cursor-pointer py-2 text-blue-700 font-semibold hover:bg-blue-100"
+                  style={{ width: "fit-content" }}
+                >
+                  <Upload style={{ height: 24, marginRight: 6 }} />
+                  Upload
+                  <input
+                    id={`feedback-file-${del.id}`}
+                    type="file"
+                    multiple
+                    onChange={handleFileChange(del.id)}
+                    className="hidden"
+                  />
+                </label>
+                {(files[del.id] ?? []).length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {(files[del.id] ?? []).map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-sm bg-gray-100 px-2 py-1 rounded">{file.name}</span>
+                        <button
+                          type="button"
+                          className="text-red-600 text-xs underline"
+                          onClick={() => removeFeedbackFile(del.id, idx)}
+                        >
+                          remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="mt-4 flex gap-4 items-center">
+              <div>
+                <label className="font-semibold">Status:</label>
+                <select
+                  value={newStatus}
+                  onChange={e => setNewStatus(e.target.value)}
+                  className="ml-2 border rounded px-2 py-1"
+                >
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="APPROVE_WITH_FEEDBACK">APPROVE_WITH_FEEDBACK</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+              </div>
+              <div>
+                <label className="font-semibold">Set new due date:</label>
+                <input
+                  type="date"
+                  value={newDueDate}
+                  onChange={e => setNewDueDate(e.target.value)}
+                  className="ml-2 border rounded px-2 py-1"
+                />
+              </div>
+            </div>
+
+            {submitError && <div className="text-red-600 text-sm mt-2">{submitError}</div>}
+            {submitSuccess && <div className="text-green-700 text-sm mt-2">{submitSuccess}</div>}
+
+            <div className="flex justify-end mt-6">
+              <button
+                className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow disabled:opacity-50"
+                onClick={handleSubmitFeedback}
+                disabled={submitting}
+              >
+                {submitting ? "Submitting…" : "Sent"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -9,6 +9,7 @@ import { getAllAssignments, assignmentDetail } from "@/types/api/assignment";
 import AssignmentGroup from "./groupSelector";
 import { ArrowLeft } from "lucide-react";
 import ViewSubmissionVersionsStfLec from "./versionStfLec";
+import GiveFeedbackLecturer from "./feedback";
 
 interface InformationAssignmentProps {
   data?: getAllAssignments.getAssignmentWithSubmission | undefined;
@@ -167,6 +168,16 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
           courseId={courseId}
           assignmentId={assignmentId}
         />
+      )}
+
+      {["lecturer", "advisor", "staff"].includes(role ?? "") && selectedGroup && (
+        <GiveFeedbackLecturer
+        courseId={courseId ?? ""}
+        assignmentId={assignmentId ?? ""}
+        groupId={selectedGroup}
+        onFeedbackGiven={() => window.location.reload()}
+        role={role}
+      />
       )}
 
       {loadingDetail && <div>Loading assignment detail...</div>}
