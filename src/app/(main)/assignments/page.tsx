@@ -141,14 +141,13 @@ export default function AssignmentPage() {
       .filter(Boolean) as CardAssignment[];
   }, [studentAssignment, mounted]);
 
-  // lecturerCards
   const lecturerCards: CardAssignment[] = useMemo(() => {
     if (!lecturerData) return [];
     return lecturerData
       .map((a) => {
-        const whenISO = a.dueDate ?? a.endDate ?? a.schedule ?? "";
+        const whenISO = a.endDate ?? ""; // ← only use endDate
         if (!whenISO) return null;
-        const ms = new Date(whenISO).getTime();            // ← define ms
+        const ms = new Date(whenISO).getTime();
         if (Number.isNaN(ms)) return null;
         return {
           id: a.id,
@@ -156,12 +155,11 @@ export default function AssignmentPage() {
           dueDate: safeFormatTime(whenISO),
           status: computeOpenStatus(whenISO),
           dateGroup: safeFormatDateGroup(whenISO),
-          sortKey: ms,                                      // ← use it
+          sortKey: ms,
         };
       })
       .filter(Boolean) as CardAssignment[];
   }, [lecturerData, mounted]);
-
 
   const groupedAssignments = (data: CardAssignment[]) =>
     data.reduce<Record<string, CardAssignment[]>>((acc, curr) => {
@@ -271,7 +269,7 @@ export default function AssignmentPage() {
           <div className="space-y-6">
             {Object.entries(grouped).map(([date, tasks]) => (
               <div key={date}>
-                <div className="text-2xl font-semibold mb-3">{date}</div>
+                <div className="text-2xl font-semibold mb-3">End Date : {date}</div>
                 {tasks.map((task, idx) => (
                   <Link href={detailHref(task.id)} key={`${task.id}--${task.sortKey}-${idx}`}>
                     <div className="bg-white border border-gray-300 p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition">
@@ -288,7 +286,7 @@ export default function AssignmentPage() {
             ))}
           </div>
 
-          <button
+          {isStaff && (<button
             onClick={mounted && isStaff ? () => setShowCreateModal(true) : undefined}
             disabled={!mounted || !isStaff || creatingAssignment}
             className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
@@ -298,7 +296,7 @@ export default function AssignmentPage() {
           >
             <Plus className="h-5 w-5" />
             <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
-          </button>
+          </button>)}
         </>
       )}
 

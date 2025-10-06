@@ -11,7 +11,7 @@ export const getAllAssignmentsStfLecAPI = (courseId: string) => {
     return response;
 } //staff and advisor
 
-export const getAssignmentByOpenTaskandSubmittedAPI = (courseId: string, groupId: string) => {
-    const response = Axios.get<getAllAssignments.AssignmentbyOpenTaskandSubmitted>(`/assignment/course/${courseId}/group/${groupId}/summary`);
-    return response;
-}
+// export const getAssignmentByOpenTaskandSubmittedAPI = (courseId: string, groupId: string) => {
+//     const response = Axios.get<getAllAssignments.AssignmentbyOpenTaskandSubmitted>(`/assignment/course/${courseId}/group/${groupId}/summary`);
+//     return response;
+// }
