@@ -6,8 +6,9 @@ import AdvisorTab from "./tabs/Advisor";
 import StudentTab from "./tabs/Student";
 import GroupTab from "./tabs/Group";
 import StatusTab from "./tabs/Status";
+import AdminTab from "./tabs/Admin";
 
-const TABS = ["Course", "Advisor", "Student", "Group", "Status"] as const;
+const TABS = ["Course", "Admin", "Advisor", "Student", "Group", "Status"] as const;
 type Tab = typeof TABS[number];
 
 export default function AdminPage() {
@@ -32,6 +33,7 @@ export default function AdminPage() {
       </div>
 
       {active === "Course" && <CourseTab />}
+      {active === "Admin" && <AdminTab />}
       {active === "Advisor" && <AdvisorTab />}
       {active === "Student" && <StudentTab />}
       {active === "Group" && <GroupTab />}

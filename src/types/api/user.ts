@@ -26,33 +26,3 @@ export namespace getAllUsers {
   };
 }
 
-export namespace createStaffUser {
-  export type createStaffUserPayload = {
-    message: string;
-    user: Users;
-  };
-}
-
-export type Users = {
-  id: string;
-  name: string;
-  email: string;
-  password: string | null;
-  role: string;
-  program: "CS" | "DSI";
-  createdAt: string;
-};
-
-export namespace createLecturerUser {
-  export type createLecturerUserPayload = {
-    message: string;
-    user: Users;
-  };
-}
-
-export namespace createSolarLecturerUser {
-  export type createSolarLecturerUserPayload = {
-    message: string;
-    user: Users;
-  };
-}

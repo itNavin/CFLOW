@@ -1,24 +1,20 @@
-import { Axios } from "@/util/AxiosInstance";
 import { createAssignment } from "@/types/api/assignment";
+import { Axios } from "@/util/AxiosInstance";
 
-type deliverable ={
+export type CreateAssignmentPayload = {
+  courseId: string;
+  name: string;
+  description: string;
+  endDate: string;
+  schedule: string;
+  dueDate: string;
+  deliverables: {
     name: string;
-    type: string[];
-}
+    allowedFileTypes: string[];
+  }[];
+};
 
-export const createAssignmentAPI = async (courseId: string, name:string, description:string, endDate:string, schedule:string, assignmentDueDates:string, deliverables:deliverable[]) => {
-    const body = {
-        courseId: courseId,
-        name: name,
-        description: description,
-        endDate: endDate,
-        schedule: schedule,
-        dueDate: assignmentDueDates,
-        deliverables: deliverables,
-    };
-
-    console.log("Sending to API:", body);
-    const response = Axios.post<createAssignment.CreateAssignmentResponse>(`/assignment/create`, body);
-    console.log("API Response:", response);
-    return response
-}; 
+export const createAssignmentAPI = async (payload: CreateAssignmentPayload) => {
+  const response = await Axios.post<createAssignment.CreateAssignmentResponse>("/assignment/create", payload);
+  return response.data;
+};

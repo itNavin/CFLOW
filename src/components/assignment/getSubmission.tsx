@@ -99,47 +99,39 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
             </div>
           </div>
           <div className="space-y-2">
-            {(detail?.deliverables ?? []).map((del) => {
-              const files = filesByDeliverable[del.id] ?? [];
-              return (
-                <div key={del.id} className="border border-gray-300 rounded-md p-4 space-y-2 mt-4">
-                  <div className="font-semibold text-lg">{del.name}</div>
+            {(detail?.deliverables ?? []).map((del) => (
+              <div key={del.id} className="border border-gray-300 rounded-md p-4 space-y-2 mt-4">
+                <div className="font-semibold text-lg">{del.name}</div>
+                {del.allowedFileTypes.map(aft => {
+                  const files = (filesByDeliverable[del.id] ?? []).filter(f => {
+                    const fileName = f?.originalName || f?.fileName || f?.name || "";
+                    const ext = fileName.split(".").pop()?.toLowerCase();
+                    // Match by extension or by aft.type (case-insensitive)
+                    return ext === aft.type?.toLowerCase();
+                  });
 
-                  {/* Allowed file types: show once per deliverable */}
-                  <div className="font-semibold text-black flex flex-col mb-2">
-                    {del.allowedFileTypes.map(aft => (
-                      <span key={aft.id}>{aft.type}</span>
-                    ))}
-                  </div>
-
-
-                  {/* Show file names after allowed file types */}
-                  {files.length === 0 ? (
-                    <div className="text-sm text-gray-500 mt-2">
-                      No files uploaded for this deliverable in the latest version.
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-2 mt-2">
-                      {files.map((f) => {
-                        const fileName =
-                          f?.originalName || f?.fileName || f?.name || "file";
-                        const ext =
-                          (fileName.split(".").pop() || f?.mime || "").toLowerCase();
-
-                        return (
-                          <div key={f.id ?? fileName} className="flex items-center gap-3">
-                            <span className="mr-2 text-xs rounded bg-gray-100 px-2 py-0.5">
-                              {ext || "FILE"}
+                  return (
+                    <div key={aft.id} className="flex items-center gap-4 mb-2">
+                      <span className="font-semibold text-black">
+                        {aft.type}
+                      </span>
+                      {files.length === 0 ? (
+                        <span className="text-sm text-gray-500">No file</span>
+                      ) : (
+                        files.map(f => {
+                          const fileName = f?.originalName || f?.fileName || f?.name || "file";
+                          return (
+                            <span key={f.id ?? fileName} className="truncate align-middle ml-2">
+                              {fileName}
                             </span>
-                            <span className="truncate align-middle">{fileName}</span>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            ))}
           </div>
         </>
       )}

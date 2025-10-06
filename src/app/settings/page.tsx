@@ -6,6 +6,9 @@ import { Upload, Search, UserPlus } from "lucide-react";
 import { getAllUsersAPI } from "@/api/user/getAllUser";
 import type { getAllUsers } from "@/types/api/user";
 import Navbar from "@/components/navbar";
+import { createStaffUserAPI } from "@/api/setting/createStaffUser";
+import { createLecturerUserAPI } from "@/api/setting/createLecturerUser";
+import { createSolarLecturerUserAPI } from "@/api/setting/createSolarLecturerUser";
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
@@ -197,11 +200,21 @@ export default function SettingsPage() {
     }
     try {
       setCreating(true);
-      alert(`Create ${addRole.replace("_", " ").toLowerCase()}: ${addName} <${addEmail}>`);
+
+      let response;
+      if (addRole === "STAFF") {
+        response = await createStaffUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+      } else if (addRole === "LECTURER") {
+        response = await createLecturerUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+      } else if (addRole === "SOLAR_LECTURER") {
+        response = await createSolarLecturerUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+      }
+
       setAddOpen(false);
       setAddName("");
       setAddEmail("");
       setAddRole("STAFF");
+      setAddProgram("CS");
       await fetchUsers();
     } catch (e: any) {
       alert(e?.response?.data?.message || e?.message || "Create failed");
@@ -233,7 +246,7 @@ export default function SettingsPage() {
               onClick={() => setAddOpen(true)}
               className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-xl px-6 py-3 rounded-2xl shadow hover:from-[#28517c] hover:to-[#071320]"
             >
-              <UserPlus className="h-6 w-6 mr-2" /> Add Staff / Advisor
+              <UserPlus className="h-6 w-6 mr-2" /> Add Staff / Lecturer
             </button>
 
             <input
@@ -413,7 +426,7 @@ export default function SettingsPage() {
       {addOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-2xl font-semibold mb-4">Add Staff / Advisor</h2>
+            <h2 className="text-2xl font-semibold mb-4">Add Staff / Lecturer</h2>
 
             {/* Left-aligned stacked form */}
             <div className="space-y-4">
@@ -445,7 +458,6 @@ export default function SettingsPage() {
                 >
                   <option value="CS">CS</option>
                   <option value="DSI">DSI</option>
-                  <option value="BOTH">BOTH</option>
                 </select>
               </div>
 
@@ -458,7 +470,7 @@ export default function SettingsPage() {
                 >
                   <option value="STAFF">Staff</option>
                   <option value="LECTURER">Lecturer</option>
-                  {/* <option value="SOLAR_LECTURER">Solar Lecturer</option> */}
+                  <option value="SOLAR_LECTURER">Solar Lecturer</option>
                 </select>
               </div>
             </div>

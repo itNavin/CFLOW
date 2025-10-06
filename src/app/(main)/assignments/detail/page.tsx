@@ -89,13 +89,14 @@ export default function AssignmentDetailPage() {
       />
 
       {["lecturer", "advisor", "staff"].includes(role ?? "") && selectedGroup && (
-  <GiveFeedbackLecturer
-  courseId={courseId ?? ""}
-  assignmentId={assignmentId ?? ""}
-  groupId={selectedGroup}
-  onFeedbackGiven={() => { /* refresh or show message */ }}
-/>
-)}
+        <GiveFeedbackLecturer
+          courseId={courseId ?? ""}
+          assignmentId={assignmentId ?? ""}
+          groupId={selectedGroup}
+          onFeedbackGiven={() => { /* refresh or show message */ }}
+          role={role!}
+        />
+      )}
 
       {isStudent && (
         <>
