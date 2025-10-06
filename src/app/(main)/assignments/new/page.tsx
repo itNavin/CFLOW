@@ -2,21 +2,50 @@
 
 import React from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import AssignmentModal, { AssignmentPayload } from "@/components/assignmentModal";
+import AssignmentModal from "@/components/assignment/AssignmentModal";
+import { createAssignmentAPI, CreateAssignmentPayload } from "@/api/assignment/createAssignment";
 
 export default function NewAssignmentPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const courseId = searchParams.get("courseId");
+  const courseId = searchParams.get("courseId") ?? "";
 
-  const handleSubmit = async (data: AssignmentPayload) => {
-    // Handle assignment creation with courseId
-    console.log("Creating assignment for course:", courseId, data);
-    // Add your API call here
-    // Example: await createAssignment(courseId, data);
-    
-    // Navigate back after successful creation
-    router.back();
+  // Convert modal data to API payload
+  const buildPayload = (data: any): CreateAssignmentPayload => ({
+    courseId,
+    name: data.title,
+    description: data.descriptionHtml,
+    endDate: data.endAt ?? "",
+    schedule: data.scheduleAt ?? "",
+    dueDate: data.dueAt ?? "",
+    deliverables: data.deliverables.map((d: any) => ({
+      name: d.name,
+      allowedFileTypes: d.requiredTypes.map((typeStr: string) =>
+        typeStr === "PDF" ? "pdf"
+        : typeStr === "Word Document" ? "docx"
+        : typeStr.toLowerCase()
+      ),
+    })),
+  });
+
+  const handleSubmit = async (data: any) => {
+    // LOG 1: Data received from modal
+    console.log("Parent received data from modal:", data);
+
+    try {
+      // LOG 2: Payload built for API
+      const payload = buildPayload(data);
+      console.log("API payload to backend:", payload);
+
+      // LOG 3: API response
+      const response = await createAssignmentAPI(payload);
+      console.log("API response:", response);
+
+      router.back();
+    } catch (error) {
+      // LOG 4: Error if API call fails
+      console.error("Failed to create assignment:", error);
+    }
   };
 
   const handleClose = () => {

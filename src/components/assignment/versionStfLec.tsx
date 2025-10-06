@@ -202,8 +202,6 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
 
   if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
   if (err) return <div className="text-sm text-red-600">Error: {err}</div>;
-  if (!subs.length) return <div className="text-sm text-gray-500">No submissions yet.</div>;
-
   const deliverableNames: Record<string, string> = {};
   (detail?.deliverables ?? []).forEach((d: any) => {
     deliverableNames[d.id] = d.name;

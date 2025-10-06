@@ -73,14 +73,16 @@ export default function AssignmentModal({
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await onSubmit({
-        title,
-        descriptionHtml,
-        deliverables,
-        dueAt: dueAt || undefined,
-        endAt: endAt || undefined,
-        scheduleAt: scheduleAt !== "" ? scheduleAt : new Date().toISOString(),
-      });
+      const payload = {
+      title,
+      descriptionHtml,
+      deliverables,
+      dueAt: dueAt || undefined,
+      endAt: endAt || undefined,
+      scheduleAt: scheduleAt !== "" ? scheduleAt : new Date().toISOString(),
+    };
+      console.log("Modal submit payload:", payload); // <--- Add this line
+      await onSubmit(payload);
       onClose();
     } finally {
       setSubmitting(false);
@@ -222,9 +224,8 @@ export default function AssignmentModal({
               type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={`px-5 py-2 rounded-lg text-white shadow transition ${
-                canSubmit ? "bg-[#326295] hover:opacity-90" : "bg-gray-300"
-              }`}
+              className={`px-5 py-2 rounded-lg text-white shadow transition ${canSubmit ? "bg-[#326295] hover:opacity-90" : "bg-gray-300"
+                }`}
             >
               {submitting ? "Posting…" : "Post"}
             </button>

@@ -6,8 +6,9 @@ import { Plus } from "lucide-react";
 import { getAllAssignmentsAPI, getAllAssignmentsStfLecAPI } from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
-import AssignmentModal from "@/components/assignmentModal";
+import AssignmentModal from "@/components/assignment/AssignmentModal";
 import { getStudentAssignmentAPI } from "@/api/assignment/getAssignmentStudent";
+import { createAssignmentAPI } from "@/api/assignment/createAssignment";
 
 type CardAssignment = {
   id: string;
@@ -45,8 +46,8 @@ export default function AssignmentPage() {
   const [loading, setLoading] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [creatingAssignment] = useState(false);
-
+  console.log("Current user role:", role);
+  const [creatingAssignment, setCreatingAssignment] = useState(false);
   const safeDate = (iso: string) =>
     mounted ? new Date(iso) : null;
 
@@ -286,28 +287,58 @@ export default function AssignmentPage() {
             ))}
           </div>
 
-          {isStaff && (<button
-            onClick={mounted && isStaff ? () => setShowCreateModal(true) : undefined}
-            disabled={!mounted || !isStaff || creatingAssignment}
-            className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
-                       bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
-                       hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
-                       active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Plus className="h-5 w-5" />
-            <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
-          </button>)}
+          {isStaff && (
+            <>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                disabled={creatingAssignment}
+                className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-full px-4 py-3 shadow
+       bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] font-medium
+       hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+       active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Plus className="h-5 w-5" />
+                <span className="hidden sm:inline">{creatingAssignment ? "Creating..." : "Add New Assignment"}</span>
+              </button>
+
+              {showCreateModal && (
+                <AssignmentModal
+                  open={showCreateModal}
+                  onClose={() => setShowCreateModal(false)}
+                  onSubmit={async (data) => {
+                    setCreatingAssignment(true);
+                    try {
+                      const payload = {
+                        courseId,
+                        name: data.title,
+                        description: data.descriptionHtml,
+                        endDate: data.endAt ?? "",
+                        schedule: data.scheduleAt ?? "",
+                        dueDate: data.dueAt ?? "",
+                        deliverables: data.deliverables.map((d) => ({
+                          name: d.name,
+                          allowedFileTypes: d.requiredTypes.map((typeStr) =>
+                            typeStr === "PDF" ? "pdf"
+                              : typeStr === "DOCX" ? "docx"
+                                : typeStr.toLowerCase()
+                          ),
+                        })),
+                      };
+                      const response = await createAssignmentAPI(payload);
+                      setShowCreateModal(false);
+                      window.location.reload();
+                    } catch (e) {
+                      console.error("Failed to create assignment:", e);
+                    } finally {
+                      setCreatingAssignment(false);
+                    }
+                  }}
+                />
+              )}
+            </>
+          )}
         </>
       )}
-
-      {/* If you wire the modal later, render it conditionally */}
-      {/* {showCreateModal && (
-        <AssignmentModal
-          open={showCreateModal}
-          onClose={() => setShowCreateModal(false)}
-          onSubmit={...}
-        />
-      )} */}
     </main>
   );
 }
