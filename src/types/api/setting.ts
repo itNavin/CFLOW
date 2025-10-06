@@ -29,3 +29,33 @@ export namespace createSolarLecturerUser {
     user: Users;
   };
 }
+
+export namespace fetchStudentData{
+    export type fetchStudent = {
+        message: string;
+        summary: StudentSummary[];
+        data: data[];
+    }
+
+    export type StudentSummary = {
+        totalFromAPI: number;
+        prepared: number;
+        created: number;
+        skipped: number;
+        error: error[];
+    }
+
+    export type data = {
+        studentId: string;
+        prefix: string;
+        firstName: string;
+        lastName: string;
+        prefixEng: string;
+        firstNameEng: string;
+        lastNameEng: string;
+        programNameEng: string;
+        statusName: string;
+        admittedAcademicSemester: string;
+        admittedAcademicYear: string;
+    }
+}
