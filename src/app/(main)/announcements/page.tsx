@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { MoreHorizontal, Plus, Download, FileText } from "lucide-react";
+import { MoreHorizontal, Plus, Download, FileText, Pencil, Trash2 } from "lucide-react";
 import { getAllAnnouncementByCourseIdAPI } from "@/api/announcement/getAllAnnouncementByCourseId";
 import { Announcement } from "@/types/api/announcement";
 import { useState, useEffect } from "react";
@@ -10,6 +10,9 @@ import { useParams, useSearchParams } from "next/navigation";
 import { file } from "@/types/api/announcement";
 import { isCanUpload } from "@/util/RoleHelper";
 import { downloadCourseFileAPI } from "@/api/file/downloadCourseFile";
+import EditAnnouncementModal from "@/components/announcement/editAnnouncementModal";
+import { updateAnnouncementAPI } from "@/api/announcement/updateAnnouncement";
+import { deleteAnnouncementAPI } from "@/api/announcement/deleteAnnouncement";
 
 export default function AnnouncementPage() {
   const [announcements, setAnnouncements] = useState<Announcement.Announcements[]>([]);
@@ -17,6 +20,8 @@ export default function AnnouncementPage() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const courseId = useSearchParams().get("courseId") || "";
   const [canUpload, setCanUpload] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement.Announcements | null>(null);
 
   const fetchAnnouncements = async () => {
     try {
@@ -38,31 +43,42 @@ export default function AnnouncementPage() {
   };
 
   const handleDownload = async (file: file, announcementAuthor: string) => {
-  try {
-    console.log(`Attempting to download file: ${file.id} from announcement by: ${announcementAuthor}`);
-    const res = await downloadCourseFileAPI(file.id);
-    console.log("API response:", res);
+    try {
+      console.log(`Attempting to download file: ${file.id} from announcement by: ${announcementAuthor}`);
+      const res = await downloadCourseFileAPI(file.id);
+      console.log("API response:", res);
 
-    const url = res.data.url;
-    if (url) {
-      window.open(url, "_blank");
-      console.log("Opened download URL:", url);
-    } else {
-      alert("Download link not found.");
-      console.error("No download URL in response:", res.data);
+      const url = res.data.url;
+      if (url) {
+        window.open(url, "_blank");
+        console.log("Opened download URL:", url);
+      } else {
+        alert("Download link not found.");
+        console.error("No download URL in response:", res.data);
+      }
+      setOpenDropdown(null);
+    } catch (error: any) {
+      setOpenDropdown(null);
+      if (error.response && error.response.status === 404) {
+        alert("File not found (404).");
+        console.error("Download failed: File not found (404)", error);
+      } else {
+        alert("Failed to get download link.");
+        console.error("Download failed:", error);
+      }
     }
-    setOpenDropdown(null);
-  } catch (error: any) {
-    setOpenDropdown(null);
-    if (error.response && error.response.status === 404) {
-      alert("File not found (404).");
-      console.error("Download failed: File not found (404)", error);
-    } else {
-      alert("Failed to get download link.");
-      console.error("Download failed:", error);
+  };
+
+  const handleDeleteAnnouncement = async (announcementId: string) => {
+    if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+    try {
+      await deleteAnnouncementAPI(announcementId);
+      await fetchAnnouncements(); // Refresh the list after deletion
+    } catch (e) {
+      alert("Failed to delete announcement.");
+      console.error(e);
     }
-  }
-};
+  };
 
   useEffect(() => {
     const handleClickOutside = () => setOpenDropdown(null);
@@ -90,10 +106,28 @@ export default function AnnouncementPage() {
         >
           <div className="flex justify-between items-center">
             <div>
-              <div className="text-2xl font-semibold">
+              <div className="text-2xl font-semibold justify-between">
                 {data.name}
               </div>
               <div className="text-base text-gray-500">{data.createdAt}</div>
+            </div>
+            <div>
+              <button
+                className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-gray-600 hover:bg-gray-50 mr-2"
+                onClick={() => {
+                  setSelectedAnnouncement(data);
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil className="h-4 w-6" />
+              </button>
+              <button
+                title="Delete"
+                className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                onClick={() => handleDeleteAnnouncement(data.id)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -171,6 +205,29 @@ export default function AnnouncementPage() {
         <Plus className="h-5 w-5" />
         <span className="hidden sm:inline">Add New Announcement</span>
       </Link>}
+
+      {editOpen && selectedAnnouncement && (
+        <EditAnnouncementModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          announcement={selectedAnnouncement}
+          onSubmit={async (form) => {
+            if (!selectedAnnouncement) return;
+            try {
+              await updateAnnouncementAPI(
+                selectedAnnouncement.id,
+                form.name,
+                form.description,
+                selectedAnnouncement.schedule // keep existing schedule or add a field to edit
+              );
+              await fetchAnnouncements(); // Refresh list after edit
+            } catch (e) {
+              alert("Failed to update announcement.");
+              console.error(e);
+            }
+          }}
+        />
+      )}
     </main>
   );
 }
