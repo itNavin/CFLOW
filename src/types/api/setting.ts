@@ -42,7 +42,6 @@ export namespace fetchStudentData{
         prepared: number;
         created: number;
         skipped: number;
-        error: error[];
     }
 
     export type data = {
