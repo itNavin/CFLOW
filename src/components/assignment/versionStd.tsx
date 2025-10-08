@@ -194,7 +194,9 @@ export default function ViewSubmissionVersions({ data }: Props) {
 
   if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
   if (err) return <div className="text-sm text-red-600">Error: {err}</div>;
-  if (!subs.length) return <div className="text-sm text-gray-500">No submissions yet.</div>;
+  if (!loading && !err && subs.length === 0) {
+    return <div className="text-sm text-gray-500">No submissions yet.</div>;
+  }
 
   const deliverableNames: Record<string, string> = {};
   (detail?.deliverables ?? data?.deliverables ?? []).forEach((d: any) => {
@@ -238,6 +240,10 @@ export default function ViewSubmissionVersions({ data }: Props) {
           const links = urls(sf?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
           const k = String(sf?.deliverableId ?? "");
           (workGrouped[k] ??= []).push(...links);
+
+          links.forEach(link => {
+      console.log(`[Submission] File name: ${link.name}`);
+    });
         });
         const workItems: WorkItem[] = Object.entries(workGrouped).map(([dId, files]) => ({
           chapter: deliverableNames[dId] || "Deliverable",

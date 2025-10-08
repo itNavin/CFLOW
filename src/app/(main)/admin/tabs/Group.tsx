@@ -97,9 +97,12 @@ export default function GroupTab() {
   }, [openCreate]);
 
   const handleDownloadAll = () => {
-    const pageTitle = course?.program
-      ? `${course.program.toUpperCase()} ${course.name} Student Group Data`
-      : "Student Group Data";
+    const pageTitle = `Student Group Data`;
+
+    const infoRows = [
+      [`Course Name : ${course?.name ?? ""}`],
+      [`Department : ${course?.program ?? ""}`],
+    ];
 
     const fullNameUpper = (u?: { name?: string; surname?: string }) =>
       [u?.name, u?.surname].filter(Boolean).join(" ").toUpperCase();
@@ -133,19 +136,28 @@ export default function GroupTab() {
       ];
     });
 
-    const excelData = [[pageTitle], headerRow, ...dataRows];
+    // Build excel data: title, info rows, header, data
+    const excelData = [
+      [pageTitle],
+      ...infoRows,
+      headerRow,
+      ...dataRows
+    ];
+
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
     const totalCols = headerRow.length;
     ws["!merges"] = ws["!merges"] || [];
-    ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+    ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }); // Title
+    ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }); // Course Name
+    ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }); // Department
 
     const membersStartCol = front.length;
     const membersEndCol = front.length + Math.max(0, maxMembers - 1);
     if (maxMembers > 0) {
       ws["!merges"].push({
-        s: { r: 1, c: membersStartCol },
-        e: { r: 1, c: membersEndCol },
+        s: { r: 3, c: membersStartCol },
+        e: { r: 3, c: membersEndCol },
       });
     }
 
@@ -156,8 +168,10 @@ export default function GroupTab() {
     });
 
     ws["!rows"] = ws["!rows"] || [];
-    ws["!rows"][0] = { hpt: 28 };
+    ws["!rows"][0] = { hpt: 28 }; 
     ws["!rows"][1] = { hpt: 22 };
+    ws["!rows"][2] = { hpt: 22 };
+    ws["!rows"][3] = { hpt: 22 };
 
     const titleCellRef = "A1";
     if (ws[titleCellRef]) {
@@ -167,8 +181,17 @@ export default function GroupTab() {
       };
     }
 
+    ["A2", "A3"].forEach((ref) => {
+      if (ws[ref]) {
+        ws[ref].s = {
+          font: { italic: true, sz: 12 },
+          alignment: { horizontal: "left", vertical: "center", wrapText: true },
+        };
+      }
+    });
+
     headerRow.forEach((_, c) => {
-      const ref = XLSX.utils.encode_cell({ r: 1, c });
+      const ref = XLSX.utils.encode_cell({ r: 3, c });
       if (ws[ref]) {
         ws[ref].s = {
           font: { bold: true },
@@ -179,14 +202,15 @@ export default function GroupTab() {
             left: { style: "thin", color: { rgb: "CCCCCC" } },
             right: { style: "thin", color: { rgb: "CCCCCC" } },
           },
-          fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } }, // light gray header bg
+          fill: { patternType: "solid", fgColor: { rgb: "F2F2F2" } },
         };
       }
     });
-
+    
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Groups");
-    XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data.xlsx`);
+    XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data_${today}.xlsx`);
   };
 
   const nextGroupNo = useMemo(() => {

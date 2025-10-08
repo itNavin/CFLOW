@@ -400,3 +400,77 @@ export type FeedbackPayload = {
     comment: string;
     createdAt: string;
 }
+
+export namespace updateAssignment {
+    export type UpdateAssignmentResponse = {
+        message: string;
+        assignment: UpdateAssignmentPayload;
+    }
+
+    export type UpdateAssignmentPayload = {
+        id: string;
+        name: string;
+        description: string | null;
+        endDate: string;
+        schedule: string | null;
+        duedate: string | null;
+        courseId: string;
+        createdAt: string;
+        updatedAt: string;
+        deliverables: UpdateDeliverablePayload[];
+        assignmentDueDates: UpdateAssignmentDueDatePayload[];
+    }
+
+    export type UpdateDeliverablePayload = {
+        id: string;
+        name: string;
+        assignmentId: string;
+        createdAt: string;
+        updatedAt: string;
+        allowedFileTypes: UpdateAllowedFileTypePayload[];
+    }
+
+    export type UpdateAllowedFileTypePayload = {
+        id: string;
+        mime: string;
+        type: string;
+        deliverableId: string;
+        createdAt: string;
+        updatedAt: string;
+    }
+
+    export type UpdateAssignmentDueDatePayload = {
+        id:string;
+        assignmentId: string;
+        groupId: number;
+        dueDate: string;
+        createdAt: string;
+        updatedAt: string;
+    }
+}
+
+export namespace deleteAssignment {
+    export type DeleteAssignmentPayload = {
+        message: string;
+        delete: deleteAssignment;
+    }
+
+    export type deleteAssignment = {
+        assignmentId: string;
+        counts: counts;
+        deletedAssignment: deletedAssignment;
+    }
+
+    export type counts = {
+        feedback: number;
+        submission: number;
+        allowedFileType: number;
+        deliverables: number;
+        assignmentDueDate: number;
+    }
+
+    export type deletedAssignment = {
+        id: string;
+        name: string;
+    }
+}

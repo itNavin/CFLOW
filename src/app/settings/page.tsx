@@ -9,6 +9,8 @@ import Navbar from "@/components/navbar";
 import { createStaffUserAPI } from "@/api/setting/createStaffUser";
 import { createLecturerUserAPI } from "@/api/setting/createLecturerUser";
 import { createSolarLecturerUserAPI } from "@/api/setting/createSolarLecturerUser";
+import { fetchStudentDataAPI } from "@/api/setting/fetchStudentData";
+import { fetchStudentData } from "@/types/api/setting";
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
@@ -53,6 +55,11 @@ export default function SettingsPage() {
   const [addProgram, setAddProgram] = useState("");
   const [addRole, setAddRole] = useState<"STAFF" | "LECTURER" | "SOLAR_LECTURER">("STAFF");
   const [creating, setCreating] = useState(false);
+  const [addStudentOpen, setAddStudentOpen] = useState(false);
+  const [academicYear, setAcademicYear] = useState("");
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [studentError, setStudentError] = useState<string | null>(null);
+  const [studentData, setStudentData] = useState<fetchStudentData.data[]>([]);
 
   const fetchUsers = async () => {
     try {
@@ -257,15 +264,13 @@ export default function SettingsPage() {
               className="hidden"
             />
             <button
-              onClick={onAddStudentsClick}
-              disabled={uploading}
+              onClick={() => setAddStudentOpen(true)}
               className={cx(
-                "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-xl px-6 py-3 rounded-2xl shadow hover:from-[#28517c] hover:to-[#071320]",
-                uploading && "opacity-50 cursor-not-allowed"
+                "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-xl px-6 py-3 rounded-2xl shadow hover:from-[#28517c] hover:to-[#071320]"
               )}
             >
               <Upload className="h-6 w-6 mr-2" />
-              {uploading ? "Adding…" : "Add Students"}
+              Add Students
             </button>
           </div>
         </header>
@@ -493,6 +498,56 @@ export default function SettingsPage() {
                 {creating ? "Creating…" : "Create"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {addStudentOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-2xl font-semibold mb-4">Add Students by Academic Year</h2>
+            <div className="mb-4">
+              <label className="block mb-1">Academic Year</label>
+              <input
+                type="text"
+                value={academicYear}
+                onChange={e => setAcademicYear(e.target.value)}
+                className="w-full rounded-xl border px-3 py-2 focus:outline-none"
+                placeholder="e.g. 2565"
+              />
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setAddStudentOpen(false)}
+                className="rounded-xl border px-5 py-2 text-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setStudentLoading(true);
+                  setStudentError(null);
+                  try {
+                    const res = await fetchStudentDataAPI(academicYear);
+                    setStudentData(res.data);
+                    alert(`Fetched ${res.data?.length || 0} students for academic year ${academicYear}`); 
+                    setAddStudentOpen(false);
+                  } catch (err: any) {
+                    setStudentError(err?.response?.data?.message || err?.message || "Fetch failed");
+                  } finally {
+                    setStudentLoading(false);
+                  }
+                }}
+                disabled={studentLoading || !academicYear.trim()}
+                className={cx(
+                  "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg px-5 py-2 rounded-xl shadow hover:from-[#28517c] hover:to-[#071320]",
+                  studentLoading && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {studentLoading ? "Fetching…" : "Fetch"}
+              </button>
+            </div>
+            {studentError && <div className="mt-3 text-red-600">{studentError}</div>}
           </div>
         </div>
       )}
