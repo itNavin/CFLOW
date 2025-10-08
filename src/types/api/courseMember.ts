@@ -157,3 +157,43 @@ type resultByUserId = {
   notFoundIds: string[];
   blocked: string[];
 };
+
+export namespace getStaffMember {
+  export type StaffMember = { 
+    message: string;
+    staff: staffMember[]; 
+  };
+
+  export type staffMember = {
+    id: string;
+    courseId: string;
+    userId: string;
+    createdAt: string;
+    user: users;
+  }
+
+  export type users = {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    program: "CS" | "DSI" | "BOTH";
+    createdAt: string;
+  }
+}
+
+export namespace getStaffNotInCourse {
+  export type getStaffNotInCourse = {
+    message: string;
+    staff: staffNotInCourse[];
+  };
+
+  export type staffNotInCourse = {
+    id: string;
+    name: string;
+    email: string;
+    role: string;
+    program: "CS" | "DSI" | "BOTH";
+    createdAt: string;
+  }
+}

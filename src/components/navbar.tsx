@@ -11,6 +11,8 @@ import { getUserRole } from "@/util/cookies";
 import { getCourseNameAPI } from "@/api/course/getCourseName";
 import { getCoursename } from "@/types/api/course";
 import { isCanUpload } from "@/util/RoleHelper";
+import { getActivityLogByUserAPI } from "@/api/notification/getActivityLogByUser";
+import { notification } from "@/types/api/notification";
 
 export default function Navbar() {
   const searchParams = useSearchParams();
@@ -24,6 +26,9 @@ export default function Navbar() {
   const [error, setError] = useState<string | null>(null);
   const [courseData, setCourseData] = useState<getCoursename.CourseName | null>(null);
   const [canUpload, setCanUpload] = useState(false);
+  const [notifications, setNotifications] = useState<notification.activity[]>([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [notifError, setNotifError] = useState<string | null>(null);
 
   const fetchCourses = useCallback(async () => {
     if (!userRole || !courseId || courseId.trim() === "") {
@@ -58,6 +63,17 @@ export default function Navbar() {
     setCanUpload(isCanUpload());
   }, [fetchCourses]);
 
+  useEffect(() => {
+    if (showNotification) {
+      setNotifLoading(true);
+      setNotifError(null);
+      getActivityLogByUserAPI()
+        .then(data => setNotifications(data.activities))
+        .catch(e => setNotifError("Failed to fetch notifications"))
+        .finally(() => setNotifLoading(false));
+    }
+  }, [showNotification]);
+
   return (
     <>
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
@@ -77,7 +93,26 @@ export default function Navbar() {
         </div>
       </div>
 
-      {showNotification && <NotificationPopup onClose={() => setShowNotification(false)} />}
+      {showNotification && (
+        <div className="absolute right-6 top-16 z-50 bg-white rounded-lg shadow-lg w-96 max-h-[60vh] overflow-y-auto border">
+          <div className="flex justify-between items-center px-4 py-2 border-b">
+            <span className="font-bold text-lg">Notifications</span>
+            <button className="text-gray-500" onClick={() => setShowNotification(false)}>×</button>
+          </div>
+          {notifLoading && <div className="p-4 text-gray-500">Loading...</div>}
+          {notifError && <div className="p-4 text-red-500">{notifError}</div>}
+          {!notifLoading && !notifError && notifications.length === 0 && (
+            <div className="p-4 text-gray-500">No notifications.</div>
+          )}
+          {!notifLoading && !notifError && notifications.map(n => (
+            <div key={n.id} className="px-4 py-3 border-b last:border-b-0">
+              <div className="font-semibold">{n.title}</div>
+              <div className="text-sm text-gray-600">{n.description}</div>
+              <div className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
