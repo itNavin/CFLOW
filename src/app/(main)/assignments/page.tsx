@@ -2,13 +2,17 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import { getAllAssignmentsAPI, getAllAssignmentsStfLecAPI } from "@/api/assignment/getAllAssignments";
 import type { getAllAssignments } from "@/types/api/assignment";
 import { getUserRole } from "@/util/cookies";
 import AssignmentModal from "@/components/assignment/AssignmentModal";
 import { getStudentAssignmentAPI } from "@/api/assignment/getAssignmentStudent";
 import { createAssignmentAPI } from "@/api/assignment/createAssignment";
+import EditAssignmentModal from "@/components/assignment/EditAssignmentModal";
+import { updateAssignmentAPI } from "@/api/assignment/updateAssignment";
+import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
+import { deleteAssignmentAPI } from "@/api/assignment/deleteAssignment";
 
 type CardAssignment = {
   id: string;
@@ -44,6 +48,10 @@ export default function AssignmentPage() {
   const [studentAssignment, setStudentAssignment] = useState<getAllAssignments.studentAssignment | null>(null);
   const [lecturerData, setLecturerData] = useState<getAllAssignments.stfAssignment[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editAssignment, setEditAssignment] = useState<CardAssignment | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editAssignmentDetail, setEditAssignmentDetail] = useState<any>(null);
+  const [editAssignmentId, setEditAssignmentId] = useState<string | null>(null);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   console.log("Current user role:", role);
@@ -66,6 +74,12 @@ export default function AssignmentPage() {
   const computeOpenStatus = (dueISO: string | null): "missed" | "upcoming" => {
     if (!mounted || !dueISO) return "upcoming"; // before mount, keep stable
     return new Date(dueISO).getTime() < Date.now() ? "missed" : "upcoming";
+  };
+
+  const handleEditClick = (task: CardAssignment) => {
+    setEditAssignmentId(task.id);
+    setShowEditModal(true);
+    console.log("assignment Id to edit:", task.id);
   };
 
   useEffect(() => {
@@ -103,7 +117,7 @@ export default function AssignmentPage() {
     if (!studentAssignment?.openTasks) return [];
     return studentAssignment.openTasks
       .map((ot) => {
-        const dueISO = pickDueISO(ot);         // ← dueDate first, else endDate
+        const dueISO = pickDueISO(ot);
         if (!dueISO) return null;
         const ms = new Date(dueISO).getTime();
         if (Number.isNaN(ms)) return null;
@@ -111,10 +125,10 @@ export default function AssignmentPage() {
         return {
           id: String(ot.id),
           title: ot.name ?? "(Untitled)",
-          dueDate: safeFormatTime(dueISO),      // display from dueISO
-          status: computeOpenStatus(dueISO),    // status from dueISO
-          dateGroup: safeFormatDateGroup(dueISO), // group from dueISO
-          sortKey: ms,                          // sort by dueISO
+          dueDate: safeFormatTime(dueISO),
+          status: computeOpenStatus(dueISO),
+          dateGroup: safeFormatDateGroup(dueISO),
+          sortKey: ms,
         };
       })
       .filter(Boolean) as CardAssignment[];
@@ -272,16 +286,43 @@ export default function AssignmentPage() {
               <div key={date}>
                 <div className="text-2xl font-semibold mb-3">End Date : {date}</div>
                 {tasks.map((task, idx) => (
-                  <Link href={detailHref(task.id)} key={`${task.id}--${task.sortKey}-${idx}`}>
-                    <div className="bg-white border border-gray-300 p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-semibold text-xl">{task.title}</div>
-                          <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
+                  <div key={`${task.id}--${task.sortKey}-${idx}`} className="relative">
+                    <Link href={detailHref(task.id)}>
+                      <div className="bg-white border border-gray-300 p-5 rounded-md shadow-sm mb-2 cursor-pointer hover:shadow-md transition">
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <div className="font-semibold text-xl">{task.title}</div>
+                            <div className="text-lg text-gray-600">Due at {task.dueDate}</div>
+                          </div>
                         </div>
                       </div>
+                    </Link>
+                    <div className="absolute top-4 right-4 flex">
+                      <button
+                        className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50 mr-2"
+                        onClick={() => handleEditClick(task)}
+                        title="Edit"
+                      >
+                        <Pencil className="h-4 w-6" />
+                      </button>
+                      <button
+                        title="Delete"
+                        className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-xl text-red-600 hover:bg-red-50"
+                        onClick={async () => {
+                          if (window.confirm("Are you sure you want to delete this assignment?")) {
+                            try {
+                              await deleteAssignmentAPI(task.id);
+                              window.location.reload();
+                            } catch (err) {
+                              alert("Failed to delete assignment");
+                            }
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
-                  </Link>
+                  </div>
                 ))}
               </div>
             ))}
@@ -313,7 +354,7 @@ export default function AssignmentPage() {
                         name: data.title,
                         description: data.descriptionHtml,
                         endDate: data.endAt ?? "",
-                        schedule: data.scheduleAt ?? "",
+                        schedule: data.scheduleAt ?? null,
                         dueDate: data.dueAt ?? "",
                         deliverables: data.deliverables.map((d) => ({
                           name: d.name,
@@ -326,16 +367,43 @@ export default function AssignmentPage() {
                       };
                       const response = await createAssignmentAPI(payload);
                       setShowCreateModal(false);
-                      window.location.reload();
+                      return {
+                        id: response.assignment.id,
+                        courseId: response.assignment.courseId,
+                      };
                     } catch (e) {
                       console.error("Failed to create assignment:", e);
                     } finally {
                       setCreatingAssignment(false);
                     }
+                    window.location.reload();
                   }}
                 />
               )}
             </>
+          )}
+          {isStaff && showEditModal && editAssignmentId && (
+            <EditAssignmentModal
+              open={showEditModal}
+              assignmentId={editAssignmentId}
+              onClose={() => setShowEditModal(false)}
+              onSubmit={async (data) => {
+                try {
+                  await updateAssignmentAPI(
+                    data.assignmentId,
+                    data.name,
+                    data.description,
+                    data.endDate,
+                    data.schedule,
+                    data.deliverables
+                  );
+                  setShowEditModal(false);
+                  window.location.reload();
+                } catch (err) {
+                  alert("Failed to update assignment");
+                }
+              }}
+            />
           )}
         </>
       )}

@@ -4,6 +4,8 @@ import React, { useMemo, useState } from "react";
 import DeliverableFields from "@/components/deliverableField";
 import { X } from "lucide-react";
 import { Deliverable } from "@/components/deliverableField";
+import { FileUpload } from "../uploadFile";
+import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
 
 export type AssignmentPayload = {
   title: string;
@@ -14,10 +16,15 @@ export type AssignmentPayload = {
   scheduleAt?: string;// ISO
 };
 
+type AssignmentSubmitResult = {
+  id: string;
+  courseId: string;
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: AssignmentPayload) => Promise<void> | void;
+  onSubmit: (data: AssignmentPayload) => Promise<AssignmentSubmitResult | void> | AssignmentSubmitResult | void;
   defaultValue?: Partial<AssignmentPayload>;
 };
 
@@ -44,6 +51,7 @@ export default function AssignmentModal({
   const [endAt, setEndAt] = useState(defaultValue?.endAt ?? "");
   const [scheduleAt, setScheduleAt] = useState(defaultValue?.scheduleAt ?? "");
   const [submitting, setSubmitting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const canSubmit = useMemo(() => {
     const hasTitle = title.trim().length > 0;
@@ -70,24 +78,34 @@ export default function AssignmentModal({
   const addDeliverable = () => setDeliverables((prev) => [...prev, newDeliverable()]);
 
   const handleSubmit = async () => {
-    if (!canSubmit) return;
-    setSubmitting(true);
-    try {
-      const payload = {
+  if (!canSubmit) return;
+  setSubmitting(true);
+  try {
+    // Create assignment and get its id/courseId
+    const assignment = await onSubmit({
       title,
       descriptionHtml,
       deliverables,
-      dueAt: dueAt || undefined,
-      endAt: endAt || undefined,
-      scheduleAt: scheduleAt !== "" ? scheduleAt : new Date().toISOString(),
-    };
-      console.log("Modal submit payload:", payload); // <--- Add this line
-      await onSubmit(payload);
-      onClose();
-    } finally {
-      setSubmitting(false);
+      dueAt,
+      endAt,
+      scheduleAt,
+    });
+
+    // Upload attached files
+    if (selectedFiles.length > 0 && assignment?.id && assignment?.courseId) {
+      for (const file of selectedFiles) {
+        console.log(`Uploading file: ${file.name} for assignmentId: ${assignment.id}, courseId: ${assignment.courseId}`);
+        await uploadAssignmentFileAPI(assignment.courseId, assignment.id, file);
+      }
+    } else {
+      console.log("No files to upload or missing assignment/courseId.");
     }
-  };
+
+    onClose();
+  } finally {
+    setSubmitting(false);
+  }
+};
 
   if (!open) return null;
 
@@ -143,6 +161,12 @@ export default function AssignmentModal({
                 rows={5}
               />
             </div>
+            <FileUpload
+              onFilesChange={setSelectedFiles}
+              maxFiles={5}
+              maxFileSize={10}
+              acceptedTypes={["image/*", "application/pdf", ".doc", ".docx", ".txt"]}
+            />
 
             {/* Deliverables */}
             <div>

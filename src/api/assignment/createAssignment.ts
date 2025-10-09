@@ -6,7 +6,7 @@ export type CreateAssignmentPayload = {
   name: string;
   description: string;
   endDate: string;
-  schedule: string;
+  schedule: string | null;
   dueDate: string;
   deliverables: {
     name: string;

@@ -224,7 +224,16 @@ export type AssignmentPayload = {
     updatedAt: string;
     deliverables: Deliverable[];
     assignmentDueDates: AssignmentDueDate[];
+    assignmentFiles: assignmentFiles[];
     submissions: Submission[];
+}
+
+export type assignmentFiles = {
+    id: string;
+    assignmentId: string;
+    name: string;
+    fileUrl: string;
+    createdAt: string;
 }
 
 export type AssignmentStudentPayload = {
@@ -267,6 +276,18 @@ export type AssignmentDueDate = {
     dueDate: string;
     createdAt: string;
     updatedAt: string;
+    group: group;
+}
+
+export type group = {
+    id: string;
+    courseId: string;
+    codeNumber: string;
+    projectName: string;
+    productName: string | null;
+    company: string | null;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export type Submission = {
@@ -286,7 +307,8 @@ export type SubmissionFile = {
     id: string;
     submissionId: string;
     deliverableId: string;
-    fileUrl: string[];
+    name: string;
+    fileUrl: string;
     createdAt: string;
     deliverable: DeliverableOfSubmissionFile;
 }
@@ -303,6 +325,9 @@ export type FeedbackFile = {
     id: string;
     feedbackId: string;
     deliverableId: string;
+    name: string;
+    fileUrl: string;
+    createdAt: string;
 }
 
 export type DeliverableOfSubmissionFile = {
@@ -467,10 +492,60 @@ export namespace deleteAssignment {
         allowedFileType: number;
         deliverables: number;
         assignmentDueDate: number;
+        assignmentFiles: number;
     }
 
     export type deletedAssignment = {
         id: string;
         name: string;
+    }
+}
+
+export namespace getAssignmentById{
+    export type Response = {
+        message: string;
+        assignment: assignmentItem;
+    };
+    export type assignmentItem = {
+        id: string;
+        name: string;
+        description: string;
+        endDate: string;
+        schedule: string | null;
+        dueDate: string | null;
+        courseId: string;
+        createdAt: string;
+        updatedAt: string;
+        deliverables: deliverable[];
+    }
+    export type deliverable = {
+        id: string;
+        name: string;
+        assignmentId: string;
+        createdAt: string;
+        updatedAt: string;
+        allowedFileTypes: allowedFileType[];
+    }
+    export type allowedFileType = {
+        id: string;
+        mime: string;
+        type: string;  
+        deliverableId: string;
+        createdAt: string;
+        updatedAt: string;
+    }
+}
+
+export namespace downloadSubmissionFile{
+    export type Response = {
+        message: string;
+        url: string;
+    }
+}
+
+export namespace downloadFeedbackFile{
+    export type Response = {
+        message: string;
+        url: string;
     }
 }
