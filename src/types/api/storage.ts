@@ -42,3 +42,24 @@ type course = {
   createdById: string;
   updatedAt: string;
 };
+
+export namespace uploadAssignmentFile {
+  export type uploadAssignmentFileResponse = {
+    message: string;
+    files: Files;
+    assignmentFile: assignmentFile;
+    uploadedBy: string;
+  };
+
+  export type Files = {
+    originalName: string;
+    url: string;
+  }
+
+  export type assignmentFile = {
+    id: string;
+    assignmentId: string;
+    fileUrl: string;
+    createdAt: string;
+  }
+}

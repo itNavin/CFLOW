@@ -39,7 +39,6 @@ export default function AssignmentDetailPage() {
   const [detail, setDetail] =
     useState<assignmentDetail.AssignmentStudentDetail["assignment"] | null>(null);
 
-  // --- Add selectedGroup state here ---
   const [selectedGroup, setSelectedGroup] = useState<string | undefined>(undefined);
 
   const fetchBase = useCallback(async () => {
