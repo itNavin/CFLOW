@@ -120,6 +120,7 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
   const description = assignmentObj?.description ?? "-";
   const dueDate = assignmentObj?.dueDate ?? null;
   const endDate = assignmentObj?.endDate ?? null;
+  const assignmentFiles = assignmentObj?.assignmentFiles ?? [];
 
   const sortedSubmissions =
     (["lecturer", "advisor"].includes(role ?? "") &&
@@ -151,6 +152,30 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
       </p>
 
       <p className="text-lg text-gray-700">Description : {description}</p>
+
+      {/* Assignment Files Section */}
+      {assignmentFiles.length > 0 && (
+        <div className="my-4">
+          <div className="font-semibold text-lg mb-2">Assignment Files</div>
+          <ul className="space-y-2">
+            {assignmentFiles.map((file: any) => (
+              <li key={file.id} className="flex items-center gap-2">
+                <span className="truncate">{file.name}</span>
+                <a
+                  href={file.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline"
+                  download
+                >
+                  Download
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <hr className="my-4" />
 
       {["lecturer", "advisor", "staff"].includes(role ?? "") && (
@@ -172,12 +197,12 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
 
       {["lecturer", "advisor", "staff"].includes(role ?? "") && selectedGroup && (
         <GiveFeedbackLecturer
-        courseId={courseId ?? ""}
-        assignmentId={assignmentId ?? ""}
-        groupId={selectedGroup}
-        onFeedbackGiven={() => window.location.reload()}
-        role={role}
-      />
+          courseId={courseId ?? ""}
+          assignmentId={assignmentId ?? ""}
+          groupId={selectedGroup}
+          onFeedbackGiven={() => window.location.reload()}
+          role={role}
+        />
       )}
 
       {loadingDetail && <div>Loading assignment detail...</div>}
