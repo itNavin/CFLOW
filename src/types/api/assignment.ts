@@ -272,7 +272,7 @@ export type AllowedFileType = {
 export type AssignmentDueDate = {
     id: string;
     assignmentId: string;
-    groupId: number;
+    groupId: string;
     dueDate: string;
     createdAt: string;
     updatedAt: string;
@@ -294,7 +294,7 @@ export type Submission = {
     id: string;
     submittedAt: string;
     assignmentId: string;
-    groupId: number;
+    groupId: string;
     comment: string;
     status: string;
     missed: boolean;
@@ -328,6 +328,7 @@ export type FeedbackFile = {
     name: string;
     fileUrl: string;
     createdAt: string;
+    deliverable: DeliverableOfSubmissionFile;
 }
 
 export type DeliverableOfSubmissionFile = {
