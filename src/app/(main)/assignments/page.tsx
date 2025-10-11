@@ -297,7 +297,7 @@ export default function AssignmentPage() {
                         </div>
                       </div>
                     </Link>
-                    <div className="absolute top-4 right-4 flex">
+                    {isStaff && (<div className="absolute top-4 right-4 flex">
                       <button
                         className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50 mr-2"
                         onClick={() => handleEditClick(task)}
@@ -321,7 +321,7 @@ export default function AssignmentPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
-                    </div>
+                    </div>)}
                   </div>
                 ))}
               </div>
@@ -389,14 +389,61 @@ export default function AssignmentPage() {
               onClose={() => setShowEditModal(false)}
               onSubmit={async (data) => {
                 try {
-                  await updateAssignmentAPI(
-                    data.assignmentId,
-                    data.name,
-                    data.description,
-                    data.endDate,
-                    data.schedule,
-                    data.deliverables
-                  );
+                  const prev = lecturerData.find(a => a.id === data.assignmentId) || {
+                    name: "",
+                    description: "",
+                    endDate: "",
+                    dueDate: "",
+                    schedule: "",
+                    deliverables: [],
+                  };
+
+                  const keepValue = (newVal: any, oldVal: any) =>
+                    newVal !== undefined && newVal !== null && String(newVal).trim() !== "" ? newVal : oldVal;
+
+                  const keepUrls = data.existingFiles
+                    ? data.existingFiles.filter((f: any) => data.keepFileIds.includes(f.id)).map((f: any) => f.filepath)
+                    : [];
+
+                  const name = keepValue(data.title ?? data.name, prev.name);
+                  const description = keepValue(data.description, prev.description);
+                  const endDate = keepValue(data.endDate, prev.endDate);
+                  const dueDate = keepValue(data.dueDate, prev.dueDate);
+                  const schedule = keepValue(data.schedule, prev.schedule);
+                  const deliverables = Array.isArray(data.deliverables) && data.deliverables.length > 0
+                    ? data.deliverables
+                    : (prev as any).deliverables ?? [];
+
+                    console.log("Deliverables to send:", deliverables);
+
+
+                  if (data.files && Array.isArray(data.files) && data.files.length > 0) {
+                    for (const file of data.files) {
+                      await updateAssignmentAPI(
+                        data.assignmentId,
+                        name,
+                        description,
+                        endDate,
+                        dueDate,
+                        schedule,
+                        deliverables,
+                        keepUrls,
+                        file
+                      );
+                    }
+                  } else {
+                    await updateAssignmentAPI(
+                      data.assignmentId,
+                      name,
+                      description,
+                      endDate,
+                      dueDate,
+                      schedule,
+                      deliverables,
+                      keepUrls,
+                      null
+                    );
+                  }
                   setShowEditModal(false);
                   window.location.reload();
                 } catch (err) {

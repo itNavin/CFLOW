@@ -45,7 +45,16 @@ export default function AssignmentDetailPage() {
     if (!courseId || !assignmentId || !selectedGroup) return;
     try {
       const res = await getLecStfAssignmentDetailAPI(courseId, assignmentId, selectedGroup);
-      setData(res.data.assignment);
+      setData({
+        ...res.data.assignment,
+        submissions: res.data.assignment.submissions?.map((submission: any) => ({
+          ...submission,
+          submissionFiles: submission.submissionFiles?.map((file: any) => ({
+            ...file,
+            fileUrl: Array.isArray(file.fileUrl) ? file.fileUrl : [file.fileUrl],
+          })) ?? [],
+        })) ?? [],
+      });
     } catch (e) {
       console.error("[getLecStfAssignmentDetailAPI] error:", e);
     }
