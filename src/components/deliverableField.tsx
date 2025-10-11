@@ -2,7 +2,7 @@
 
 import React from "react";
 
-export type FileType = "PDF" | "DOCX" | "ZIP";
+export type FileType = "PDF" | "DOCX" | "XLSX" | "PPTX" | "ZIP";
 
 export type Deliverable = {
   id: string;
@@ -25,13 +25,20 @@ export default function DeliverableFields({
   onRemove,
   showRemove = false,
 }: Props) {
-  const toggleType = (t: FileType) => {
-    const exists = value.requiredTypes.includes(t);
-    onChange({
-      requiredTypes: exists
-        ? value.requiredTypes.filter((x) => x !== t)
-        : [...value.requiredTypes, t],
-    });
+  const toggleType = (t: FileType, checked: boolean) => {
+    if (checked) {
+      // Add type if not present
+      if (!value.requiredTypes.includes(t)) {
+        onChange({
+          requiredTypes: [...value.requiredTypes, t],
+        });
+      }
+    } else {
+      // Remove type if present
+      onChange({
+        requiredTypes: value.requiredTypes.filter((x) => x !== t),
+      });
+    }
   };
 
   return (
@@ -58,7 +65,7 @@ export default function DeliverableFields({
               <input
                 type="checkbox"
                 checked={value.requiredTypes.includes(t)}
-                onChange={() => toggleType(t)}
+                onChange={(e) => toggleType(t, e.target.checked)}
                 className="h-4 w-4"
               />
               {t}

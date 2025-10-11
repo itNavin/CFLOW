@@ -518,6 +518,7 @@ export namespace getAssignmentById{
         createdAt: string;
         updatedAt: string;
         deliverables: deliverable[];
+        assignmentFiles: assignmentFiles[];
     }
     export type deliverable = {
         id: string;

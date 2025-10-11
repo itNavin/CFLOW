@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { getAllAssignments } from "@/types/api/assignment";
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 import type { assignmentDetail } from "@/types/api/assignment";
+import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 
 type Props = {
   data?: getAllAssignments.getAssignmentWithSubmission;
@@ -23,6 +24,21 @@ const getLatestSubmission = (subs: any[] | undefined | null) => {
     return new Date(b.submittedAt ?? 0).getTime() - new Date(a.submittedAt ?? 0).getTime();
   })[0];
 };
+
+async function handleDownloadSubmission(submissionFileId: string, fileName: string) {
+  try {
+    const res = await downloadSubmissionFileAPI(submissionFileId);
+    const url = res.data.url;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert("Failed to download file.");
+  }
+}
 
 export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
   const sp = useSearchParams();
@@ -63,7 +79,7 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
 
   /** ---- Build links per deliverable with parsed extension ---- */
   const linksByDeliverable = useMemo(() => {
-    const map: Record<string, { name: string; href: string; ext: string }[]> = {};
+    const map: Record<string, { name: string; href: string; ext: string; id?: string }[]> = {};
     const toUrls = (x: string[] | string | null | undefined) =>
       !x ? [] : Array.isArray(x) ? x : [x];
 
@@ -79,7 +95,7 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
       const key = sf?.deliverableId ?? sf?.deliverable?.id ?? "unknown";
       for (const u of toUrls(sf?.fileUrl)) {
         const { name, ext } = parse(u);
-        (map[key] ??= []).push({ name, href: u, ext });
+        (map[key] ??= []).push({ name, href: u, ext, id: sf?.id }); // <-- add id here
       }
     }
     return map;
@@ -142,16 +158,26 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
                           ) : (
                             <div className="flex flex-col">
                               {matched.map((l) => (
-                                <a
-                                  key={l.href}
-                                  href={l.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-[#326295] hover:underline truncate"
-                                  title={l.name}
-                                >
-                                  {l.name}
-                                </a>
+                                <div key={l.href} className="flex items-center gap-2">
+                                  <a
+                                    href={l.href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[#326295] hover:underline truncate"
+                                    title={l.name}
+                                  >
+                                    {l.name}
+                                  </a>
+                                  {l.id && (
+                                    <button
+                                      className="text-blue-600 underline"
+                                      onClick={() => handleDownloadSubmission(l.id!, l.name)}
+                                      title="Download file"
+                                    >
+                                      Download
+                                    </button>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           )}
@@ -159,23 +185,32 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
                       );
                     })
                   ) : (
-                    // Fallback if no allowed types defined: list everything under this deliverable
                     <div className="mt-2">
                       {links.length === 0 ? (
                         <span className="text-sm text-gray-500">No file</span>
                       ) : (
                         <div className="flex flex-col">
                           {links.map((l) => (
-                            <a
-                              key={l.href}
-                              href={l.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-[#326295] hover:underline truncate"
-                              title={l.name}
-                            >
-                              {l.name}
-                            </a>
+                            <div key={l.href} className="flex items-center gap-2">
+                              <a
+                                href={l.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#326295] hover:underline truncate"
+                                title={l.name}
+                              >
+                                {l.name}
+                              </a>
+                              {l.id && (
+                                <button
+                                  className="text-blue-600 underline"
+                                  onClick={() => handleDownloadSubmission(l.id!, l.name)}
+                                  title="Download file"
+                                >
+                                  Download
+                                </button>
+                              )}
+                            </div>
                           ))}
                         </div>
                       )}

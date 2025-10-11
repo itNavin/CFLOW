@@ -81,6 +81,9 @@ export default function AssignmentModal({
   if (!canSubmit) return;
   setSubmitting(true);
   try {
+    const scheduleValue = scheduleAt && scheduleAt.trim()
+      ? scheduleAt
+      : new Date().toISOString();
     // Create assignment and get its id/courseId
     const assignment = await onSubmit({
       title,
@@ -88,7 +91,7 @@ export default function AssignmentModal({
       deliverables,
       dueAt,
       endAt,
-      scheduleAt,
+      scheduleAt : scheduleValue,
     });
 
     // Upload attached files

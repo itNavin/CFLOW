@@ -4,8 +4,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 import type { getAllAssignments, assignmentDetail } from "@/types/api/assignment";
+import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
+import { downloadFeedbackFileAPI } from "@/api/assignment/downloadFeedbackFile";
+import { changeFileName } from "@/util/fileName";
 
-type FileLink = { name: string; href: string };
+type FileLink = { name: string; href: string; id?: string };
 type FeedbackItem = { chapter: string; title?: string; comments?: string[]; files?: FileLink[] };
 type WorkItem = { chapter: string; files: FileLink[] };
 type StatusVariant = "approved" | "not_approved" | "pending";
@@ -25,6 +28,63 @@ const tone = (v: StatusVariant = "pending") =>
 
 const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
 
+function getDisplayFileName({
+  file,
+  groupNumber,
+  deliverableName,
+  version,
+  mime,
+}: {
+  file: FileLink;
+  groupNumber: string;
+  deliverableName: string;
+  version: number;
+  mime: string;
+}) {
+  try {
+    return changeFileName({
+      groupNumber,
+      deliverableName,
+      version,
+      mime,
+    });
+  } catch {
+    return file.name;
+  }
+}
+
+async function handleDownloadSubmission(submissionFileId: string, fileName: string) {
+  try {
+    const res = await downloadSubmissionFileAPI(submissionFileId);
+    const url = res.data.url;
+    console.log("Submission file download URL:", url); // <-- log the URL
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert("Failed to download file.");
+  }
+}
+
+async function handleDownloadFeedback(feedbackFileId: string, fileName: string) {
+  try {
+    const res = await downloadFeedbackFileAPI(feedbackFileId);
+    const url = res.data.url;
+    console.log("Feedback file download URL:", url); // <-- log the URL
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert("Failed to download file.");
+  }
+}
+
 export function Version({
   versionLabel,
   statusText,
@@ -34,6 +94,7 @@ export function Version({
   work = [],
   className = "",
 }: VersionProps) {
+  const version = versionLabel.replace("Version ", "");
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
@@ -73,9 +134,29 @@ export function Version({
                         <div className="mt-1 space-y-1">
                           {files.length > 0 ? (
                             files.map((file, i) => (
-                              <a key={i} href={file.href} className="block text-[#326295] hover:underline">
-                                {file.name}
-                              </a>
+                              <div key={i} className="flex items-center gap-2">
+                                <a href={file.href} className="block text-[#326295] hover:underline">
+                                  {file.name}
+                                  {/* {
+                                    getDisplayFileName(
+                                      file,
+                                      groupNumber, // <-- get this from your data
+                                      w.chapter,   // <-- deliverable name from work/feedback item
+                                      versionLabel, // <-- or sub.version if available
+                                      file.mime || "application/pdf" // <-- get mime from your file object or default
+                                    )
+                                  } */}
+                                </a>
+                                {file.id && (
+                                  <button
+                                    className="text-blue-600 underline"
+                                    onClick={() => handleDownloadFeedback(file.id!, file.name)}
+                                    title="Download file"
+                                  >
+                                    Download
+                                  </button>
+                                )}
+                              </div>
                             ))
                           ) : (
                             <span className="text-gray-400">-</span>
@@ -106,9 +187,20 @@ export function Version({
                     <div className="mt-1 space-y-1">
                       {files.length > 0 ? (
                         files.map((file, i) => (
-                          <a key={i} href={file.href} className="block text-[#326295] hover:underline">
-                            {file.name}
-                          </a>
+                          <div key={i} className="flex items-center gap-2">
+                            <a href={file.href} className="block text-[#326295] hover:underline">
+                              {file.name}
+                            </a>
+                            {file.id && (
+                              <button
+                                className="text-blue-600 underline"
+                                onClick={() => handleDownloadSubmission(file.id!, file.name)}
+                                title="Download file"
+                              >
+                                Download
+                              </button>
+                            )}
+                          </div>
                         ))
                       ) : (
                         <span className="text-gray-400">-</span>
@@ -220,7 +312,11 @@ export default function ViewSubmissionVersions({ data }: Props) {
             .forEach((c) => allComments.push(c));
 
           (fb?.feedbackFiles ?? []).forEach((ff: any) => {
-            const links = urls(ff?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+            const links = urls(ff?.fileUrl).map((u) => ({
+              name: fileName(u),
+              href: u,
+              id: ff?.id, // <-- include file id for download
+            }));
             const k = String(ff?.deliverableId ?? "");
             (fbFiles[k] ??= []).push(...links);
           });
@@ -237,13 +333,17 @@ export default function ViewSubmissionVersions({ data }: Props) {
         // group submission files by deliverable
         const workGrouped: Record<string, FileLink[]> = {};
         (sub?.submissionFiles ?? []).forEach((sf: any) => {
-          const links = urls(sf?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+          const links = urls(sf?.fileUrl).map((u) => ({
+            name: fileName(u),
+            href: u,
+            id: sf?.id, // <-- include file id for download
+          }));
           const k = String(sf?.deliverableId ?? "");
           (workGrouped[k] ??= []).push(...links);
 
           links.forEach(link => {
-      console.log(`[Submission] File name: ${link.name}`);
-    });
+            console.log(`[Submission] File name: ${link.name}`);
+          });
         });
         const workItems: WorkItem[] = Object.entries(workGrouped).map(([dId, files]) => ({
           chapter: deliverableNames[dId] || "Deliverable",

@@ -3,8 +3,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
 import type { assignmentDetail } from "@/types/api/assignment";
+import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
+import { downloadFeedbackFileAPI } from "@/api/assignment/downloadFeedbackFile";
 
-type FileLink = { name: string; href: string };
+type FileLink = { name: string; href: string; id?: string };
 type FeedbackItem = { chapter: string; title?: string; comments?: string[]; files?: FileLink[] };
 type WorkItem = { chapter: string; files: FileLink[] };
 type StatusVariant = "approved" | "not_approved" | "pending";
@@ -24,6 +26,37 @@ const tone = (v: StatusVariant = "pending") =>
   v === "approved" ? "text-green-600" : v === "not_approved" ? "text-red-600" : "text-amber-600";
 
 const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
+
+async function handleDownloadSubmission(submissionFileId: string, fileName: string) {
+  try {
+    const res = await downloadSubmissionFileAPI(submissionFileId);
+    const url = res.data.url;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert("Failed to download file.");
+  }
+}
+
+async function handleDownloadFeedback(feedbackFileId: string, fileName: string) {
+  try {
+    const res = await downloadFeedbackFileAPI(feedbackFileId);
+    const url = res.data.url;
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } catch (err) {
+    alert("Failed to download file.");
+  }
+}
+
 function Version({
   versionLabel,
   statusText,
@@ -73,6 +106,15 @@ function Version({
                                 <a href={file.href} className="text-[#326295] hover:underline">
                                   {file.name}
                                 </a>
+                                {file.id && (
+                                  <button
+                                    className="text-blue-600 underline"
+                                    onClick={() => handleDownloadFeedback(file.id!, file.name)}
+                                    title="Download file"
+                                  >
+                                    Download
+                                  </button>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -107,6 +149,15 @@ function Version({
                             <a href={file.href} className="text-[#326295] hover:underline">
                               {file.name}
                             </a>
+                            {file.id && (
+                              <button
+                                className="text-blue-600 underline"
+                                onClick={() => handleDownloadSubmission(file.id!, file.name)}
+                                title="Download file"
+                              >
+                                Download
+                              </button>
+                            )}
                           </div>
                         ))
                       ) : (
@@ -211,10 +262,6 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
   const visible = showAll ? feedbackVersions : feedbackVersions.slice(0, 1);
   const hasMore = feedbackVersions.length > 1;
 
-  console.log("groupId:", groupId, "courseId:", courseId, "assignmentId:", assignmentId);
-  console.log("detail:", detail);
-  console.log("submissions:", detail?.submissions);
-
   return (
     <div className="space-y-3">
       {visible.map((sub: any) => {
@@ -228,7 +275,11 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
             .forEach((c) => allComments.push(c));
 
           (fb?.feedbackFiles ?? []).forEach((ff: any) => {
-            const links = urls(ff?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+            const links = urls(ff?.fileUrl).map((u) => ({
+              name: fileName(u),
+              href: u,
+              id: ff?.id, // <-- include file id for download
+            }));
             const k = String(ff?.deliverableId ?? "");
             (fbFiles[k] ??= []).push(...links);
           });
@@ -245,7 +296,11 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
         // group submission files by deliverable
         const workGrouped: Record<string, FileLink[]> = {};
         (sub?.submissionFiles ?? []).forEach((sf: any) => {
-          const links = urls(sf?.fileUrl).map((u) => ({ name: fileName(u), href: u }));
+          const links = urls(sf?.fileUrl).map((u) => ({
+            name: fileName(u),
+            href: u,
+            id: sf?.id, // <-- include file id for download
+          }));
           const k = String(sf?.deliverableId ?? "");
           (workGrouped[k] ??= []).push(...links);
         });
@@ -262,7 +317,6 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
             statusText={sub?.status ?? "—"}
             statusVariant={statusMap[sub?.status as string] ?? "pending"}
             deliverables={detail?.deliverables ?? []}
-
             feedback={feedbackItems}
             workDescription={sub?.comment || "No description from your submission."}
             work={workItems}
