@@ -116,14 +116,18 @@ export default function GiveFeedbackLecturer({
         mappedStatus === "FINAL" ? null : (newDueDate ? new Date(newDueDate).toISOString() : null);
       console.log("Feedback payload:", latestSubmission.id, comment, isoDueDate, newStatus);
 
-
       const feedbackRes = await giveFeedbackAPI(
         latestSubmission.id,
         comment,
         isoDueDate,
         newStatus
       );
-      const feedbackId = feedbackRes.feedback.id;
+      const feedbackId = feedbackRes.feedback?.id;
+      if (!feedbackId) {
+        setSubmitError("Feedback ID not returned from server.");
+        setSubmitting(false);
+        return;
+      }
 
       const groupNumber =
         detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
@@ -322,7 +326,7 @@ export default function GiveFeedbackLecturer({
                   className="ml-2 border rounded px-2 py-1"
                 >
                   <option value="APPROVED">APPROVED</option>
-                  <option value="APPROVE_WITH_FEEDBACK">APPROVE_WITH_FEEDBACK</option>
+                  <option value="APPROVED_WITH_FEEDBACK">APPROVED_WITH_FEEDBACK</option>
                   <option value="REJECTED">REJECTED</option>
                 </select>
               </div>

@@ -33,7 +33,13 @@ export default function AssignmentGroup({
         let groupArray: getGroups.group[] = [];
         if (role === "staff") {
           const res = await getAllGroupAPI(courseId);
-          groupArray = Array.isArray(res.data.groups) ? res.data.groups : [];
+          groupArray = Array.isArray(res.data.groups)
+            ? res.data.groups.map((g: any) => ({
+                ...g,
+                createdAt: g.createdAt ?? "",
+                updatedAt: g.updatedAt ?? "",
+              }))
+            : [];
         } else if (role === "lecturer" || role === "advisor") {
           const res = await getGroupAPI(courseId);
           groupArray = Array.isArray(res.groups) ? res.groups : [];

@@ -127,13 +127,22 @@ export default function EditAssignmentModal({
                     name: d.name,
                     allowedFileTypes: Array.from(new Set(
                         d.requiredTypes.map((t) => {
-                            const s = String(t).toLowerCase();
-                            if (s === "pdf") return "pdf";
-                            if (s === "word document" || s === "docx" || s === "doc") return "docx";
-                            if (s === "excel spreadsheet" || s === "xlsx" || s === "xls") return "xlsx";
-                            if (s === "powerpoint" || s === "pptx" || s === "ppt") return "pptx";
-                            if (s === "zip archive" || s === "zip") return "zip";
-                            return s;
+                            switch (t) {
+                                case "PDF": return "pdf";
+                                case "DOCX": return "docx";
+                                case "XLSX": return "xlsx";
+                                case "PPTX": return "pptx";
+                                case "ZIP": return "zip";
+                                case "TXT": return "txt";
+                                case "CSV": return "csv";
+                                case "PNG": return "png";
+                                case "JPG": return "jpg";
+                                case "JPEG": return "jpeg";
+                                case "WEBP": return "webp";
+                                case "MD": return "md";
+                                case "JSON": return "json";
+                                default: return String(t).toLowerCase();
+                            }
                         })
                     )),
                 })),
