@@ -40,7 +40,7 @@ async function handleDownloadSubmission(submissionFileId: string, fileName: stri
   }
 }
 
-export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
+export default function ViewSubmittedAssignment({ data }: Props) {
   const sp = useSearchParams();
   const courseId = useMemo(() => clean(sp.get("courseId")) ?? data?.courseId, [sp, data?.courseId]);
   const assignmentId = useMemo(() => clean(sp.get("assignmentId")) ?? data?.id, [sp, data?.id]);
@@ -94,14 +94,13 @@ export default function ViewSubmittedAssignment({ data, onResubmit }: Props) {
     for (const sf of sfs) {
       const key = sf?.deliverableId ?? sf?.deliverable?.id ?? "unknown";
       for (const u of toUrls(sf?.fileUrl)) {
-        const { name, ext } = parse(u);
-        (map[key] ??= []).push({ name, href: u, ext, id: sf?.id }); // <-- add id here
+        const ext = (sf.name && sf.name.includes(".") ? sf.name.split(".").pop() : "")?.toLowerCase() || "";
+        (map[key] ??= []).push({ name: sf.name || "file", href: u, ext, id: sf?.id });
       }
     }
     return map;
   }, [latest]);
 
-  /** ---- Map allowed type/mime → actual extensions ---- */
   const extsForAllowed = (aft: any) => {
     const type = String(aft?.type || "").toLowerCase();
     const mime = String(aft?.mime || "").toLowerCase();

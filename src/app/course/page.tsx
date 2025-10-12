@@ -100,30 +100,6 @@ export default function CoursePage() {
     router.push(`${base}?courseId=${encodeURIComponent(course.id)}`);
   };
 
-  const handleUploadMember = async (file: File) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const formData = new FormData();
-      formData.append('file', file);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetchCourses();
-
-      setOpenUploadMember(false);
-    } catch (err: any) {
-      setError(
-        err?.response?.status
-          ? `Failed to upload members (HTTP ${err.response.status})`
-          : err instanceof Error
-            ? err.message
-            : "Failed to upload members"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCreateCourse = async (payload: Omit<Course, "id" | "createdById" | "createdAt">) => {
     try {
       setLoading(true);
@@ -255,12 +231,6 @@ export default function CoursePage() {
 
           {userRole === "staff" && (
             <div className="flex gap-3">
-              <button
-                onClick={() => setOpenUploadMember(true)}
-                className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
-              >
-                <span className="text-xl mr-2"></span> Upload Members
-              </button>
               <button
                 onClick={() => setOpenCreate(true)}
                 className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
@@ -404,13 +374,6 @@ export default function CoursePage() {
           mode="create"
           onClose={() => setOpenCreate(false)}
           onSubmit={handleCreateCourse}
-        />
-      )}
-
-      {openUploadMember && (
-        <UploadMemberModal
-          onClose={() => setOpenUploadMember(false)}
-          onSubmit={handleUploadMember}
         />
       )}
 

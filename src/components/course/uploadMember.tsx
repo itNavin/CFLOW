@@ -40,7 +40,6 @@ export const UploadMemberModal = ({
         try {
             await onSubmit(selectedFile);
         } catch (error) {
-            // Error handling is done in the parent component
         } finally {
             setIsSubmitting(false);
         }

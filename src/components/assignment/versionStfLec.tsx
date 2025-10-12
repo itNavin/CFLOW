@@ -5,6 +5,7 @@ import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail"
 import type { assignmentDetail } from "@/types/api/assignment";
 import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 import { downloadFeedbackFileAPI } from "@/api/assignment/downloadFeedbackFile";
+import { changeFileName } from "@/util/fileName";
 
 type FileLink = { name: string; href: string; id?: string };
 type FeedbackItem = { chapter: string; title?: string; comments?: string[]; files?: FileLink[] };
@@ -57,6 +58,17 @@ async function handleDownloadFeedback(feedbackFileId: string, fileName: string) 
   }
 }
 
+function inferMimeType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === "doc") return "application/msword";
+  if (ext === "xlsx") return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (ext === "pptx") return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (ext === "zip") return "application/zip";
+  return "application/octet-stream";
+}
+
 function Version({
   versionLabel,
   statusText,
@@ -66,7 +78,9 @@ function Version({
   work = [],
   className = "",
   deliverables = [],
-}: VersionProps) {
+  groupNumber = "0",
+}: VersionProps & { groupNumber?: string }) {
+  const version = versionLabel.replace("Version ", "");
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
@@ -143,23 +157,34 @@ function Version({
                     <div className="font-medium  text-[16px]">{w.chapter}</div>
                     <div className="mt-1 space-y-1">
                       {files.length > 0 ? (
-                        files.map((file, i) => (
-                          <div key={i} className="flex items-center gap-2">
-                            <span>{getFileTypeLabel(deliverables, w.chapter, file.name)}</span>
-                            <a href={file.href} className="text-[#326295] hover:underline">
-                              {file.name}
-                            </a>
-                            {file.id && (
-                              <button
-                                className="text-blue-600 underline"
-                                onClick={() => handleDownloadSubmission(file.id!, file.name)}
-                                title="Download file"
-                              >
-                                Download
-                              </button>
-                            )}
-                          </div>
-                        ))
+                        files.map((file, i) => {
+                          // Infer mime type from file name
+                          const mime = inferMimeType(file.name);
+                          // Use custom file name format
+                          const displayName = changeFileName({
+                            groupNumber: groupNumber,
+                            deliverableName: w.chapter,
+                            version,
+                            mime,
+                          });
+                          return (
+                            <div key={i} className="flex items-center gap-2">
+                              <span>{getFileTypeLabel(deliverables, w.chapter, file.name)}</span>
+                              <a href={file.href} className="text-[#326295] hover:underline">
+                                {displayName}
+                              </a>
+                              {file.id && (
+                                <button
+                                  className="text-blue-600 underline"
+                                  onClick={() => handleDownloadSubmission(file.id!, displayName)}
+                                  title="Download file"
+                                >
+                                  Download
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
@@ -220,6 +245,8 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [showAll, setShowAll] = useState(false);
+  const groupNumber =
+    detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
 
   useEffect(() => {
     if (!courseId || !assignmentId || !groupId) return;
@@ -276,9 +303,9 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
 
           (fb?.feedbackFiles ?? []).forEach((ff: any) => {
             const links = urls(ff?.fileUrl).map((u) => ({
-              name: fileName(u),
+              name: ff?.name || fileName(u), // <-- USE ff.name FROM BACKEND
               href: u,
-              id: ff?.id, // <-- include file id for download
+              id: ff?.id,
             }));
             const k = String(ff?.deliverableId ?? "");
             (fbFiles[k] ??= []).push(...links);
@@ -293,13 +320,12 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
           })),
         ];
 
-        // group submission files by deliverable
         const workGrouped: Record<string, FileLink[]> = {};
         (sub?.submissionFiles ?? []).forEach((sf: any) => {
           const links = urls(sf?.fileUrl).map((u) => ({
             name: fileName(u),
             href: u,
-            id: sf?.id, // <-- include file id for download
+            id: sf?.id,
           }));
           const k = String(sf?.deliverableId ?? "");
           (workGrouped[k] ??= []).push(...links);
@@ -320,6 +346,7 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
             feedback={feedbackItems}
             workDescription={sub?.comment || "No description from your submission."}
             work={workItems}
+            groupNumber={groupNumber}
           />
         );
       })}

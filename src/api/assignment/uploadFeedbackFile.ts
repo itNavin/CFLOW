@@ -5,10 +5,11 @@ export const uploadFeedbackFileAPI = async (
   file: File,
   deliverableId: string,
   groupId: string,
-  feedbackId: string
+  feedbackId: string,
+  formattedFileName: string
 ) => {
   const formData = new FormData();
-  formData.append("file", file);
+  formData.append("file", file, formattedFileName);
   formData.append("deliverableId", deliverableId);
   formData.append("groupId", groupId);
   formData.append("feedbackId", feedbackId);
