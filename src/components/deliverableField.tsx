@@ -2,8 +2,20 @@
 
 import React from "react";
 
-export type FileType = "PDF" | "DOCX" | "XLSX" | "PPTX" | "ZIP";
-
+export type FileType =
+  | "PDF"
+  | "DOCX"
+  | "XLSX"
+  | "PPTX"
+  | "ZIP"
+  | "TXT"
+  | "CSV"
+  | "PNG"
+  | "JPG"
+  | "JPEG"
+  | "WEBP"
+  | "MD"
+  | "JSON";
 export type Deliverable = {
   id: string;
   name: string;
@@ -17,7 +29,21 @@ type Props = {
   showRemove?: boolean;
 };
 
-const ALL_TYPES: FileType[] = ["PDF", "DOCX", "ZIP"];
+const ALL_TYPES: FileType[] = [
+  "PDF",
+  "DOCX",
+  "XLSX",
+  "PPTX",
+  "ZIP",
+  "TXT",
+  "CSV",
+  "PNG",
+  "JPG",
+  "JPEG",
+  "WEBP",
+  "MD",
+  "JSON",
+];
 
 export default function DeliverableFields({
   value,
@@ -59,18 +85,20 @@ export default function DeliverableFields({
         <div className="text-sm font-medium mb-1">
           File Require <span className="text-red-500">*</span>
         </div>
-        <div className="space-y-2">
-          {ALL_TYPES.map((t) => (
-            <label key={t} className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={value.requiredTypes.includes(t)}
-                onChange={(e) => toggleType(t, e.target.checked)}
-                className="h-4 w-4"
-              />
-              {t}
-            </label>
-          ))}
+        <div className="grid grid-cols-4 gap-x-4 gap-y-2">
+          {ALL_TYPES.map((t, idx) => {
+            return (
+              <label key={t} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={value.requiredTypes.includes(t)}
+                  onChange={(e) => toggleType(t, e.target.checked)}
+                  className="h-4 w-4"
+                />
+                {t}
+              </label>
+            );
+          })}
         </div>
       </div>
 

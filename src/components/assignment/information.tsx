@@ -104,6 +104,8 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
 
   // Choose the correct source for assignment info
   let assignmentObj: any = null;
+  
+
   if (["lecturer", "advisor", "staff"].includes(role ?? "")) {
     assignmentObj =
       (lecStfDetail as assignmentDetail.AssignmentLecStfDetail)?.assignment ??
@@ -114,6 +116,11 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
       (data as getAllAssignments.getAssignmentWithSubmission);
   } else {
     assignmentObj = data as getAllAssignments.getAssignmentWithSubmission;
+  }
+  const assignmentDueDates = assignmentObj?.assignmentDueDates ?? [];
+  let groupDueDate: string | null = null;
+  if (assignmentDueDates.length > 0) {
+    groupDueDate = assignmentDueDates[0].dueDate ?? null;
   }
 
   const title = assignmentObj?.name ?? "-";
@@ -126,9 +133,9 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
     (["lecturer", "advisor"].includes(role ?? "") &&
       Array.isArray(assignmentObj?.submissions))
       ? [...assignmentObj.submissions].sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        )
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      )
       : [];
 
   return (
@@ -142,7 +149,7 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
 
       <p className="text-lg text-gray-600 font-medium">
         <strong className="mr-2">Due date</strong>
-        {formatDateTime(dueDate)}{" "}
+        {formatDateTime(groupDueDate || dueDate)}{" "}
         {role !== "student" && endDate && (
           <>
             <strong className="ml-3 mr-2">End date</strong>
