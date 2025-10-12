@@ -6,6 +6,8 @@ import { giveFeedbackAPI } from "@/api/assignment/giveFeedback";
 import { uploadFeedbackFileAPI } from "@/api/assignment/uploadFeedbackFile";
 import type { assignmentDetail } from "@/types/api/assignment";
 import { Upload } from "lucide-react";
+import { changeFeedbackFileName } from "@/util/fileName";
+import { getProfileAPI } from "@/api/profile/getProfile";
 
 type Props = {
   courseId: string;
@@ -26,7 +28,6 @@ export default function GiveFeedbackLecturer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Feedback state
   const [comment, setComment] = useState("");
   const [files, setFiles] = useState<Record<string, File[]>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -34,6 +35,18 @@ export default function GiveFeedbackLecturer({
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
   const [newStatus, setNewStatus] = useState("APPROVED");
   const [newDueDate, setNewDueDate] = useState("");
+  const [username, setUsername] = useState<string>("");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await getProfileAPI();
+        setUsername(res.data.profile?.user?.id || "");
+      } catch (e) {
+        setUsername("");
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!courseId || !assignmentId || !groupId) return;
@@ -57,17 +70,22 @@ export default function GiveFeedbackLecturer({
     };
   }, [courseId, assignmentId, groupId]);
 
-  // Find latest submission
   const latestSubmission = useMemo(() => {
     const subs = detail?.submissions ?? [];
     if (!subs.length) return null;
     return [...subs].sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0];
   }, [detail]);
 
-  // Deliverables
+  const latestSubmissionFinal = useMemo(() => {
+    const subs = detail?.submissions ?? [];
+    if (!subs.length) return null;
+    return subs.reduce((latest, curr) =>
+      (curr.version ?? 0) > (latest.version ?? 0) ? curr : latest
+    );
+  }, [detail]);
+
   const deliverables = detail?.deliverables ?? [];
 
-  // Handle file selection for feedback
   const handleFileChange = (deliverableId: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files ? Array.from(e.target.files) : [];
     setFiles((prev) => ({
@@ -77,7 +95,6 @@ export default function GiveFeedbackLecturer({
     e.target.value = "";
   };
 
-  // Remove a feedback file
   const removeFeedbackFile = (deliverableId: string, idx: number) => {
     setFiles((prev) => {
       const arr = [...(prev[deliverableId] ?? [])];
@@ -86,7 +103,6 @@ export default function GiveFeedbackLecturer({
     });
   };
 
-  // Submit feedback
   const handleSubmitFeedback = async () => {
     if (!latestSubmission) return;
     setSubmitting(true);
@@ -94,21 +110,37 @@ export default function GiveFeedbackLecturer({
     setSubmitSuccess(null);
 
     try {
-      // 1. Post feedback comment using your API
+      const mappedStatus = newStatus === "APPROVED" ? "FINAL" : newStatus;
+
+      const isoDueDate =
+        mappedStatus === "FINAL" ? null : (newDueDate ? new Date(newDueDate).toISOString() : null);
+      console.log("Feedback payload:", latestSubmission.id, comment, isoDueDate, newStatus);
+
+
       const feedbackRes = await giveFeedbackAPI(
         latestSubmission.id,
         comment,
-        newDueDate,
+        isoDueDate,
         newStatus
       );
       const feedbackId = feedbackRes.feedback.id;
 
-      // 2. Upload feedback files for each deliverable
+      const groupNumber =
+        detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
+
       const uploads: Promise<any>[] = [];
       for (const [deliverableId, fileArr] of Object.entries(files)) {
         for (const file of fileArr) {
+          const mime = file.type;
+          const formattedName = changeFeedbackFileName({
+            username: username,
+            groupNumber: groupNumber,
+            deliverableName: deliverables.find(d => d.id === deliverableId)?.name || "",
+            version: latestSubmission.version,
+            mime,
+          });
           uploads.push(
-            uploadFeedbackFileAPI(file, deliverableId, groupId, feedbackId)
+            uploadFeedbackFileAPI(file, deliverableId, groupId, feedbackId, formattedName)
           );
         }
       }
@@ -135,6 +167,13 @@ export default function GiveFeedbackLecturer({
   if (loading) return <div className="p-6">Loading assignment detail…</div>;
   if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
   if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
+  if (latestSubmissionFinal?.status === "FINAL") {
+    return (
+      <div className="p-6 text-green-700">
+        This group assignment is already approved.
+      </div>
+    );
+  }
   if (latestSubmission?.feedbacks && latestSubmission.feedbacks.length > 0) {
     return (
       <div className="p-6 text-gray-500">
@@ -165,28 +204,31 @@ export default function GiveFeedbackLecturer({
                   <div key={idx}>
                     {t.type}
                     {submittedFiles.length > 0 &&
-                      submittedFiles.map((sf: any) =>
-                        (sf.fileUrl ?? []).filter((url: string) =>
-                          url.toLowerCase().endsWith(
-                            t.type === "PDF"
-                              ? ".pdf"
-                              : t.type === "Word Document"
-                                ? ".docx"
-                                : ""
+                      submittedFiles.map((sf: any) => {
+                        const urls = Array.isArray(sf.fileUrl) ? sf.fileUrl : sf.fileUrl ? [sf.fileUrl] : [];
+                        return urls
+                          .filter((url: string) =>
+                            url.toLowerCase().endsWith(
+                              t.type === "PDF"
+                                ? ".pdf"
+                                : t.type === "Word Document"
+                                  ? ".docx"
+                                  : ""
+                            )
                           )
-                        ).map((url: string, i: number) => (
-                          <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm">
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-700 underline"
-                            >
-                              {url.split("/").pop()}
-                            </a>
-                          </span>
-                        ))
-                      )
+                          .map((url: string, i: number) => (
+                            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm">
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-700 underline"
+                              >
+                                {url.split("/").pop()}
+                              </a>
+                            </span>
+                          ));
+                      })
                     }
                   </div>
                 ))}
@@ -220,42 +262,56 @@ export default function GiveFeedbackLecturer({
                 onChange={(e) => setComment(e.target.value)}
               />
             </div>
-            {deliverables.map((del) => (
-              <div key={del.id} className="mb-4">
-                <div className="font-semibold">{del.name}</div>
-                <label
-                  htmlFor={`feedback-file-${del.id}`}
-                  className="inline-flex items-center cursor-pointer py-2 text-blue-700 font-semibold hover:bg-blue-100"
-                  style={{ width: "fit-content" }}
-                >
-                  <Upload style={{ height: 24, marginRight: 6 }} />
-                  Upload
-                  <input
-                    id={`feedback-file-${del.id}`}
-                    type="file"
-                    multiple
-                    onChange={handleFileChange(del.id)}
-                    className="hidden"
-                  />
-                </label>
-                {(files[del.id] ?? []).length > 0 && (
-                  <div className="space-y-1 mt-2">
-                    {(files[del.id] ?? []).map((file, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <span className="text-sm bg-gray-100 px-2 py-1 rounded">{file.name}</span>
-                        <button
-                          type="button"
-                          className="text-red-600 text-xs underline"
-                          onClick={() => removeFeedbackFile(del.id, idx)}
-                        >
-                          remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+            {deliverables.map((del) => {
+              const groupNumber =
+                detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
+              return (
+                <div key={del.id} className="mb-4">
+                  <div className="font-semibold">{del.name}</div>
+                  <label
+                    htmlFor={`feedback-file-${del.id}`}
+                    className="inline-flex items-center cursor-pointer py-2 text-blue-700 font-semibold hover:bg-blue-100"
+                    style={{ width: "fit-content" }}
+                  >
+                    <Upload style={{ height: 24, marginRight: 6 }} />
+                    Upload
+                    <input
+                      id={`feedback-file-${del.id}`}
+                      type="file"
+                      multiple
+                      onChange={handleFileChange(del.id)}
+                      className="hidden"
+                    />
+                  </label>
+                  {(files[del.id] ?? []).length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {(files[del.id] ?? []).map((file, idx) => {
+                        const mime = file.type;
+                        const formattedName = changeFeedbackFileName({
+                          username: username,
+                          groupNumber: groupNumber,
+                          deliverableName: del.name,
+                          version: latestSubmission?.version ?? 1,
+                          mime,
+                        });
+                        return (
+                          <div key={idx} className="flex items-center gap-2">
+                            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{formattedName}</span>
+                            <button
+                              type="button"
+                              className="text-red-600 text-xs underline"
+                              onClick={() => removeFeedbackFile(del.id, idx)}
+                            >
+                              remove
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="mt-4 flex gap-4 items-center">
               <div>

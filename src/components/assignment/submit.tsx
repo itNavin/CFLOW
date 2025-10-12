@@ -9,6 +9,7 @@ import type { submitAssignment, SubmissionPayload } from "@/types/api/assignment
 import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail";
 import type { assignmentDetail } from "@/types/api/assignment";
 import { submitAssignmentFileAPI } from "@/api/assignment/submitAssignmentFile";
+import { changeFileName } from "@/util/fileName";
 
 type SubmitAssignmentProps = {
   data: getAllAssignments.getAssignmentWithSubmission | undefined;
@@ -50,6 +51,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
   const [detail, setDetail] = useState<assignmentDetail.AssignmentStudentDetail["assignment"] | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const latestFinal = useMemo(() => getLatestSubmission(detail?.submissions), [detail?.submissions]);
 
   useEffect(() => {
     if (!isClient || !courseId || !assignmentId) return;
@@ -84,18 +86,18 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
   const [drafts, setDrafts] = useState<DraftState>({});
   const onDraftSelect =
     (deliverableId: string, aftId: string, mime: string) =>
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      setDrafts((prev) => ({
-        ...prev,
-        [deliverableId]: {
-          ...(prev[deliverableId] ?? {}),
-          [aftId]: { file, mime },
-        },
-      }));
-      e.target.value = "";
-    };
+      (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setDrafts((prev) => ({
+          ...prev,
+          [deliverableId]: {
+            ...(prev[deliverableId] ?? {}),
+            [aftId]: { file, mime },
+          },
+        }));
+        e.target.value = "";
+      };
   const removeDraft = (deliverableId: string, aftId: string) => {
     setDrafts((prev) => {
       const next = { ...prev };
@@ -135,10 +137,23 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
       const submissionId = res.submission.id;
       setSubmission(res.submission);
 
+      const groupNumber =
+        detail?.assignmentDueDates?.[0]?.group?.codeNumber ||
+        "0";
       const uploads: Promise<any>[] = [];
       for (const [deliverableId, aftMap] of Object.entries(drafts)) {
-        for (const { file } of Object.values(aftMap)) {
-          uploads.push(submitAssignmentFileAPI(submissionId, file, deliverableId));
+        for (const { file, mime } of Object.values(aftMap)) {
+          const deliverableName = deliverables.find((d) => d.id === deliverableId)?.name || "Deliverable";
+          const version = res.submission.version;
+          const formattedFileName = changeFileName({
+            groupNumber,
+            deliverableName,
+            version,
+            mime,
+          });
+          uploads.push(
+            submitAssignmentFileAPI(submissionId, file, deliverableId, formattedFileName)
+          );
         }
       }
 
@@ -170,6 +185,14 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
 
   if (!isClient) {
     return <div className="p-6 space-y-6">Loading assignment…</div>;
+  }
+
+  if (latestFinal?.status === "FINAL") {
+    return (
+      <div className="p-6 text-green-700 text-lg font-semibold">
+        Your group assignment is already approved.
+      </div>
+    );
   }
 
   return (
@@ -234,7 +257,15 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
                         {chosen ? (
                           <>
                             <span className="text-sm break-all bg-gray-100 px-2 py-1 rounded">
-                              {chosen.file.name}
+                              {
+                                changeFileName({
+                                  groupNumber:
+                                    detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0",
+                                  deliverableName: del.name,
+                                  version: latest?.version ? latest.version + 1 : 1, // next version
+                                  mime: aft.mime,
+                                })
+                              }
                             </span>
                             <button
                               type="button"

@@ -6,9 +6,9 @@ import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail"
 import type { getAllAssignments, assignmentDetail } from "@/types/api/assignment";
 import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 import { downloadFeedbackFileAPI } from "@/api/assignment/downloadFeedbackFile";
-import { changeFileName } from "@/util/fileName";
+import { changeFileName, changeFeedbackFileName } from "@/util/fileName";
 
-type FileLink = { name: string; href: string; id?: string };
+type FileLink = { name: string; href: string; id?: string; mime?: string };
 type FeedbackItem = { chapter: string; title?: string; comments?: string[]; files?: FileLink[] };
 type WorkItem = { chapter: string; files: FileLink[] };
 type StatusVariant = "approved" | "not_approved" | "pending";
@@ -21,6 +21,7 @@ type VersionProps = {
   workDescription: string;
   work?: WorkItem[];
   className?: string;
+  groupNumber: string;
 };
 
 const tone = (v: StatusVariant = "pending") =>
@@ -28,20 +29,43 @@ const tone = (v: StatusVariant = "pending") =>
 
 const arr = <T,>(x: T[] | null | undefined) => (Array.isArray(x) ? x : []);
 
+function inferMimeType(fileName: string): string {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  if (ext === "pdf") return "application/pdf";
+  if (ext === "docx") return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === "doc") return "application/msword";
+  if (ext === "xlsx") return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (ext === "pptx") return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (ext === "zip") return "application/zip";
+  return "application/octet-stream";
+}
+
 function getDisplayFileName({
   file,
   groupNumber,
   deliverableName,
   version,
-  mime,
+  username,
+  isFeedback = false,
 }: {
   file: FileLink;
   groupNumber: string;
   deliverableName: string;
-  version: number;
-  mime: string;
+  version: string | number;
+  username?: string;
+  isFeedback?: boolean;
 }) {
   try {
+    const mime = file.mime || inferMimeType(file.name);
+    if (isFeedback && username) {
+      return changeFeedbackFileName({
+        username,
+        groupNumber,
+        deliverableName,
+        version,
+        mime,
+      });
+    }
     return changeFileName({
       groupNumber,
       deliverableName,
@@ -57,7 +81,6 @@ async function handleDownloadSubmission(submissionFileId: string, fileName: stri
   try {
     const res = await downloadSubmissionFileAPI(submissionFileId);
     const url = res.data.url;
-    console.log("Submission file download URL:", url); // <-- log the URL
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName;
@@ -73,7 +96,6 @@ async function handleDownloadFeedback(feedbackFileId: string, fileName: string) 
   try {
     const res = await downloadFeedbackFileAPI(feedbackFileId);
     const url = res.data.url;
-    console.log("Feedback file download URL:", url); // <-- log the URL
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName;
@@ -93,8 +115,11 @@ export function Version({
   workDescription,
   work = [],
   className = "",
+  groupNumber,
 }: VersionProps) {
-  const version = versionLabel.replace("Version ", "");
+  const version = versionLabel.replace("Version ", ""); // e.g. "01"
+  const username = useSearchParams().get("user") || undefined;
+
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
@@ -105,7 +130,6 @@ export function Version({
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
         <section className="p-6 border-b">
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
-
           {feedback.length === 0 ? (
             <p className="text-sm text-gray-500">No feedback yet.</p>
           ) : (
@@ -119,7 +143,6 @@ export function Version({
                       <span className="font-medium">{f.chapter}</span>
                       {f.title ? <span className="mx-1">: {f.title}</span> : null}
                     </div>
-
                     {comments.length > 0 ? (
                       <ul className="mt-2 list-disc list-inside space-y-1">
                         {comments.map((c, i) => (
@@ -127,7 +150,6 @@ export function Version({
                         ))}
                       </ul>
                     ) : null}
-
                     {f.files !== undefined && (
                       <div className="mt-4">
                         <div className="font-medium text-[16px]">{f.chapter}</div>
@@ -136,16 +158,14 @@ export function Version({
                             files.map((file, i) => (
                               <div key={i} className="flex items-center gap-2">
                                 <a href={file.href} className="block text-[#326295] hover:underline">
-                                  {file.name}
-                                  {/* {
-                                    getDisplayFileName(
-                                      file,
-                                      groupNumber, // <-- get this from your data
-                                      w.chapter,   // <-- deliverable name from work/feedback item
-                                      versionLabel, // <-- or sub.version if available
-                                      file.mime || "application/pdf" // <-- get mime from your file object or default
-                                    )
-                                  } */}
+                                  {getDisplayFileName({
+                                    file,
+                                    groupNumber,
+                                    deliverableName: f.chapter,
+                                    version,
+                                    username,
+                                    isFeedback: true,
+                                  })}
                                 </a>
                                 {file.id && (
                                   <button
@@ -174,7 +194,6 @@ export function Version({
         <section className="p-6">
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Your work</h2>
           <p className="text-[14px] text-gray-800 mb-4">{workDescription || "—"}</p>
-
           {work.length === 0 ? (
             <p className="text-sm text-gray-500">No submissions yet.</p>
           ) : (
@@ -189,7 +208,14 @@ export function Version({
                         files.map((file, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <a href={file.href} className="block text-[#326295] hover:underline">
-                              {file.name}
+                              {getDisplayFileName({
+                                file,
+                                groupNumber,
+                                deliverableName: w.chapter,
+                                version,
+                                username,
+                                isFeedback: false,
+                              })}
                             </a>
                             {file.id && (
                               <button
@@ -295,6 +321,10 @@ export default function ViewSubmissionVersions({ data }: Props) {
     deliverableNames[d.id] = d.name;
   });
 
+  // --- FIX: define groupNumber here ---
+  const groupNumber =
+    detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0"
+
   const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
   const visible = showAll ? feedbackVersions : feedbackVersions.slice(0, 1);
   const hasMore = feedbackVersions.length > 1;
@@ -315,7 +345,8 @@ export default function ViewSubmissionVersions({ data }: Props) {
             const links = urls(ff?.fileUrl).map((u) => ({
               name: fileName(u),
               href: u,
-              id: ff?.id, // <-- include file id for download
+              id: ff?.id,
+              mime: inferMimeType(fileName(u)),
             }));
             const k = String(ff?.deliverableId ?? "");
             (fbFiles[k] ??= []).push(...links);
@@ -336,14 +367,11 @@ export default function ViewSubmissionVersions({ data }: Props) {
           const links = urls(sf?.fileUrl).map((u) => ({
             name: fileName(u),
             href: u,
-            id: sf?.id, // <-- include file id for download
+            id: sf?.id,
+            mime: inferMimeType(fileName(u)),
           }));
           const k = String(sf?.deliverableId ?? "");
           (workGrouped[k] ??= []).push(...links);
-
-          links.forEach(link => {
-            console.log(`[Submission] File name: ${link.name}`);
-          });
         });
         const workItems: WorkItem[] = Object.entries(workGrouped).map(([dId, files]) => ({
           chapter: deliverableNames[dId] || "Deliverable",
@@ -360,6 +388,7 @@ export default function ViewSubmissionVersions({ data }: Props) {
             feedback={feedbackItems}
             workDescription={sub?.comment || "No description from your submission."}
             work={workItems}
+            groupNumber={groupNumber}
           />
         );
       })}
