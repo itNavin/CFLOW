@@ -83,12 +83,11 @@ export default function Sidebar() {
   }, [userRole, project]);
 
   if (!menuItems || menuItems.length === 0) {
-    console.log("No menu items, hiding sidebar");
     return null;
   }
 
   return (
-    <aside className="w-60 h-screen bg-white border-r">
+    <aside className="w-60 h-full bg-white border-r">
       <nav className="flex flex-col py-6 space-y-2 font-dbheavent">
         {menuItems.map((item) => {
           const groupId = project?.group?.id ? String(project.group.id) : "";
