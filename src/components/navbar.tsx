@@ -83,7 +83,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-6">
-          {canUpload && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
+          {(userRole === "staff") && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
           <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
             <Bell className="w-6 h-6 text-black" />
             {/* <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span> */}

@@ -320,18 +320,28 @@ export default function ViewSubmissionVersions({ data }: Props) {
   const groupNumber =
     detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
 
-  const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
   const latestSub = subs[0];
-  const isFinal = latestSub?.status === "FINAL" || latestSub?.status === "APPROVED";
+  const isFinal = latestSub?.status === "FINAL";
 
-  const allVersions = latestSub && latestSub.id
-    ? feedbackVersions.some(v => v.id === latestSub.id)
-      ? feedbackVersions
-      : [latestSub, ...feedbackVersions]
-    : feedbackVersions;
+  const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
 
-  const visible = isFinal && !showAll ? [latestSub] : allVersions;
-  const hasMore = allVersions.length > 1;
+  let visible: any[] = [];
+  let hasMore = false;
+
+  if (isFinal) {
+    // Show only the latest version by default, with See more/less for all
+    const allVersions = latestSub && latestSub.id
+      ? feedbackVersions.some(v => v.id === latestSub.id)
+        ? feedbackVersions
+        : [latestSub, ...feedbackVersions]
+      : feedbackVersions;
+    visible = showAll ? allVersions : [latestSub];
+    hasMore = allVersions.length > 1;
+  } else {
+    // Show every version except the latest
+    visible = subs.slice(1); // skip the latest
+    hasMore = false;
+  }
 
   return (
     <div className="space-y-3">

@@ -17,6 +17,7 @@ const statusColorMap: Record<string, string> = {
   REJECTED: "#ef4444",
   APPROVED_WITH_FEEDBACK: "#10b981",
   FINAL: "#16a34a",
+  APPROVED: "#16a34a",
 };
 
 type VersionProps = {
@@ -272,14 +273,21 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
   const latestSub = subs[0];
   const isFinal = latestSub?.status === "FINAL" || latestSub?.status === "APPROVED";
 
-  const allVersions = latestSub && latestSub.id
-    ? feedbackVersions.some(v => v.id === latestSub.id)
-      ? feedbackVersions
-      : [latestSub, ...feedbackVersions]
-    : feedbackVersions;
+  let visible: any[] = [];
+  let hasMore = false;
 
-  const visible = isFinal && !showAll ? [latestSub] : allVersions;
-  const hasMore = allVersions.length > 1;
+  if (isFinal) {
+    const allVersions = latestSub && latestSub.id
+      ? feedbackVersions.some(v => v.id === latestSub.id)
+        ? feedbackVersions
+        : [latestSub, ...feedbackVersions]
+      : feedbackVersions;
+    visible = showAll ? allVersions : [latestSub];
+    hasMore = allVersions.length > 1;
+  } else {
+    visible = subs.slice(1); // show every version except the latest
+    hasMore = false;
+  }
 
   return (
     <div className="space-y-3">
