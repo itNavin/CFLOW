@@ -89,7 +89,7 @@ function Version({
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
-        <h1 className="text-[18px] font-semibold text-[#e74c3c]">{versionLabel}</h1>
+        <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
         <p className="mt-1 text-sm" style={{ color }}>
           Status: {statusText}
         </p>
