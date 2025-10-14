@@ -238,12 +238,12 @@ export default function StatusTab() {
                 <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>
                   {row.status}
                 </span>
-                <Link
+                {/* <Link
                   href={`/admin/status/${row.id}/${row.assignmentId}`}
                   className="text-xl text-[#326295] hover:underline"
                 >
                   Detail
-                </Link>
+                </Link> */}
               </div>
             </div>
           );
