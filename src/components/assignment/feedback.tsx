@@ -326,7 +326,7 @@ export default function GiveFeedbackLecturer({
                   className="ml-2 border rounded px-2 py-1"
                 >
                   <option value="APPROVED">APPROVED</option>
-                  <option value="APPROVED_WITH_FEEDBACK">APPROVED_WITH_FEEDBACK</option>
+                  <option value="APPROVED_WITH_FEEDBACK">APPROVED WITH FEEDBACK</option>
                   <option value="REJECTED">REJECTED</option>
                 </select>
               </div>
@@ -350,7 +350,7 @@ export default function GiveFeedbackLecturer({
                 onClick={handleSubmitFeedback}
                 disabled={submitting}
               >
-                {submitting ? "Submitting…" : "Sent"}
+                {submitting ? "Submitting…" : "Send"}
               </button>
             </div>
           </>
