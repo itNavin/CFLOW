@@ -7,7 +7,7 @@ export type UpdateAnnouncementArgs = {
   name: string;
   description: string;
   schedule?: string | null;
-  keepUrls?: string[]; 
+  keepUrls?: string[];
   files?: File;
 };
 
@@ -27,9 +27,7 @@ export const updateAnnouncementAPI = async ({
 
   if (schedule) form.append("schedule", schedule);
 
-  if (keepUrls && keepUrls.length > 0) {
-    form.append("keepUrls", JSON.stringify(keepUrls));
-  }
+  form.append("keepUrls", JSON.stringify(keepUrls ?? []));
 
   if (files) {
     form.append("files", files, files.name);

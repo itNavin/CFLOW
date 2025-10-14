@@ -199,7 +199,7 @@ export function Version({
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Your work</h2>
           <p className="text-[14px] text-gray-800 mb-4">{workDescription || "—"}</p>
           {work.length === 0 ? (
-            <p className="text-sm text-gray-500">No submissions yet.</p>
+            <p className="text-sm text-gray-500"></p>
           ) : (
             <div className="space-y-4 text-[14px]">
               {work.map((w, idx) => {
@@ -339,7 +339,14 @@ export default function ViewSubmissionVersions({ data }: Props) {
     hasMore = allVersions.length > 1;
   } else {
     // Show every version except the latest
-    visible = subs.slice(1); // skip the latest
+    const latestHasFeedback = Array.isArray(subs[0]?.feedbacks) && subs[0].feedbacks.length > 0;
+    if (latestHasFeedback) {
+      // Show all except latest, plus latest if it has feedback
+      visible = [...subs.slice(1), subs[0]];
+    } else {
+      // Show all except latest
+      visible = subs.slice(1);
+    }
     hasMore = false;
   }
 

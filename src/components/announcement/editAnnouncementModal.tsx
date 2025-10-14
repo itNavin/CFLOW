@@ -14,7 +14,7 @@ type Props = {
     description: string;
     schedule?: string | null;
     keepUrls?: string[];
-    files?: File[];
+    files?: File;
   }) => Promise<void>;
 };
 
@@ -40,7 +40,7 @@ export default function EditAnnouncementModal({
   const [keepUrls, setKeepUrls] = useState<string[]>(
     announcement.files?.map((f) => f.filepath) ?? []
   );
-  const [newFiles, setNewFiles] = useState<File[]>([]);
+  const [newFile, setNewFile] = useState<File | undefined>(undefined);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,12 +55,12 @@ export default function EditAnnouncementModal({
     );
     setScheduleAt(
       announcement.schedule &&
-      announcement.schedule !== "1970-01-01T00:00:00.000Z"
+        announcement.schedule !== "1970-01-01T00:00:00.000Z"
         ? announcement.schedule.slice(0, 16)
         : ""
     );
     setKeepUrls(announcement.files?.map((f) => f.filepath) ?? []);
-    setNewFiles([]);
+    setNewFile(undefined);
   }, [announcement]);
 
   if (!open) return null;
@@ -76,15 +76,25 @@ export default function EditAnnouncementModal({
     setError(null);
     try {
       const scheduleISO =
-        isScheduled && scheduleAt ? new Date(scheduleAt).toISOString() : null;
+      isScheduled && scheduleAt
+        ? new Date(scheduleAt).toISOString()
+        : new Date().toISOString();
+
+      console.log({
+        name: name.trim(),
+        description: description.trim(),
+        schedule: scheduleISO,
+        keepUrls,
+        files: newFile,
+      });
       await onSubmit({
         name: name.trim(),
         description: description.trim(),
         schedule: scheduleISO,
         keepUrls,
-        files: newFiles,
+        files: newFile,
       });
-      onClose();
+      window.location.reload();
     } catch (e: any) {
       setError(e?.message || "Failed to save announcement");
     } finally {
@@ -161,9 +171,6 @@ export default function EditAnnouncementModal({
                       >
                         <div className="truncate">
                           <span className="font-medium">{f.name}</span>
-                          <span className="ml-2 text-xs text-gray-500 truncate">
-                            {f.filepath}
-                          </span>
                         </div>
                         <button
                           type="button"
@@ -175,11 +182,10 @@ export default function EditAnnouncementModal({
                             )
                           }
                           disabled={submitting}
-                          className={`text-sm px-3 py-1 rounded border transition ${
-                            kept
-                              ? "border-red-300 text-red-600 hover:bg-red-50"
-                              : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-                          }`}
+                          className={`text-sm px-3 py-1 rounded border transition ${kept
+                            ? "border-red-300 text-red-600 hover:bg-red-50"
+                            : "border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            }`}
                         >
                           {kept ? "Remove" : "Keep"}
                         </button>
@@ -196,7 +202,7 @@ export default function EditAnnouncementModal({
             <div>
               <label className="block font-medium mb-2">Add New Files</label>
               <FileUpload
-                onFilesChange={(files) => setNewFiles(files)}
+                onFilesChange={(files) => setNewFile(files[0])}
                 maxFiles={10}
                 maxFileSize={20}
                 disabled={submitting}

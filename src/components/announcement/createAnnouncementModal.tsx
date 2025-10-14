@@ -10,9 +10,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
   courseId: string;
+  onSubmit?: () => Promise<void>;
 };
 
-export default function CreateAnnouncementModal({ open, onClose, courseId }: Props) {
+export default function CreateAnnouncementModal({ open, onClose, courseId, onSubmit }: Props) {
   const [description, setDescription] = useState("");
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,8 +47,8 @@ export default function CreateAnnouncementModal({ open, onClose, courseId }: Pro
       if (selectedFiles.length > 0) {
         await uploadAnnouncementFileAPI(courseId, announcementId, selectedFiles);
       }
-
-      onClose(); // close after successful creation
+      window.location.reload();
+      onClose();
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || "Failed to create announcement");
     } finally {
@@ -62,7 +63,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId }: Pro
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="absolute left-1/2 top-10 -translate-x-1/2 w-[min(900px,92vw)] font-dbheavent">
         <div className="rounded-2xl bg-white shadow-xl border border-gray-200 flex flex-col max-h-[90vh]">
-          {/* ===== Header ===== */}
           <div className="flex items-center justify-between px-6 py-4 border-b">
             <h2 className="text-xl font-semibold">Create New Announcement</h2>
             <button

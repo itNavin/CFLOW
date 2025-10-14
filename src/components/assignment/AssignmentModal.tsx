@@ -78,37 +78,37 @@ export default function AssignmentModal({
   const addDeliverable = () => setDeliverables((prev) => [...prev, newDeliverable()]);
 
   const handleSubmit = async () => {
-  if (!canSubmit) return;
-  setSubmitting(true);
-  try {
-    const scheduleValue = scheduleAt && scheduleAt.trim()
-      ? scheduleAt
-      : new Date().toISOString();
-    // Create assignment and get its id/courseId
-    const assignment = await onSubmit({
-      title,
-      descriptionHtml,
-      deliverables,
-      dueAt,
-      endAt,
-      scheduleAt : scheduleValue,
-    });
+    if (!canSubmit) return;
+    setSubmitting(true);
+    try {
+      const scheduleValue = scheduleAt && scheduleAt.trim()
+        ? scheduleAt
+        : new Date().toISOString();
+      // Create assignment and get its id/courseId
+      const assignment = await onSubmit({
+        title,
+        descriptionHtml,
+        deliverables,
+        dueAt,
+        endAt,
+        scheduleAt: scheduleValue,
+      });
 
-    // Upload attached files
-    if (selectedFiles.length > 0 && assignment?.id && assignment?.courseId) {
-      for (const file of selectedFiles) {
-        console.log(`Uploading file: ${file.name} for assignmentId: ${assignment.id}, courseId: ${assignment.courseId}`);
-        await uploadAssignmentFileAPI(assignment.courseId, assignment.id, file);
+      // Upload attached files
+      if (selectedFiles.length > 0 && assignment?.id && assignment?.courseId) {
+        for (const file of selectedFiles) {
+          console.log(`Uploading file: ${file.name} for assignmentId: ${assignment.id}, courseId: ${assignment.courseId}`);
+          await uploadAssignmentFileAPI(assignment.courseId, assignment.id, file);
+        }
+      } else {
+        console.log("No files to upload or missing assignment/courseId.");
       }
-    } else {
-      console.log("No files to upload or missing assignment/courseId.");
-    }
 
-    onClose();
-  } finally {
-    setSubmitting(false);
-  }
-};
+      onClose();
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (!open) return null;
 
@@ -192,7 +192,7 @@ export default function AssignmentModal({
               <button
                 type="button"
                 onClick={addDeliverable}
-                className="mt-3 text-sm text-[#326295] hover:underline"
+                className="mt-3 px-4 py-2 text-sm font-medium bg-[#326295] text-white rounded shadow hover:bg-[#25446b] transition"
               >
                 + Add deliverable
               </button>

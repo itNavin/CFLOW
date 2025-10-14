@@ -91,7 +91,7 @@ function Version({
       <div className="mb-3">
         <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
         <p className="mt-1 text-sm" style={{ color }}>
-          Status: {statusText}
+          Status: {statusText === "FINAL" ? "APPROVED" : statusText}
         </p>
       </div>
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -285,7 +285,12 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
     visible = showAll ? allVersions : [latestSub];
     hasMore = allVersions.length > 1;
   } else {
-    visible = subs.slice(1); // show every version except the latest
+    const latestHasFeedback = Array.isArray(subs[0]?.feedbacks) && subs[0].feedbacks.length > 0;
+    if (latestHasFeedback) {
+      visible = [...subs.slice(1), subs[0]];
+    } else {
+      visible = subs.slice(1);
+    }
     hasMore = false;
   }
 

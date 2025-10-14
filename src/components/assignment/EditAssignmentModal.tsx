@@ -138,9 +138,7 @@ export default function EditAssignmentModal({
                                 case "PNG": return "png";
                                 case "JPG": return "jpg";
                                 case "JPEG": return "jpeg";
-                                case "WEBP": return "webp";
                                 case "MD": return "md";
-                                case "JSON": return "json";
                                 default: return String(t).toLowerCase();
                             }
                         })
@@ -292,13 +290,12 @@ export default function EditAssignmentModal({
                                     <button
                                         type="button"
                                         onClick={addDeliverable}
-                                        className="mt-3 text-sm text-[#326295] hover:underline"
+                                        className="mt-3 px-4 py-2 text-sm font-medium bg-[#326295] text-white rounded shadow hover:bg-[#25446b] transition"
                                     >
-                                        + Add deliverable
+                                        + Add more deliverable
                                     </button>
                                 </div>
 
-                                {/* Dates */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                     <div>
                                         <label className="block font-medium mb-1">
