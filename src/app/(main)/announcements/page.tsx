@@ -140,30 +140,35 @@ export default function AnnouncementPage() {
                 <div className="text-2xl font-semibold justify-between">
                   {data.name}
                 </div>
+                <div className="text-base text-gray-700 mb-1">
+                  Created by: <span >{data.createdBy?.name || "Unknown"}</span>
+                </div>
                 <div className="text-base text-gray-500">
                   {showDueDate
                     ? <span className="font-bold">{`Post Schedule: ${formatUploadAt(data.schedule ?? "")}`}</span>
                     : <span>{formatUploadAt(data.createdAt ?? "")}</span>}
                 </div>
               </div>
-              <div>
-                <button
-                  className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-gray-600 hover:bg-gray-50 mr-2"
-                  onClick={() => {
-                    setSelectedAnnouncement(data);
-                    setEditOpen(true);
-                  }}
-                >
-                  <Pencil className="h-4 w-6" />
-                </button>
-                <button
-                  title="Delete"
-                  className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
-                  onClick={() => handleDeleteAnnouncement(data.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              {canUpload && (
+                <div>
+                  <button
+                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-gray-600 hover:bg-gray-50 mr-2"
+                    onClick={() => {
+                      setSelectedAnnouncement(data);
+                      setEditOpen(true);
+                    }}
+                  >
+                    <Pencil className="h-4 w-6" />
+                  </button>
+                  <button
+                    title="Delete"
+                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                    onClick={() => handleDeleteAnnouncement(data.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
 
             <p className="text-xl text-gray-800 leading-relaxed">
@@ -208,6 +213,28 @@ export default function AnnouncementPage() {
                         >
                           <div className="py-1">
                             <button
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                try {
+                                  const res = await downloadCourseFileAPI(file.id);
+                                  const url = res.data.url;
+                                  if (url) {
+                                    window.open(url, "_blank"); // Open in new tab
+                                  } else {
+                                    alert("Open link not found.");
+                                  }
+                                } catch (error) {
+                                  alert("Failed to get open link.");
+                                }
+                                setOpenDropdown(null);
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                              type="button"
+                            >
+                              <FileText className="w-4 h-4" />
+                              Open
+                            </button>
+                            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDownload(file, data.createdBy.name);
@@ -247,6 +274,9 @@ export default function AnnouncementPage() {
             open={openCreate}
             onClose={() => setOpenCreate(false)}
             courseId={courseId}
+            onSubmit={async () => {
+              await fetchAnnouncements();
+            }}
           />
         </>
       )}
@@ -265,7 +295,7 @@ export default function AnnouncementPage() {
                 description: form.description,
                 schedule: form.schedule,
                 keepUrls: form.keepUrls,
-                files: form.files?.[0], // send only one file if API expects single file
+                files: form.files,
               });
               await fetchAnnouncements();
             } catch (e) {

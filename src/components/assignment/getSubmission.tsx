@@ -126,14 +126,12 @@ export default function ViewSubmittedAssignment({ data }: Props) {
             <div>
               <h2 className="text-xl font-semibold text-black">Your submission</h2>
             </div>
-            {/* optional: resubmit button if you need */}
-            {/* {onResubmit && <button onClick={onResubmit} className="...">Resubmit</button>} */}
           </div>
 
           <div>
             <div className="text-lg text-black font-semibold">Comment</div>
             <div className="whitespace-pre-wrap text-black text-lg">
-              " {latest.comment?.trim() || "—"} "
+              {latest.comment?.trim() || "No comment"} 
             </div>
           </div>
 
@@ -169,7 +167,7 @@ export default function ViewSubmittedAssignment({ data }: Props) {
                                   </a>
                                   {l.id && (
                                     <button
-                                      className="text-blue-600 underline"
+                                      className="text-blue-600 underline cursor-pointer"
                                       onClick={() => handleDownloadSubmission(l.id!, l.name)}
                                       title="Download file"
                                     >

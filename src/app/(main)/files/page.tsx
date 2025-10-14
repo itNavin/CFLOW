@@ -260,6 +260,31 @@ export default function FilePage() {
               <button
                 onClick={async (e) => {
                   e.stopPropagation();
+                  try {
+                    const res = await downloadCourseFileAPI(files[openIdx].id);
+                    const url = (res as any).data?.url ?? (res as any).url;
+                    if (url) {
+                      window.open(url, "_blank");
+                    } else {
+                      alert("Open link not found.");
+                    }
+                  } catch (error) {
+                    alert("Failed to get open link.");
+                  }
+                  closeMenu();
+                }}
+                role="menuitem"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                type="button"
+              >
+                <FileText className="w-4 h-4" />
+                Open
+              </button>
+
+              {/* Download button */}
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
                   await handleDownload(files[openIdx]);
                 }}
                 role="menuitem"
@@ -270,6 +295,7 @@ export default function FilePage() {
                 Download
               </button>
 
+              {/* Delete button */}
               {(role === "staff" || role === "lecturer" || role === "SUPER_ADMIN") && (
                 <button
                   onClick={async (e) => {
@@ -279,7 +305,7 @@ export default function FilePage() {
                   disabled={deletingFileId === files[openIdx].id}
                   role="menuitem"
                   className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors
-                    ${deletingFileId === files[openIdx].id
+              ${deletingFileId === files[openIdx].id
                       ? "text-gray-400 cursor-not-allowed"
                       : "text-red-600 hover:bg-red-50"}`}
                   type="button"

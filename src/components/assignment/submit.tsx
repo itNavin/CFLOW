@@ -204,18 +204,6 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
         </div>
       )}
 
-      <label htmlFor="comment" className="text-lg text-black font-semibold">
-        Comment
-      </label>
-      <textarea
-        id="comment"
-        className="w-full border border-gray-300 rounded-md p-3 text-lg"
-        placeholder="Write your comment here..."
-        rows={4}
-        value={comment}
-        onChange={(e) => setComment(e.target.value)}
-      />
-
       {submitError && <div className="text-red-600 text-sm">{submitError}</div>}
       {submitSuccess && (
         <div className="text-green-700 text-sm">
@@ -293,6 +281,17 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
           {detail ? "No deliverables found for this assignment" : "Loading deliverables..."}
         </div>
       )}
+      <label htmlFor="comment" className="text-lg text-black font-semibold">
+        Comment
+      </label>
+      <textarea
+        id="comment"
+        className="w-full border border-gray-300 rounded-md p-3 text-lg"
+        placeholder="Write your comment here..."
+        rows={4}
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+      />
 
       <div className="flex justify-end mt-6">
         <button

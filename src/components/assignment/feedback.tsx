@@ -8,6 +8,7 @@ import type { assignmentDetail } from "@/types/api/assignment";
 import { Upload } from "lucide-react";
 import { changeFeedbackFileName } from "@/util/fileName";
 import { getProfileAPI } from "@/api/profile/getProfile";
+import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 
 type Props = {
   courseId: string;
@@ -168,6 +169,21 @@ export default function GiveFeedbackLecturer({
     }
   };
 
+  async function handleDownloadSubmission(submissionFileId: string, fileName: string) {
+    try {
+      const res = await downloadSubmissionFileAPI(submissionFileId);
+      const url = res.data.url;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      alert("Failed to download file.");
+    }
+  }
+
   if (loading) return <div className="p-6">Loading assignment detail…</div>;
   if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
   if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
@@ -189,12 +205,11 @@ export default function GiveFeedbackLecturer({
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
-      {/* Student Work Zone */}
       <div className="border-b pb-6 mb-6">
         <div className="font-bold text-xl mb-2">Student Work</div>
         <div className="mb-4">
           <div className="font-semibold">Comment:</div>
-          <div>{latestSubmission.comment || "—"}</div>
+          <div>{latestSubmission.comment || "No comment"}</div>
         </div>
         {deliverables.map((del) => {
           const submittedFiles = (latestSubmission.submissionFiles ?? []).filter(
@@ -221,15 +236,25 @@ export default function GiveFeedbackLecturer({
                             )
                           )
                           .map((url: string, i: number) => (
-                            <span key={i} className="inline-flex items-center gap-1 px-2 py-1 rounded text-sm">
+                            <span key={i} className="inline-flex items-center gap-2 px-2 py-1 rounded text-sm">
                               <a
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-700 underline"
+                                className="text-[#326295] hover:underline truncate"
+                                title={sf.name}
                               >
-                                {url.split("/").pop()}
+                                {sf.name}
                               </a>
+                              {sf.id && (
+                                <button
+                                  className="text-blue-600 underline hover:underline truncate cursor-pointer"
+                                  onClick={() => handleDownloadSubmission(sf.id, sf.name)}
+                                  title="Download file"
+                                >
+                                  Download
+                                </button>
+                              )}
                             </span>
                           ));
                       })
@@ -244,8 +269,6 @@ export default function GiveFeedbackLecturer({
           );
         })}
       </div>
-
-      {/* Feedback Zone */}
       <div>
         <div className="font-bold text-xl mb-2">Feedback</div>
         {role === "staff" && (!latestSubmission.feedbacks || latestSubmission.feedbacks.length === 0) && (
@@ -270,48 +293,44 @@ export default function GiveFeedbackLecturer({
               const groupNumber =
                 detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
               return (
-                <div key={del.id} className="mb-4">
-                  <div className="font-semibold">{del.name}</div>
-                  <label
-                    htmlFor={`feedback-file-${del.id}`}
-                    className="inline-flex items-center cursor-pointer py-2 text-blue-700 font-semibold hover:bg-blue-100"
-                    style={{ width: "fit-content" }}
-                  >
-                    <Upload style={{ height: 24, marginRight: 6 }} />
-                    Upload
+                <div className="text-lg flex items-center gap-3 flex-wrap" key={del.id}>
+                  <span className="font-bold">{del.name}</span>
+                  <label className="text-blue-600 underline cursor-pointer">
+                    {(files[del.id]?.length ?? 0) > 0 ? "Replace" : "Upload"}
                     <input
-                      id={`feedback-file-${del.id}`}
                       type="file"
                       multiple
                       onChange={handleFileChange(del.id)}
                       className="hidden"
                     />
                   </label>
-                  {(files[del.id] ?? []).length > 0 && (
-                    <div className="space-y-1 mt-2">
-                      {(files[del.id] ?? []).map((file, idx) => {
+                  {(files[del.id]?.length ?? 0) > 0 ? (
+                    <>
+                      {files[del.id].map((file, idx) => {
                         const mime = file.type;
                         const formattedName = changeFeedbackFileName({
-                          username: username,
-                          groupNumber: groupNumber,
+                          username,
+                          groupNumber: detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0",
                           deliverableName: del.name,
                           version: latestSubmission?.version ?? 1,
                           mime,
                         });
                         return (
-                          <div key={idx} className="flex items-center gap-2">
-                            <span className="text-sm bg-gray-100 px-2 py-1 rounded">{formattedName}</span>
+                          <span key={idx} className="text-sm break-all bg-gray-100 px-2 py-1 rounded flex items-center gap-2">
+                            {formattedName}
                             <button
                               type="button"
-                              className="text-red-600 text-xs underline"
                               onClick={() => removeFeedbackFile(del.id, idx)}
+                              className="text-red-600 text-sm underline"
                             >
                               remove
                             </button>
-                          </div>
+                          </span>
                         );
                       })}
-                    </div>
+                    </>
+                  ) : (
+                    <span className="text-sm text-gray-500">No file selected</span>
                   )}
                 </div>
               );

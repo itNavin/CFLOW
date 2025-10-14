@@ -366,17 +366,18 @@ export default function AssignmentPage() {
                         })),
                       };
                       const response = await createAssignmentAPI(payload);
-                      setShowCreateModal(false);
-                      return {
+                      const result = {
                         id: response.assignment.id,
                         courseId: response.assignment.courseId,
                       };
+                      setShowCreateModal(false);
+                      window.location.reload();
+                      return result;
                     } catch (e) {
                       console.error("Failed to create assignment:", e);
                     } finally {
                       setCreatingAssignment(false);
                     }
-                    window.location.reload();
                   }}
                 />
               )}

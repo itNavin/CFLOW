@@ -13,9 +13,7 @@ export type FileType =
   | "PNG"
   | "JPG"
   | "JPEG"
-  | "WEBP"
-  | "MD"
-  | "JSON";
+  | "MD";
 export type Deliverable = {
   id: string;
   name: string;
@@ -40,9 +38,7 @@ const ALL_TYPES: FileType[] = [
   "PNG",
   "JPG",
   "JPEG",
-  "WEBP",
   "MD",
-  "JSON",
 ];
 
 export default function DeliverableFields({
