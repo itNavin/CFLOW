@@ -15,6 +15,7 @@ import { deleteCourseAPI } from "@/api/course/deleteCourse";
 import { isCanUpload } from "@/util/RoleHelper";
 import { updateCourse } from "@/types/api/course";
 import { updateCourseAPI } from "@/api/course/updateCourse";
+import ErrorPopUp from "@/components/errorPopUp";
 
 const asArray = <T = any>(data: any, key?: string): T[] => {
   if (Array.isArray(data)) return data as T[];
@@ -227,7 +228,7 @@ export default function CoursePage() {
       <Navbar />
       <div className="p-6 font-dbheavent bg-white min-h-screen">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-[30px] font-medium text-black">Courses</h2>
+          <h2 className="text-[30px] font-medium text-black">Course</h2>
 
           {userRole === "staff" && (
             <div className="flex gap-3">
@@ -235,7 +236,7 @@ export default function CoursePage() {
                 onClick={() => setOpenCreate(true)}
                 className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
               >
-                <span className="text-xl mr-2">+</span> Create Courses
+                <span className="text-xl mr-2">+</span> Create Course
               </button>
             </div>
           )}
@@ -385,6 +386,8 @@ export default function CoursePage() {
           onSubmit={handleEditCourse}
         />
       )}
+
+      <ErrorPopUp message={error || ""} onClose={() => setError(null)} />
     </>
   );
 }

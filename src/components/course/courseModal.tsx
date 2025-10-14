@@ -1,5 +1,6 @@
 import { Course } from "@/types/api/course";
 import { useState, useRef, useEffect } from "react";
+import ErrorPopUp from "../errorPopUp";
 
 export const CourseModal = ({
     mode,
@@ -16,6 +17,7 @@ export const CourseModal = ({
     const [name, setName] = useState<string>(initial?.name ?? "");
     const [description, setDescription] = useState<string>(initial?.description ?? "");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
 
     const canSubmit = name.trim().length > 0 && !!program;
 
@@ -132,7 +134,9 @@ export const CourseModal = ({
                         </button>
                     </div>
                 </div>
+                <ErrorPopUp message={err || ""} onClose={() => setErr(null)} />
             </div>
+            
         </>
     );
 }

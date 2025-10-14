@@ -6,6 +6,7 @@ import { LoginAPI } from "@/api/auth/login";
 import { setAuthToken, setUserRole } from "@/util/cookies";
 import { startTokenRefresh } from "@/util/TokenRefreshInterval";
 import Image from "next/image";
+import ErrorPopUp from "@/components/errorPopUp";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,7 +51,7 @@ export default function LoginPage() {
         className="object-cover z-0"
         priority
       />
-  <div className="relative z-20 w-full max-w-md bg-white rounded-2xl shadow border border-neutral-200">
+      <div className="relative z-20 w-full max-w-md bg-white rounded-2xl shadow border border-neutral-200">
         <div className="p-8 sm:p-10">
           <h1 className="text-4xl font-semibold leading-snug text-neutral-900 font-dbheavent">
             Log In to Capstone Report Submission System
@@ -121,6 +122,8 @@ export default function LoginPage() {
             </div>
 
             {err && <p className="text-sm text-red-600">{err}</p>}
+            
+            {/* <ErrorPopUp message={err || ""} onClose={() => setErr(null)} /> */}
 
             <button
               type="submit"
