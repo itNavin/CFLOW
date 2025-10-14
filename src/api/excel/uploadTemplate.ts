@@ -9,8 +9,9 @@ export const uploadTemplateAPI = async (
   if (files.length > 0) {
     formData.append("file", files[0]);
   }
+  formData.append("courseId", courseId);
   const response = await Axios.post<uploadTemplate.UploadTemplatePayload>(
-    `/import/enroll/course/${courseId}`,
+    `/import/enroll`,
     formData,
     { headers: { "Content-Type": "multipart/form-data" } }
   );

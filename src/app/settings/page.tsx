@@ -246,7 +246,7 @@ export default function SettingsPage() {
       <div className="min-h-screen bg-[#f5f7fb] p-6 space-y-6 text-base sm:text-lg">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-4xl font-semibold">Settings</h1>
+            <h1 className="text-4xl font-semibold">Setting</h1>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -293,7 +293,7 @@ export default function SettingsPage() {
                 onChange={(e) => setRole(e.target.value as RoleFilter)}
                 className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
               >
-                <option value="ALL">All roles</option>
+                <option value="ALL">All Roles</option>
                 <option value="STUDENT">Student</option>
                 <option value="STAFF">Staff</option>
                 <option value="LECTURER">Lecturer</option>
@@ -331,10 +331,10 @@ export default function SettingsPage() {
                 onChange={(e) => setSortKey(e.target.value as SortKey)}
                 className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
               >
-                <option value="createdAt">Sort: Created</option>
-                <option value="name">Sort: Name</option>
-                <option value="role">Sort: Role</option>
-                <option value="program">Sort: Program</option>
+                <option value="createdAt">Sorted By: Created At</option>
+                <option value="name">Sorted By: Fullname</option>
+                <option value="role">Sorted By: Role</option>
+                <option value="program">Sorted By: Program</option>
               </select>
             </div>
           </div>
@@ -346,11 +346,11 @@ export default function SettingsPage() {
               <thead className="bg-gray-50 text-left text-2xl text-gray-700">
                 <tr>
                   <th className="px-6 py-5">ID</th>
-                  <th className="px-6 py-5">Name</th>
+                  <th className="px-6 py-5">Fullname</th>
                   <th className="px-6 py-5">Email</th>
                   <th className="px-6 py-5">Role</th>
                   <th className="px-6 py-5">Program</th>
-                  <th className="px-6 py-5">Created</th>
+                  <th className="px-6 py-5">Created At</th>
                 </tr>
               </thead>
               <tbody className="text-lg">
@@ -455,7 +455,7 @@ export default function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-left mb-1">Role</label>
+                <label className="block text-left mb-1">Program</label>
                 <select
                   value={addProgram}
                   onChange={(e) => setAddProgram(e.target.value as any)}

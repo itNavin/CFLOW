@@ -101,7 +101,7 @@ export default function GroupTab() {
 
     const infoRows = [
       [`Course Name : ${course?.name ?? ""}`],
-      [`Department : ${course?.program ?? ""}`],
+      [`Program : ${course?.program ?? ""}`],
     ];
 
     const fullNameUpper = (u?: { name?: string; surname?: string }) =>
