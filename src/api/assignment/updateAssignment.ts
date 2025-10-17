@@ -13,8 +13,8 @@ export const updateAssignmentAPI = async (
   endDate: string,
   dueDate: string,
   schedule: string | null,
-  deliverables: UpdateDeliverablePayload[], // will be sent as ONE JSON array
-  keepUrls: string[], // will be sent as ONE JSON array
+  deliverables: UpdateDeliverablePayload[], 
+  keepUrls: string[],
   files: File | null
 ) => {
   const form = new FormData();

@@ -45,10 +45,10 @@ export default function CourseDetailCard() {
 
   return (
     <div className="border rounded-md p-4">
-      <h3 className="font-semibold mb-2">Course Detail</h3>
+      <h3 className="text-xl font-semibold mb-2">Course Detail</h3>
       {courses.length > 0 ? (
         courses.map((course, index) => (
-          <p key={index}>
+          <p key={index} className="text-lg">
             {course}
           </p>
         ))

@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Upload, Search, UserPlus } from "lucide-react";
+import { Upload, Search, UserPlus, Filter, ListOrdered, SortAsc, SortDesc } from "lucide-react"; // Add needed icons
 import { getAllUsersAPI } from "@/api/user/getAllUser";
 import type { getAllUsers } from "@/types/api/user";
 import Navbar from "@/components/navbar";
@@ -25,7 +25,7 @@ type RoleFilter =
   | "ADMIN"
   | "SUPER_ADMIN";
 type ProgramFilter = "ALL" | "CS" | "DSI";
-type SortKey = "name" | "role" | "program" | "createdAt";
+type SortKey = "id" | "name" | "role" | "program" | "createdAt";
 type SortDir = "asc" | "desc";
 
 function SettingsPageContent() {
@@ -40,8 +40,8 @@ function SettingsPageContent() {
   const [program, setProgram] = useState<ProgramFilter>("ALL");
   const [course, setCourse] = useState<string | "ALL">("ALL");
 
-  const [sortKey, setSortKey] = useState<SortKey>("createdAt");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [sortKey, setSortKey] = useState<SortKey>("id");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   const [page, setPage] = useState(1);
   const pageSize = 10;
@@ -98,7 +98,7 @@ function SettingsPageContent() {
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase();
     const mapUiToApi = (r: RoleFilter) => {
-      if (r === "LECTURER") return "advisor";
+      if (r === "LECTURER") return "lecturer";
       if (r === "SOLAR_LECTURER") return "advisor";
       if (r === "STAFF") return "staff";
       if (r === "STUDENT") return "student";
@@ -112,9 +112,7 @@ function SettingsPageContent() {
           !text ||
           u.name?.toLowerCase().includes(text) ||
           u.email?.toLowerCase().includes(text) ||
-          u.id?.toLowerCase().includes(text) ||
-          u.role?.toLowerCase().includes(text) ||
-          u.program?.toLowerCase().includes(text);
+          u.id?.toLowerCase().includes(text)
         const apiRoleTarget = mapUiToApi(role);
         const matchRole = role === "ALL" ? true : u.role.toLowerCase() === apiRoleTarget;
         const matchProgram =
@@ -147,7 +145,9 @@ function SettingsPageContent() {
               ? (a.program || "").toLowerCase()
               : sortKey === "role"
                 ? (a.role || "").toLowerCase()
-                : (a.name || "").toLowerCase();
+                : sortKey === "id"
+                  ? (a.id || "").toLowerCase()
+                  : (a.name || "").toLowerCase();
         const vb =
           sortKey === "createdAt"
             ? new Date(b.createdAt || 0).getTime()
@@ -155,7 +155,9 @@ function SettingsPageContent() {
               ? (b.program || "").toLowerCase()
               : sortKey === "role"
                 ? (b.role || "").toLowerCase()
-                : (b.name || "").toLowerCase();
+                : sortKey === "id"
+                  ? (b.id || "").toLowerCase()
+                  : (b.name || "").toLowerCase();
         if (va < vb) return -1 * dir;
         if (va > vb) return 1 * dir;
         return 0;
@@ -232,9 +234,9 @@ function SettingsPageContent() {
 
   const badge = (r: string) => {
     const k = r.toLowerCase();
-    if (k === "student") return "border-blue-300 bg-blue-50 text-blue-700";
+    if (k === "student") return "border-green-300 bg-green-50 text-green-700"; // green for student
     if (k === "staff") return "border-violet-300 bg-violet-50 text-violet-700";
-    if (k === "advisor") return "border-amber-300 bg-amber-50 text-amber-800";
+    if (k === "lecturer") return "border-blue-300 bg-blue-50 text-blue-700";
     if (k === "admin") return "border-rose-300 bg-rose-50 text-rose-700";
     if (k === "super_admin") return "border-slate-400 bg-slate-100 text-slate-800";
     return "border-gray-300 bg-gray-50 text-gray-700";
@@ -246,7 +248,7 @@ function SettingsPageContent() {
       <div className="min-h-screen bg-[#f5f7fb] p-6 space-y-6 text-base sm:text-lg">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-4xl font-semibold">Setting</h1>
+            <h1 className="text-4xl font-semibold">User Management</h1>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -305,7 +307,7 @@ function SettingsPageContent() {
                   onChange={(e) => setProgram(e.target.value as ProgramFilter)}
                   className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
                 >
-                  <option value="ALL">All programs</option>
+                  <option value="ALL">All Programs</option>
                   <option value="CS">CS</option>
                   <option value="DSI">DSI</option>
                 </select>
@@ -317,7 +319,7 @@ function SettingsPageContent() {
                   onChange={(e) => setCourse(e.target.value as any)}
                   className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
                 >
-                  <option value="ALL">All courses</option>
+                  <option value="ALL">All Courses</option>
                   {courseOptions.map((c) => (
                     <option key={c.value} value={c.value}>
                       {c.label}
@@ -328,13 +330,27 @@ function SettingsPageContent() {
 
               <select
                 value={sortKey}
-                onChange={(e) => setSortKey(e.target.value as SortKey)}
+                onChange={(e) => {
+                  const key = e.target.value as SortKey;
+                  setSortKey(key);
+                  if (key === "name" || key === "id") setSortDir("asc");
+                  else setSortDir("desc");
+                }}
                 className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
               >
+                <option value="id">Sorted By: ID</option>
                 <option value="createdAt">Sorted By: Created At</option>
                 <option value="name">Sorted By: Fullname</option>
                 <option value="role">Sorted By: Role</option>
                 <option value="program">Sorted By: Program</option>
+              </select>
+              <select
+                value={sortDir}
+                onChange={e => setSortDir(e.target.value as SortDir)}
+                className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
+              >
+                <option value="asc">Ascending</option>
+                <option value="desc">Descending</option>
               </select>
             </div>
           </div>
@@ -381,12 +397,12 @@ function SettingsPageContent() {
                     <tr key={u.id} className="border-t hover:bg-gray-50/60 text-xl">
                       <td className="px-6 py-5 align-top">{u.id}</td>
                       <td className="px-6 py-5 align-top">
-                        <div className="font-semibold">{u.name || "—"}</div>
+                        <div>{u.name || "—"}</div>
                       </td>
                       <td className="px-6 py-5 align-top">{u.email || "—"}</td>
                       <td className="px-6 py-5 align-top">
                         <span className={cx("inline-flex rounded-full border px-3 py-1", badge(u.role))}>
-                          {u.role}
+                          {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                         </span>
                       </td>
                       <td className="px-6 py-5 align-top">{u.program || "—"}</td>
@@ -398,12 +414,7 @@ function SettingsPageContent() {
           </div>
 
           {!loading && !error && filtered.length > 0 && (
-            <div className="flex items-center justify-between border-t p-5 text-lg">
-              <div>
-                Showing <span className="font-semibold">{(page - 1) * pageSize + 1}</span>–
-                <span className="font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
-                <span className="font-semibold">{filtered.length}</span>
-              </div>
+            <div className="flex items-center justify-center border-t p-5 text-lg">
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -423,6 +434,11 @@ function SettingsPageContent() {
                   Next
                 </button>
               </div>
+              {/* <div>
+                Showing <span className="font-semibold">{(page - 1) * pageSize + 1}</span>–
+                <span className="font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
+                <span className="font-semibold">{filtered.length}</span>
+              </div> */}
             </div>
           )}
         </section>
@@ -433,7 +449,6 @@ function SettingsPageContent() {
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
             <h2 className="text-2xl font-semibold mb-4">Add Staff / Lecturer</h2>
 
-            {/* Left-aligned stacked form */}
             <div className="space-y-4">
               <div>
                 <label className="block text-left mb-1">Name</label>
@@ -530,7 +545,7 @@ function SettingsPageContent() {
                   try {
                     const res = await fetchStudentDataAPI(academicYear);
                     setStudentData(res.data);
-                    alert(`Fetched ${res.data?.length || 0} students for academic year ${academicYear}`); 
+                    alert(`Fetched ${res.data?.length || 0} students for academic year ${academicYear}`);
                     setAddStudentOpen(false);
                   } catch (err: any) {
                     setStudentError(err?.response?.data?.message || err?.message || "Fetch failed");

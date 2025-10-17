@@ -168,7 +168,7 @@ function GroupTabContent() {
     });
 
     ws["!rows"] = ws["!rows"] || [];
-    ws["!rows"][0] = { hpt: 28 }; 
+    ws["!rows"][0] = { hpt: 28 };
     ws["!rows"][1] = { hpt: 22 };
     ws["!rows"][2] = { hpt: 22 };
     ws["!rows"][3] = { hpt: 22 };
@@ -206,7 +206,7 @@ function GroupTabContent() {
         };
       }
     });
-    
+
     const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Groups");
@@ -320,17 +320,22 @@ function GroupTabContent() {
                   <dt className="text-gray-900 text-xl">Member :</dt>
                   <dd>
                     <ol className="list-decimal ml-3 space-y-1 text-xl">
-                      {data.members.map((members) => (
-                        <li key={members.id}>
-                          <span className="text-gray-900 text-xl mr-2">
-                            {members.courseMember.user.id}
-                          </span>
-                          <span className="text-gray-900 text-xl mr-2">
-                            {members.courseMember.user.name}
-                          </span>
-                          {members.courseMember.user.surname}
-                        </li>
-                      ))}
+                      {[...data.members]
+                        .sort((a, b) => {
+                          const idA = String(a.courseMember.user.id);
+                          const idB = String(b.courseMember.user.id);
+                          return idA.localeCompare(idB);
+                        })
+                        .map((members) => (
+                          <li key={members.id}>
+                            <span className="text-gray-900 text-xl mr-2">
+                              {members.courseMember.user.id}
+                            </span>
+                            <span className="text-gray-900 text-xl mr-2">
+                              {members.courseMember.user.name}
+                            </span>
+                          </li>
+                        ))}
                     </ol>
                   </dd>
                 </div>

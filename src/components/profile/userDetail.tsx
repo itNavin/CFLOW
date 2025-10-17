@@ -3,7 +3,6 @@ import { getProfileAPI } from "@/api/profile/getProfile";
 import { getProfile } from "@/types/api/profile";
 
 export default function UserDetailCard() {
-  // profileData is either null or the actual profile object
   const [profileData, setProfileData] = useState<getProfile.Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,13 +58,13 @@ export default function UserDetailCard() {
 
   return (
     <div className="border rounded-md p-4">
-      <h3 className="font-semibold mb-2">User Detail</h3>
-      <p><strong>Name</strong><br />{user?.name ?? "-"}</p>
-      <p className="mt-2"><strong>Email</strong><br />{user?.email ?? "-"}</p>
-      <p className="mt-2"><strong>Username</strong><br />{user?.id ?? "-"}</p>
-      <p className="mt-2"><strong>Role</strong><br />{user?.role ?? "-"}</p>
+      <h3 className="text-xl font-semibold mb-2">User Detail</h3>
+      <p className="text-lg"><strong>Name</strong><br />{user?.name ?? "-"}</p>
+      <p className="text-lg mt-2"><strong>Email</strong><br />{user?.email ?? "-"}</p>
+      <p className="text-lg mt-2"><strong>Username</strong><br />{user?.id ?? "-"}</p>
+      <p className="text-lg mt-2"><strong>Role</strong><br />{user?.role ?? "-"}</p>
       {user?.program && (
-        <p className="mt-2"><strong>Program</strong><br />{user.program}</p>
+        <p className="text-lg mt-2"><strong>Program</strong><br />{user.program}</p>
       )}
     </div>
   );

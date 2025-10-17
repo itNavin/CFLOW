@@ -182,11 +182,26 @@ function AnnouncementContent() {
                 return (
                   <div
                     key={file.id}
-                    className="flex items-center justify-between border border-gray-300 px-4 py-3 rounded-md text-base text-black bg-[#f8f8f8]"
+                    className="flex items-center justify-between border border-gray-300 px-4 py-3 rounded-md text-base text-black bg-white max-w-md"
                   >
                     <div className="flex items-center gap-3 truncate w-[85%]">
-                      <FileText className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                      <span className="truncate">
+                      <FileText className="w-5 h-5 text-[#326295] flex-shrink-0" />
+                      <span 
+                      className="truncate text-[#326295] cursor-pointer hover:underline" 
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                          const res = await downloadCourseFileAPI(file.id);
+                          const url = res.data.url;
+                          if (url) {
+                            window.open(url, "_blank"); // Open in new tab
+                          } else {
+                            alert("Open link not found.");
+                          }
+                        } catch (error) {
+                          alert("Failed to get open link.");
+                        }
+                      }}>
                         {file.name || file.filepath}
                       </span>
                     </div>
@@ -200,7 +215,7 @@ function AnnouncementContent() {
                         className="p-1 rounded hover:bg-gray-200 transition-colors"
                         type="button"
                       >
-                        <MoreHorizontal className="w-5 h-5 text-gray-600" />
+                        <MoreHorizontal className="w-5 h-5 text-black" />
                       </button>
 
                       {openDropdown === dropdownId && (
