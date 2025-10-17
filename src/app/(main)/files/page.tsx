@@ -186,9 +186,26 @@ export default function FilePage() {
             {files.map((file, idx) => (
               <tr key={file.id ?? idx} className="border-b hover:bg-gray-50 transition-colors">
                 <td className="py-3 px-4 flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500 flex-shrink-0" />
-                  <span className="text-xl truncate max-w-[400px]">{file.name}</span>
-
+                  <FileText className="w-5 h-5 text-[#326295] flex-shrink-0" />
+                  <span
+                    className="text-xl truncate max-w-[400px] cursor-pointer text-[#326295] hover:underline"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        const res = await downloadCourseFileAPI(file.id);
+                        const url = (res as any).data?.url ?? (res as any).url;
+                        if (url) {
+                          window.open(url, "_blank");
+                        } else {
+                          alert("Open link not found.");
+                        }
+                      } catch (error) {
+                        alert("Failed to get open link.");
+                      }
+                    }}
+                  >
+                    {file.name}
+                  </span>
                   <div className="ml-auto">
                     <button
                       ref={openIdx === idx ? buttonRef : null}

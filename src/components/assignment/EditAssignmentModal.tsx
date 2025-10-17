@@ -114,8 +114,18 @@ export default function EditAssignmentModal({
             const keepUrls = existingFiles
                 .filter((f) => keepFileIds.includes(f.id))
                 .map((f) => f.filepath);
-
-            // Prepare deliverables with valid extensions
+            const EXTENSION_TO_MIME: Record<string, string> = {
+                pdf: "application/pdf",
+                docx: "application/docx",
+                xlsx: "application/xlsx",
+                pptx: "application/pptx",
+                zip: "application/zip",
+                txt: "text/txt",
+                csv: "text/csv",
+                png: "image/png",
+                jpg: "image/jpg",
+                jpeg: "image/jpeg",
+            };
             const payload = {
                 assignmentId,
                 name: title,
@@ -126,22 +136,23 @@ export default function EditAssignmentModal({
                 deliverables: deliverables.map((d) => ({
                     name: d.name,
                     allowedFileTypes: Array.from(new Set(
-                        d.requiredTypes.map((t) => {
-                            switch (t) {
-                                case "PDF": return "pdf";
-                                case "DOCX": return "docx";
-                                case "XLSX": return "xlsx";
-                                case "PPTX": return "pptx";
-                                case "ZIP": return "zip";
-                                case "TXT": return "txt";
-                                case "CSV": return "csv";
-                                case "PNG": return "png";
-                                case "JPG": return "jpg";
-                                case "JPEG": return "jpeg";
-                                case "MD": return "md";
-                                default: return String(t).toLowerCase();
-                            }
-                        })
+                        d.requiredTypes
+                            .map((t) => {
+                                switch (t) {
+                                    case "PDF": return EXTENSION_TO_MIME["pdf"];
+                                    case "DOCX": return EXTENSION_TO_MIME["docx"];
+                                    case "XLSX": return EXTENSION_TO_MIME["xlsx"];
+                                    case "PPTX": return EXTENSION_TO_MIME["pptx"];
+                                    case "ZIP": return EXTENSION_TO_MIME["zip"];
+                                    // case "TXT": return EXTENSION_TO_MIME["txt"];
+                                    // case "CSV": return EXTENSION_TO_MIME["csv"];
+                                    // case "PNG": return EXTENSION_TO_MIME["png"];
+                                    // case "JPG": return EXTENSION_TO_MIME["jpg"];
+                                    // case "JPEG": return EXTENSION_TO_MIME["jpeg"];
+                                    default: return String(t).toLowerCase();
+                                }
+                            })
+                            .filter((mime) => Object.values(EXTENSION_TO_MIME).includes(mime))
                     )),
                 })),
                 keepUrls,

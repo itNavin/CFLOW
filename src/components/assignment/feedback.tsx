@@ -34,7 +34,7 @@ export default function GiveFeedbackLecturer({
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
-  const [newStatus, setNewStatus] = useState("APPROVED");
+  const [newStatus, setNewStatus] = useState("FINAL");
   const [newDueDate, setNewDueDate] = useState("");
   const [username, setUsername] = useState<string>("");
 
@@ -123,6 +123,7 @@ export default function GiveFeedbackLecturer({
         isoDueDate,
         newStatus
       );
+      console.log("API response:", feedbackRes);
       const feedbackId = feedbackRes.feedback?.id;
       if (!feedbackId) {
         setSubmitError("Feedback ID not returned from server.");
@@ -204,7 +205,7 @@ export default function GiveFeedbackLecturer({
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 ml-6 mt-3">
       <div className="border-b pb-6 mb-6">
         <div className="font-bold text-xl mb-2">Student Work</div>
         <div className="mb-4">

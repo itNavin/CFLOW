@@ -97,7 +97,6 @@ export default function AssignmentModal({
       // Upload attached files
       if (selectedFiles.length > 0 && assignment?.id && assignment?.courseId) {
         for (const file of selectedFiles) {
-          console.log(`Uploading file: ${file.name} for assignmentId: ${assignment.id}, courseId: ${assignment.courseId}`);
           await uploadAssignmentFileAPI(assignment.courseId, assignment.id, file);
         }
       } else {
@@ -114,13 +113,11 @@ export default function AssignmentModal({
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* overlay */}
       <div
         className="absolute inset-0 bg-black/30"
         onClick={onClose}
         aria-hidden
       />
-      {/* modal */}
       <div className="absolute left-1/2 top-10 -translate-x-1/2 w-[min(980px,92vw)]">
         <div className="rounded-2xl bg-white shadow-xl border border-gray-200">
           {/* header */}

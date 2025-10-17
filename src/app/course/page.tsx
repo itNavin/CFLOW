@@ -236,7 +236,7 @@ export default function CoursePage() {
                 onClick={() => setOpenCreate(true)}
                 className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
               >
-                <span className="text-xl mr-2">+</span> Create Course
+                <span className="text-2xl mr-2">+</span> Create Course
               </button>
             </div>
           )}

@@ -8,13 +8,7 @@ export type FileType =
   | "XLSX"
   | "PPTX"
   | "ZIP"
-  | "TXT"
-  | "CSV"
-  | "PNG"
-  | "JPG"
-  | "JPEG"
-  | "MD";
-export type Deliverable = {
+  export type Deliverable = {
   id: string;
   name: string;
   requiredTypes: FileType[]; // e.g. ["PDF","DOCX"]
@@ -28,17 +22,7 @@ type Props = {
 };
 
 const ALL_TYPES: FileType[] = [
-  "PDF",
-  "DOCX",
-  "XLSX",
-  "PPTX",
-  "ZIP",
-  "TXT",
-  "CSV",
-  "PNG",
-  "JPG",
-  "JPEG",
-  "MD",
+  "PDF", "DOCX", "XLSX", "PPTX", "ZIP", 
 ];
 
 export default function DeliverableFields({
