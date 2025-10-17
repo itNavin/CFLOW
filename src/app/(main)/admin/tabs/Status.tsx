@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { status } from "@/types/api/status";
 import { getStatusAPI } from "@/api/status/getStatus";
 import Link from "next/link";
@@ -35,7 +35,7 @@ const ALL_STATUS = [
 
 type StatusFilter = (typeof ALL_STATUS)[number];
 
-export default function StatusTab() {
+function StatusTabContent() {
   const [assignmentId, setAssignmentId] = useState<string>("All");
   const [groupId, setGroupId] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("All");
@@ -255,5 +255,13 @@ export default function StatusTab() {
         )}
       </div>
     </section>
+  );
+}
+
+export default function StatusTab() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading status tab...</div>}>
+      <StatusTabContent />
+    </Suspense>
   );
 }

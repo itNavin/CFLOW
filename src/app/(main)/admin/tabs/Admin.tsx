@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { Suspense, useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X, Trash2 } from "lucide-react";
 import { getStaffMembersAPI } from "@/api/courseMember/getStaffMembers";
@@ -11,7 +11,7 @@ import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 import { getStaffNotInCourseAPI } from "@/api/courseMember/getStaffNotInCourse";
 import { create } from "domain";
 
-export default function AdminTab() {
+function AdminTabContent() {
   const searchParams = useSearchParams();
 
   const [rows, setRows] = useState<getStaffMember.staffMember[]>([]);
@@ -524,5 +524,13 @@ function AddStaffModal({
         </div>
       </div>
     </>
+  );
+}
+
+export default function AdminTab() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading admin tab...</div>}>
+      <AdminTabContent />
+    </Suspense>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Pencil, AlertTriangle, FilePlus2, Megaphone, Upload, Info } from "lucide-react";
@@ -13,7 +13,7 @@ import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
 import CourseInfo from "@/components/dashboard/courseInfo";
 
-export function formatUploadAt(
+function formatUploadAt(
   iso: string,
   locale: string = "en-GB"
 ) {
@@ -29,7 +29,7 @@ export function formatUploadAt(
   });
 }
 
-export default function CourseTab() {
+function CourseTabContent() {
   const searchParams = useSearchParams();
 
   const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
@@ -480,5 +480,13 @@ function AlertRow({
       </div>
       <div className="text-lg text-gray-500">{date}</div>
     </div>
+  );
+}
+
+export default function CourseTab() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading advisor dashboard...</div>}>
+      <CourseTabContent />
+    </Suspense>
   );
 }

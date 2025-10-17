@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -14,6 +14,8 @@ import { updateAssignmentAPI } from "@/api/assignment/updateAssignment";
 import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
 import { deleteAssignmentAPI } from "@/api/assignment/deleteAssignment";
 
+export const dynamic = "force-dynamic";
+
 type CardAssignment = {
   id: string;
   title: string;
@@ -23,7 +25,7 @@ type CardAssignment = {
   sortKey: number;
 };
 
-export default function AssignmentPage() {
+function AssignmentPageContent() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const sp = useSearchParams();
@@ -456,5 +458,13 @@ export default function AssignmentPage() {
         </>
       )}
     </main>
+  );
+}
+
+export default function AssignmentPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading assignments...</div>}>
+      <AssignmentPageContent />
+    </Suspense>
   );
 }
