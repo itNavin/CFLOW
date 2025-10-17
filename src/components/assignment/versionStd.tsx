@@ -126,16 +126,16 @@ export function Version({
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
-        <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
-        <p className="mt-1 text-sm" style={{ color }}>
-          Status: {statusText}
+        <h1 className="text-[18px] font-semibold text-[#000000] ml-6">{versionLabel}</h1>
+        <p className="mt-1 text-sm ml-6" style={{ color }}>
+          Status: {statusText === "FINAL" ? "APPROVED" : statusText}
         </p>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-6">
         <section className="p-6 border-b">
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
           {(statusText === "FINAL" || statusText === "APPROVED")
-            ? null
+            ? (<p className="text-sm text-gray-500">No feedback from advisor.</p>)
             : feedback.length === 0
               ? (<p className="text-sm text-gray-500">No feedback yet.</p>)
               : (
@@ -309,7 +309,9 @@ export default function ViewSubmissionVersions({ data }: Props) {
   if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
   if (err) return <div className="text-sm text-red-600">Error: {err}</div>;
   if (!loading && !err && subs.length === 0) {
-    return <div className="text-sm text-gray-500">No submissions yet.</div>;
+    return <div className="text-sm text-gray-500">
+      {/* No submissions yet. */}
+    </div>;
   }
 
   const deliverableNames: Record<string, string> = {};

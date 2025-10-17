@@ -66,7 +66,7 @@ export const CourseModal = ({
                         <button
                             onClick={onClose}
                             aria-label="Close"
-                            className="text-2xl leading-none text-red-500 hover:text-red-600"
+                            className="text-3xl leading-none text-red-500 hover:text-red-600 cursor-pointer"
                         >
                             ×
                         </button>

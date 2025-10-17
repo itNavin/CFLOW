@@ -78,8 +78,12 @@ export default function Navbar() {
     <>
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
         <div className="flex items-center gap-4">
-          <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={100} height={40} style={{ width: "auto", height: "auto" }} />
-          <h1 className="text-4xl font-semibold">Capstone Report Submission System</h1>
+          {/* <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={100} height={40} style={{ width: "auto", height: "auto" }} /> */}
+          {/* <h1 className="text-4xl font-semibold">Capstone Report Submission System</h1> */}
+          <Image src="/image/blue-logo.svg" alt="CFLOW Logo" width={24} height={16} style={{ width: "200px", height: "auto" }} />
+          <span className="text-4xl font-semibold">
+            {courseData?.coursename ?? ""}
+          </span>
         </div>
 
         <div className="flex items-center gap-6">
@@ -95,9 +99,9 @@ export default function Navbar() {
 
       {showNotification && (
         <div className="absolute right-6 top-16 z-50 bg-white rounded-lg shadow-lg w-96 max-h-[60vh] overflow-y-auto border">
-          <div className="flex justify-between items-center px-4 py-2 border-b">
+          <div className="sticky top-0 z-10 bg-white flex justify-between items-center px-4 py-2 border-b">
             <span className="font-bold text-lg">Notifications</span>
-            <button className="text-gray-500" onClick={() => setShowNotification(false)}>×</button>
+            <button className="text-gray-500 cursor-pointer text-3xl text-red-500" onClick={() => setShowNotification(false)}>×</button>
           </div>
           {notifLoading && <div className="p-4 text-gray-500">Loading...</div>}
           {notifError && <div className="p-4 text-red-500">{notifError}</div>}
@@ -106,9 +110,9 @@ export default function Navbar() {
           )}
           {!notifLoading && !notifError && notifications.map(n => (
             <div key={n.id} className="px-4 py-3 border-b last:border-b-0">
-              <div className="font-semibold">{n.title}</div>
-              <div className="text-sm text-gray-600">{n.description}</div>
-              <div className="text-xs text-gray-400">{new Date(n.createdAt).toLocaleString()}</div>
+              <div className="text-xl font-semibold">{n.title}</div>
+              <div className="text-lg text-gray-600">{n.description}</div>
+              <div className="text-base text-gray-400">{new Date(n.createdAt).toLocaleString()}</div>
             </div>
           ))}
         </div>

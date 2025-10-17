@@ -141,14 +141,14 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
   return (
     <div>
       <div className="flex items-center gap-2 text-3xl font-semibold text-black">
-        <button onClick={() => router.back()} className="text-lg text-black hover:text-gray-600">
+        <button onClick={() => router.back()} className="text-xl text-black hover:text-gray-600">
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h2>{title}</h2>
       </div>
 
-      <p className="text-lg text-gray-600 font-medium">
-        <strong className="mr-2">Due date</strong>
+      <p className="text-lg text-gray-600 font-medium mt-2">
+        <strong className="mr-2 ml-8">Due date</strong>
         {formatDateTime(groupDueDate || dueDate)}{" "}
         {role !== "student" && endDate && (
           <>
@@ -158,16 +158,16 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
         )}
       </p>
 
-      <p className="text-lg text-gray-700">Description : {description}</p>
+      <p className="text-xl text-gray-700 ml-8 mt-2">Description : {description}</p>
 
       {/* Assignment Files Section */}
       {assignmentFiles.length > 0 && (
         <div className="my-4">
-          <div className="font-semibold text-lg mb-2">Assignment Files</div>
+          <div className="font-semibold text-xl mb-2 ml-8">Assignment Files</div>
           <ul className="space-y-2">
             {assignmentFiles.map((file: any) => (
               <li key={file.id} className="flex items-center gap-2">
-                <span className="truncate">{file.name}</span>
+                <span className="truncate ml-8">{file.name}</span>
                 <a
                   href={file.fileUrl}
                   target="_blank"
