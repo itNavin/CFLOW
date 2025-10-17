@@ -1,11 +1,13 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import AssignmentModal from "@/components/assignment/AssignmentModal";
 import { createAssignmentAPI, CreateAssignmentPayload } from "@/api/assignment/createAssignment";
 
-export default function NewAssignmentPage() {
+export const dynamic = "force-dynamic";
+
+function NewAssignmentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const courseId = searchParams.get("courseId") ?? "";
@@ -58,5 +60,13 @@ export default function NewAssignmentPage() {
       onClose={handleClose}
       onSubmit={handleSubmit}
     />
+  );
+}
+
+export default function NewAssignmentPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading assignment form...</div>}>
+      <NewAssignmentContent />
+    </Suspense>
   );
 }

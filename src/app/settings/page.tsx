@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Upload, Search, UserPlus, Filter, ListOrdered, SortAsc, SortDesc } from "lucide-react"; // Add needed icons
 import { getAllUsersAPI } from "@/api/user/getAllUser";
@@ -28,7 +28,7 @@ type ProgramFilter = "ALL" | "CS" | "DSI";
 type SortKey = "id" | "name" | "role" | "program" | "createdAt";
 type SortDir = "asc" | "desc";
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams();
 
   const [users, setUsers] = useState<getAllUsers.Response["users"]>([]);
@@ -567,6 +567,14 @@ export default function SettingsPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading settings...</div>}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }
 

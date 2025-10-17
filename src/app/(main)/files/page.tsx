@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { Suspense, useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { MoreHorizontal, Plus, Download, FileText, Trash2 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -12,7 +12,7 @@ import { isCanUpload } from "@/util/RoleHelper";
 import { downloadCourseFileAPI } from "@/api/file/downloadCourseFile";
 import { deleteCourseFileAPI } from "@/api/file/deleteCourseFile";
 
-export function formatUploadAt(iso: string, locale: string = "en-GB") {
+function formatUploadAt(iso: string, locale: string = "en-GB") {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -27,7 +27,7 @@ export function formatUploadAt(iso: string, locale: string = "en-GB") {
   });
 }
 
-export default function FilePage() {
+function FilePageContent() {
   const role = getUserRole();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -337,5 +337,13 @@ export default function FilePage() {
         )
       }
     </main>
+  );
+}
+
+export default function FilePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading files...</div>}>
+      <FilePageContent />
+    </Suspense>
   );
 }

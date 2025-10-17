@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { Suspense, useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X, Trash2 } from "lucide-react";
 import { getStudentMemberAPI } from "@/api/courseMember/getStudentMember";
@@ -16,7 +16,7 @@ import { uploadTemplateAPI } from "@/api/excel/uploadTemplate";
 
 type Program = "CS" | "DSI";
 
-export default function StudentTab() {
+function StudentTabContent() {
   const courseId = useSearchParams().get("courseId") || "";
   const [rows, setRows] = useState<studentMember[]>([]);
   const [studentNotInCourse, setStudentNotInCourse] = useState<studentNotInCourse[]>([]);
@@ -625,5 +625,13 @@ function AddStudentModal({
         </div>
       </div>
     </>
+  );
+}
+
+export default function StudentTab() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading student tab...</div>}>
+      <StudentTabContent />
+    </Suspense>
   );
 }

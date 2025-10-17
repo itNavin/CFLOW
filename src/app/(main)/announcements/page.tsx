@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import Link from "next/link";
 import { MoreHorizontal, Plus, Download, FileText, Pencil, Trash2 } from "lucide-react";
 import { getAllAnnouncementByCourseIdAPI } from "@/api/announcement/getAllAnnouncementByCourseId";
@@ -14,7 +14,7 @@ import { updateAnnouncementAPI } from "@/api/announcement/updateAnnouncement";
 import { deleteAnnouncementAPI } from "@/api/announcement/deleteAnnouncement";
 import CreateAnnouncementModal from "@/components/announcement/createAnnouncementModal";
 
-export function formatUploadAt(iso: string, locale: string = "en-GB") {
+function formatUploadAt(iso: string, locale: string = "en-GB") {
   if (!iso) return "";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -29,7 +29,7 @@ export function formatUploadAt(iso: string, locale: string = "en-GB") {
   });
 }
 
-export default function AnnouncementPage() {
+function AnnouncementContent() {
   const [announcements, setAnnouncements] = useState<Announcement.Announcements[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -321,5 +321,13 @@ export default function AnnouncementPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function AnnouncementPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading announcements...</div>}>
+      <AnnouncementContent />
+    </Suspense>
   );
 }
