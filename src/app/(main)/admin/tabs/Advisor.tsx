@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState, useEffect } from "react";
+import React, { Suspense, useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Upload, Download, Search, X, Trash2 } from "lucide-react";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
@@ -12,7 +12,7 @@ import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 
-export default function AdvisorTab() {
+function AdvisorTabContent() {
   const searchParams = useSearchParams();
 
   const [rows, setRows] = useState<any[]>([]);
@@ -667,5 +667,13 @@ function AddAdvisorModal({
         </div>
       </div>
     </>
+  );
+}
+
+export default function AdvisorTab() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading advisor tab...</div>}>
+      <AdvisorTabContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Search, Plus, Download, Pencil, X } from "lucide-react";
 import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
@@ -17,7 +17,7 @@ import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import { Trash2 } from "lucide-react";
 import { deleteGroupAPI } from "@/api/group/deleteGroup";
 
-export default function GroupTab() {
+function GroupTabContent() {
   const courseId = useSearchParams().get("courseId") || "";
   const [error, setError] = useState<string | null>(null);
   const [group, setGroup] = useState<getGroup.Group[]>([]);
@@ -379,5 +379,13 @@ export default function GroupTab() {
         />
       )}
     </section>
+  );
+}
+
+export default function GroupTab() {
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading groups...</div>}>
+      <GroupTabContent />
+    </Suspense>
   );
 }

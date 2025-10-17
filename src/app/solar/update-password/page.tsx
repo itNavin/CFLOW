@@ -1,14 +1,21 @@
-// app/solar/update-password/page.tsx
+import UpdatePasswordForm from "./updatePasswordForm";
 import { redirect } from "next/navigation";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:8000";
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: { token?: string };
-}) {
-  const token = searchParams?.token ?? "";
+type PageSearchParams = {
+  token?: string | string[];
+};
+
+type PageProps = {
+  searchParams: Promise<PageSearchParams>;
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const resolvedSearchParams = await searchParams;
+  const rawToken = resolvedSearchParams?.token;
+  const token = Array.isArray(rawToken) ? rawToken[0] ?? "" : rawToken ?? "";
+
   if (!token) redirect("/solar/invalid-link");
 
   const res = await fetch(
@@ -29,5 +36,3 @@ export default async function Page({
     />
   );
 }
-
-import UpdatePasswordForm from "./updatePasswordForm";

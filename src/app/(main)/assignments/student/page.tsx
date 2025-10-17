@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { Suspense } from "react";
 import Link from "next/link";
 
 const mockAssignments = [
@@ -7,7 +7,9 @@ const mockAssignments = [
   { id: "a02", title: "A02: Chapters 4-5", status: "Pending" },
 ];
 
-export default function StudentAssignments() {
+export const dynamic = "force-dynamic";
+
+function StudentAssignmentsContent() {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-semibold mb-4">Your Assignments</h1>
@@ -22,5 +24,13 @@ export default function StudentAssignments() {
         ))}
       </ul>
     </div>
+  );
+}
+
+export default function StudentAssignments() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading assignments...</div>}>
+      <StudentAssignmentsContent />
+    </Suspense>
   );
 }

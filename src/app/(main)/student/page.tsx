@@ -1,6 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { Pencil, CheckCircle2 } from "lucide-react";
 import { getDashboardData } from "@/api/dashboard/getDashboard";
@@ -11,7 +11,9 @@ import { getAllAssignments } from "@/types/api/assignment";
 import { getAllAssignmentsAPI } from "@/api/assignment/getAllAssignments";
 import CourseInfo from "@/components/dashboard/courseInfo";
 
-export function formatUploadAt(
+export const dynamic = "force-dynamic";
+
+function formatUploadAt(
   iso: string,
   locale: string = "en-GB" // change to "th-TH" for Thai
 ) {
@@ -27,7 +29,7 @@ export function formatUploadAt(
   });
 }
 
-export default function StudentDashboard() {
+function StudentDashboardContent() {
   const [dashboard, setDashboard] = useState<Dashboard.Dashboard | null>(null);
   const [groupInfo, setGroupInfo] = useState<Dashboard.studentInfo | null>(null);
   const [groupDashboard, setGroupDashboard] = useState<Dashboard.Dashboard | null>(null);
@@ -364,7 +366,7 @@ function MultiColorDonut({
     });
 
   // Create the conic-gradient string
-  const gradientSegments = segments.map(segment =>
+	const gradientSegments = segments.map(segment =>
     `${segment.color} ${segment.startAngle}deg ${segment.endAngle}deg`
   ).join(', ');
 
@@ -465,5 +467,13 @@ function LegendItem({ color, text }: { color: string; text: string }) {
       <span className="inline-block w-4 h-4 rounded-sm" style={{ backgroundColor: color }} />
       <span className="text-lg font-bold">{text}</span>
     </li>
+  );
+}
+
+export default function StudentDashboard() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading student dashboard...</div>}>
+      <StudentDashboardContent />
+    </Suspense>
   );
 }

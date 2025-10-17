@@ -3,10 +3,12 @@
 import { removeAuthToken, removeUserRole } from "@/util/cookies";
 import { stopTokenRefresh } from "@/util/TokenRefreshInterval";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { Suspense } from "react";
 import UserDetailCard from "@/components/profile/userDetail";
 import CourseDetailCard from "@/components/profile/courseDetail";
 import Navbar from "@/components/navbar";
+
+export const dynamic = "force-dynamic";
 
 export default function ProfilePage() {
   const navigator = useRouter()
@@ -18,7 +20,9 @@ export default function ProfilePage() {
   }
   return (
     <>
-      <Navbar />
+      <Suspense fallback={<div className="h-16 w-full bg-white shadow-sm" />}>
+        <Navbar />
+      </Suspense>
       <main className="min-h-screen bg-white p-6 font-dbheavent">
 
         <h2 className="text-2xl font-semibold mb-6">Profile</h2>
