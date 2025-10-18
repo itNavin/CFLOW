@@ -347,7 +347,7 @@ export default function GiveFeedbackLecturer({
                 >
                   <option value="APPROVED">APPROVED</option>
                   <option value="APPROVED_WITH_FEEDBACK">APPROVED WITH FEEDBACK</option>
-                  <option value="REJECTED">REJECTED</option>
+                  <option value="REJECTED">NOT APPROVED</option>
                 </select>
               </div>
               <div>

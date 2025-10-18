@@ -130,6 +130,11 @@ function StudentTabContent() {
       const result = await uploadTemplateAPI(courseId, files);
       console.log("Uploaded files:", result);
       alert("Files uploaded successfully");
+
+      await fetchStudents();
+      if (openCreate) await fetchStudentNotInCourse(courseId);
+
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Error uploading files:", error);
       alert("Failed to upload files");

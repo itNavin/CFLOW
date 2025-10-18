@@ -122,7 +122,10 @@ function AnnouncementContent() {
 
   return (
     <main className="min-h-screen p-6 pb-28 font-dbheavent space-y-8">
-      {filteredAnnouncements.map((data) => {
+      {filteredAnnouncements.length === 0 ? (
+              <div className="text-gray-500">No announcements found.</div>
+
+      ) : (filteredAnnouncements.map((data) => {
         // For non-student roles, show Due Date if now is before schedule
         const showDueDate =
           role !== "student" &&
@@ -186,22 +189,22 @@ function AnnouncementContent() {
                   >
                     <div className="flex items-center gap-3 truncate w-[85%]">
                       <FileText className="w-5 h-5 text-[#326295] flex-shrink-0" />
-                      <span 
-                      className="truncate text-[#326295] cursor-pointer hover:underline" 
-                      onClick={async (e) => {
-                        e.stopPropagation();
-                        try {
-                          const res = await downloadCourseFileAPI(file.id);
-                          const url = res.data.url;
-                          if (url) {
-                            window.open(url, "_blank"); // Open in new tab
-                          } else {
-                            alert("Open link not found.");
+                      <span
+                        className="truncate text-[#326295] cursor-pointer hover:underline"
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            const res = await downloadCourseFileAPI(file.id);
+                            const url = res.data.url;
+                            if (url) {
+                              window.open(url, "_blank");
+                            } else {
+                              alert("Open link not found.");
+                            }
+                          } catch (error) {
+                            alert("Failed to get open link.");
                           }
-                        } catch (error) {
-                          alert("Failed to get open link.");
-                        }
-                      }}>
+                        }}>
                         {file.name || file.filepath}
                       </span>
                     </div>
@@ -270,7 +273,7 @@ function AnnouncementContent() {
             </div>
           </div>
         );
-      })}
+      }))}
 
       {canUpload && (
         <>

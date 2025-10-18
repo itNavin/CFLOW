@@ -243,8 +243,8 @@ function CourseTabContent() {
                   <>
                     <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
                     <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
-                    <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
-                    <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
+                    <LegendItem color="#ef4444" text={`Not Approved: ${getStatusCount('REJECTED')}`} />
+                    <LegendItem color="#f59e0b" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
                     <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
                   </>
                 )}
@@ -360,7 +360,7 @@ function MultiColorDonut({
     NOT_SUBMITTED: '#6b7280',
     SUBMITTED: '#1d4ed8',
     REJECTED: '#ef4444',
-    APPROVED_WITH_FEEDBACK: '#10b981',
+    APPROVED_WITH_FEEDBACK: '#f59e0b',
     FINAL: '#16a34a',
   };
 
