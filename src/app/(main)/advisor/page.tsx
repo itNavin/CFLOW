@@ -202,8 +202,8 @@ function CourseTabContent() {
                   <>
                     <LegendItem color="#6b7280" text={`Not Submitted: ${dashboard.course.submissions?.statusCounts.NOT_SUBMITTED || 0}`} />
                     <LegendItem color="#1d4ed8" text={`Submitted: ${dashboard.course.submissions?.statusCounts.SUBMITTED || 0}`} />
-                    <LegendItem color="#ef4444" text={`Rejected: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
-                    <LegendItem color="#10b981" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
+                    <LegendItem color="#ef4444" text={`Not Approved: ${dashboard.course.submissions?.statusCounts.REJECTED || 0}`} />
+                    <LegendItem color="#f59e0b" text={`Approved with Feedback: ${dashboard.course.submissions?.statusCounts.APPROVED_WITH_FEEDBACK || 0}`} />
                     <LegendItem color="#16a34a" text={`Final: ${dashboard.course.submissions?.statusCounts.FINAL || 0}`} />
                   </>
                 )}
@@ -274,7 +274,6 @@ function GroupInformationCard({
           className="p-2 rounded-md hover:bg-gray-100"
           aria-label="Edit group"
         >
-          {/* <Pencil className="h-5 w-5 text-gray-700" /> */}
         </button>
       </div>
 
@@ -404,7 +403,7 @@ function MultiColorDonut({
     NOT_SUBMITTED: '#6b7280',
     SUBMITTED: '#1d4ed8',
     REJECTED: '#ef4444',
-    APPROVED_WITH_FEEDBACK: '#10b981',
+    APPROVED_WITH_FEEDBACK: '#f59e0b',
     FINAL: '#16a34a',
   };
 

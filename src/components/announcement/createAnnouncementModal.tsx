@@ -75,8 +75,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
               <X className="h-5 w-5" />
             </button>
           </div>
-
-          {/* ===== Body ===== */}
           <form
             onSubmit={handleSubmit}
             className="flex-1 overflow-y-auto px-6 py-5 space-y-6"
@@ -86,8 +84,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                 {error}
               </div>
             )}
-
-            {/* Title */}
             <div>
               <label className="block font-medium mb-1">
                 Title <span className="text-red-500">*</span>
@@ -102,8 +98,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                 required
               />
             </div>
-
-            {/* Description */}
             <div>
               <label className="block font-medium mb-1">
                 Description <span className="text-red-500">*</span>
@@ -117,8 +111,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                 required
               />
             </div>
-
-            {/* File Upload */}
             <div>
               <label className="block font-medium mb-1">Attach Files (Optional)</label>
               <FileUpload
@@ -128,8 +120,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                 disabled={isSubmitting}
               />
             </div>
-
-            {/* Schedule Section */}
             <div>
               <label className="block font-medium mb-3">Post Timing</label>
               <div className="flex items-center space-x-4 mb-4">
@@ -154,7 +144,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                   Schedule for Later
                 </label>
               </div>
-
               {isScheduled && (
                 <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -174,14 +163,12 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                       </p>
                     </div>
 
-                    <div className="hidden lg:block" /> {/* spacer for grid symmetry */}
+                    <div className="hidden lg:block" />
                   </div>
                 </div>
               )}
             </div>
           </form>
-
-          {/* ===== Footer ===== */}
           <div className="flex justify-end gap-3 px-6 py-4 border-t">
             <button
               type="button"

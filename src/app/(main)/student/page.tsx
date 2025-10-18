@@ -192,8 +192,8 @@ function StudentDashboardContent() {
                 <ul className="space-y-2 text-lg">
                   <LegendItem color="#6b7280" text={`Not Submitted: ${getStatusCount('NOT_SUBMITTED')}`} />
                   <LegendItem color="#1d4ed8" text={`Submitted: ${getStatusCount('SUBMITTED')}`} />
-                  <LegendItem color="#ef4444" text={`Rejected: ${getStatusCount('REJECTED')}`} />
-                  <LegendItem color="#10b981" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
+                  <LegendItem color="#ef4444" text={`Not Approved: ${getStatusCount('REJECTED')}`} />
+                  <LegendItem color="#f59e0b" text={`Approved with Feedback: ${getStatusCount('APPROVED_WITH_FEEDBACK')}`} />
                   <LegendItem color="#16a34a" text={`Final: ${getStatusCount('FINAL')}`} />
                 </ul>
               </div>
@@ -207,6 +207,7 @@ function StudentDashboardContent() {
               <li>
                 <Link
                   href={`/assignments?courseId=${courseId}&groupId=${(groupInfo?.groupInformation && groupInfo.groupInformation.length > 0) ? groupInfo.groupInformation[0].id : ''}`}
+                  className="inline-flex items-center gap-2 hover:underline text-lg"
                 >
                   View All Assignments
                 </Link>
@@ -336,11 +337,11 @@ function MultiColorDonut({
   }
 
   const statusColors = {
-    NOT_SUBMITTED: '#6b7280', // gray
-    SUBMITTED: '#1d4ed8',      // blue
-    REJECTED: '#ef4444',       // red
-    APPROVED_WITH_FEEDBACK: '#10b981', // green
-    FINAL: '#16a34a',          // dark green
+    NOT_SUBMITTED: '#6b7280', 
+    SUBMITTED: '#1d4ed8',
+    REJECTED: '#ef4444',
+    APPROVED_WITH_FEEDBACK: '#f59e0b',
+    FINAL: '#16a34a',
   };
 
   // Calculate segments
