@@ -55,9 +55,8 @@ export default function AssignmentGroup({
         setGroups([]);
       }
     })();
-  }, [mounted, courseId, role]); // selectedGroup is set inside, no need as a dep
-
-  // 👇 Prevent SSR/client mismatch: render nothing until mounted
+  }, [mounted, courseId, role]); 
+  
   if (!mounted) return null;
 
   return (

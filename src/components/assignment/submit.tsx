@@ -216,9 +216,6 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
         </div>
       )}
 
-      {loadingDetail && <div className="text-gray-500 text-sm mt-2">Loading deliverables…</div>}
-      {detailError && <div className="text-red-600 text-sm mt-2">Error: {detailError}</div>}
-
       {deliverables.length > 0 ? (
         deliverables.map((del) => {
           const selectedForDel = drafts[del.id] ?? {};
@@ -278,7 +275,6 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
         })
       ) : (
         <div className="text-gray-500 text-lg mt-4">
-          {detail ? "No deliverables found for this assignment" : "Loading deliverables..."}
         </div>
       )}
       <label htmlFor="comment" className="text-lg text-black font-semibold">

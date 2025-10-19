@@ -16,7 +16,7 @@ const statusColorMap: Record<string, string> = {
   NOT_SUBMITTED: "#6b7280",
   SUBMITTED: "#1d4ed8",
   REJECTED: "#ef4444",
-  APPROVED_WITH_FEEDBACK: "#10b981",
+  APPROVED_WITH_FEEDBACK: "#f59e0b",
   FINAL: "#16a34a",
 };
 
@@ -128,7 +128,7 @@ export function Version({
       <div className="mb-3">
         <h1 className="text-[18px] font-semibold text-[#000000] ml-6">{versionLabel}</h1>
         <p className="mt-1 text-sm ml-6" style={{ color }}>
-          Status: {statusText === "FINAL" ? "APPROVED" : statusText}
+          Status: {statusText === "FINAL" ? "APPROVED" : statusText === "REJECTED" ? "NOT APPROVED" : statusText}
         </p>
       </div>
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-6">
@@ -163,14 +163,7 @@ export function Version({
                                 files.map((file, i) => (
                                   <div key={i} className="flex items-center gap-2">
                                     <a href={file.href} className="block text-[#326295] hover:underline">
-                                      {getDisplayFileName({
-                                        file,
-                                        groupNumber,
-                                        deliverableName: f.chapter,
-                                        version,
-                                        username,
-                                        isFeedback: true,
-                                      })}
+                                      {file.name}
                                     </a>
                                     {file.id && (
                                       <button
@@ -306,14 +299,6 @@ export default function ViewSubmissionVersions({ data }: Props) {
     });
   }, [detail]);
 
-  if (loading) return <div className="text-sm text-gray-500">Loading…</div>;
-  if (err) return <div className="text-sm text-red-600">Error: {err}</div>;
-  if (!loading && !err && subs.length === 0) {
-    return <div className="text-sm text-gray-500">
-      {/* No submissions yet. */}
-    </div>;
-  }
-
   const deliverableNames: Record<string, string> = {};
   (detail?.deliverables ?? data?.deliverables ?? []).forEach((d: any) => {
     deliverableNames[d.id] = d.name;
@@ -326,31 +311,43 @@ export default function ViewSubmissionVersions({ data }: Props) {
   const isFinal = latestSub?.status === "FINAL";
 
   const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
+  const allVersions = subs;
 
   let visible: any[] = [];
   let hasMore = false;
 
-  if (isFinal) {
-    // Show only the latest version by default, with See more/less for all
-    const allVersions = latestSub && latestSub.id
+  if (allVersions.length === 0) {
+    visible = [];
+    hasMore = false;
+  } else if (showAll) {
+    visible = allVersions;
+    hasMore = false;
+  } else if (latestSub?.status === "FINAL") {
+    const finalList = latestSub && latestSub.id
       ? feedbackVersions.some(v => v.id === latestSub.id)
         ? feedbackVersions
         : [latestSub, ...feedbackVersions]
       : feedbackVersions;
-    visible = showAll ? allVersions : [latestSub];
-    hasMore = allVersions.length > 1;
+
+    visible = finalList.slice(0, 1);
+    hasMore = finalList.length > visible.length;
   } else {
-    // Show every version except the latest
-    const latestHasFeedback = Array.isArray(subs[0]?.feedbacks) && subs[0].feedbacks.length > 0;
+    const latestHasFeedback = Array.isArray(latestSub?.feedbacks) && latestSub.feedbacks.length > 0;
+
     if (latestHasFeedback) {
-      // Show all except latest, plus latest if it has feedback
-      visible = [...subs.slice(1), subs[0]];
+      visible = allVersions.slice(0, 1);
     } else {
-      // Show all except latest
-      visible = subs.slice(1);
+      if (allVersions.length === 1) {
+        visible = [];
+      } else {
+        visible = allVersions.slice(1);
+      }
     }
-    hasMore = false;
+
+    hasMore = visible.length > 0 && allVersions.length > visible.length;
   }
+
+  const showToggle = showAll || (visible.length > 0 && allVersions.length > visible.length);
 
   return (
     <div className="space-y-3">
@@ -366,7 +363,7 @@ export default function ViewSubmissionVersions({ data }: Props) {
 
           (fb?.feedbackFiles ?? []).forEach((ff: any) => {
             const links = urls(ff?.fileUrl).map((u) => ({
-              name: fileName(u),
+              name: ff?.name,
               href: u,
               id: ff?.id,
               mime: inferMimeType(fileName(u)),
@@ -387,7 +384,7 @@ export default function ViewSubmissionVersions({ data }: Props) {
         const workGrouped: Record<string, FileLink[]> = {};
         (sub?.submissionFiles ?? []).forEach((sf: any) => {
           const links = urls(sf?.fileUrl).map((u) => ({
-            name: fileName(u),
+            name: sf.name,
             href: u,
             id: sf?.id,
             mime: inferMimeType(fileName(u)),
@@ -414,12 +411,12 @@ export default function ViewSubmissionVersions({ data }: Props) {
         );
       })}
 
-      {hasMore && (
+      {showToggle && (
         <div className="flex justify-center">
           <button
             type="button"
             onClick={() => setShowAll((s) => !s)}
-            className="text-sm text-blue-700 underline"
+            className="text-sm text-blue-700 underline cursor-pointer"
           >
             {showAll ? "See less ▲" : "See more ▼"}
           </button>
