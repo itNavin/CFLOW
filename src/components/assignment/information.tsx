@@ -141,7 +141,7 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
   return (
     <div>
       <div className="flex items-center gap-2 text-3xl font-semibold text-black">
-        <button onClick={() => router.back()} className="text-xl text-black hover:text-gray-600">
+        <button onClick={() => router.back()} className="text-xl text-black cursor-pointer">
           <ArrowLeft className="w-6 h-6" />
         </button>
         <h2>{title}</h2>
@@ -160,7 +160,6 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
 
       <p className="text-xl text-gray-700 ml-8 mt-2">Description : {description}</p>
 
-      {/* Assignment Files Section */}
       {assignmentFiles.length > 0 && (
         <div className="my-4">
           <div className="font-semibold text-xl mb-2 ml-8">Assignment Files</div>
@@ -212,7 +211,6 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
         />
       )}
 
-      {loadingDetail && <div>Loading assignment detail...</div>}
     </div>
   );
 }

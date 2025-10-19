@@ -15,7 +15,7 @@ const statusColorMap: Record<string, string> = {
   NOT_SUBMITTED: "#6b7280",
   SUBMITTED: "#1d4ed8",
   REJECTED: "#ef4444",
-  APPROVED_WITH_FEEDBACK: "#10b981",
+  APPROVED_WITH_FEEDBACK: "#f59e0b",
   FINAL: "#16a34a",
   APPROVED: "#16a34a",
 };
@@ -91,7 +91,7 @@ function Version({
       <div className="mb-3">
         <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
         <p className="mt-1 text-sm" style={{ color }}>
-          Status: {statusText === "FINAL" ? "APPROVED" : statusText}
+          Status: {statusText === "FINAL" ? "APPROVED" : statusText === "REJECTED" ? "NOT APPROVED" : statusText}
         </p>
       </div>
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -271,28 +271,51 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
 
   const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
   const latestSub = subs[0];
-  const isFinal = latestSub?.status === "FINAL" || latestSub?.status === "APPROVED";
+
+  const allVersions = subs; // subs sorted newest-first
 
   let visible: any[] = [];
   let hasMore = false;
 
-  if (isFinal) {
-    const allVersions = latestSub && latestSub.id
+  if (allVersions.length === 0) {
+    visible = [];
+    hasMore = false;
+  } else if (showAll) {
+    // expanded -> show everything
+    visible = allVersions;
+    hasMore = false;
+  } else if (latestSub?.status === "FINAL" || latestSub?.status === "APPROVED") {
+    // preserve FINAL/APPROVED behavior but show only latest by default
+    const finalList = latestSub && latestSub.id
       ? feedbackVersions.some(v => v.id === latestSub.id)
         ? feedbackVersions
         : [latestSub, ...feedbackVersions]
       : feedbackVersions;
-    visible = showAll ? allVersions : [latestSub];
-    hasMore = allVersions.length > 1;
+
+    // collapsed: show only latest (use slice(0,2) if you prefer latest+previous)
+    visible = finalList.slice(0, 1);
+    hasMore = finalList.length > visible.length;
   } else {
-    const latestHasFeedback = Array.isArray(subs[0]?.feedbacks) && subs[0].feedbacks.length > 0;
+    // latest is NOT FINAL
+    const latestHasFeedback = Array.isArray(latestSub?.feedbacks) && latestSub.feedbacks.length > 0;
+
     if (latestHasFeedback) {
-      visible = [...subs.slice(1), subs[0]];
+      // latest has feedback -> show latest, others behind See more
+      visible = allVersions.slice(0, 1);
     } else {
-      visible = subs.slice(1);
+      // latest has no feedback
+      if (allVersions.length === 1) {
+        // single-version and no feedback -> show nothing
+        visible = [];
+      } else {
+        // show older versions (exclude latest)
+        visible = allVersions.slice(1);
+      }
     }
-    hasMore = false;
+
+    hasMore = visible.length > 0 && allVersions.length > visible.length;
   }
+  const showToggle = showAll || (visible.length > 0 && allVersions.length > visible.length);
 
   return (
     <div className="space-y-3">
@@ -355,12 +378,12 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
         );
       })}
 
-      {hasMore && (
+      {showToggle && (
         <div className="flex justify-center">
           <button
             type="button"
             onClick={() => setShowAll((s) => !s)}
-            className="text-sm text-blue-700 underline"
+            className="text-sm text-blue-700 underline cursor-pointer"
           >
             {showAll ? "See less ▲" : "See more ▼"}
           </button>
