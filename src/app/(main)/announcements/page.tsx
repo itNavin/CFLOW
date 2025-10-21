@@ -13,6 +13,7 @@ import EditAnnouncementModal from "@/components/announcement/editAnnouncementMod
 import { updateAnnouncementAPI } from "@/api/announcement/updateAnnouncement";
 import { deleteAnnouncementAPI } from "@/api/announcement/deleteAnnouncement";
 import CreateAnnouncementModal from "@/components/announcement/createAnnouncementModal";
+import { getProfileAPI } from "@/api/profile/getProfile";
 
 function formatUploadAt(iso: string, locale: string = "en-GB") {
   if (!iso) return "";
@@ -39,10 +40,24 @@ function AnnouncementContent() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement.Announcements | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
   const [role, setRole] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [profileLoaded, setProfileLoaded] = useState(false);
 
   useEffect(() => {
-    // Replace with your actual role logic
-    setRole(localStorage.getItem("role"));
+    (async () => {
+      try {
+        const res = await getProfileAPI();
+        const profile = res.data?.profile;
+        const user = profile?.user ?? null;
+        setCurrentUser(user);
+        setRole(user?.role ?? localStorage.getItem("role"));
+      } catch (e) {
+        setRole(localStorage.getItem("role"));
+        setCurrentUser(null);
+      } finally {
+        setProfileLoaded(true);
+      }
+    })();
   }, []);
 
   const fetchAnnouncements = async () => {
@@ -112,7 +127,6 @@ function AnnouncementContent() {
     setCanUpload(isCanUpload());
   }, [courseId]);
 
-  // Filter announcements for students by schedule
   const filteredAnnouncements = role === "student"
     ? announcements.filter(a => {
       if (!a.schedule || a.schedule === "1970-01-01T00:00:00.000Z") return true;
@@ -123,10 +137,19 @@ function AnnouncementContent() {
   return (
     <main className="min-h-screen p-6 pb-28 font-dbheavent space-y-8">
       {filteredAnnouncements.length === 0 ? (
-              <div className="text-gray-500">No announcements found.</div>
+        <div className="text-gray-500">No announcements found.</div>
 
       ) : (filteredAnnouncements.map((data) => {
-        // For non-student roles, show Due Date if now is before schedule
+        const isCreator = Boolean(
+          currentUser &&
+          (
+            String(currentUser.id) === String(data.createdBy?.id) ||
+            (currentUser.email && String(currentUser.email).toLowerCase() === String(data.createdBy?.email || "").toLowerCase())
+          )
+        );
+
+        const allowButtons = profileLoaded && canUpload && isCreator;
+
         const showDueDate =
           role !== "student" &&
           data.schedule &&
@@ -152,10 +175,10 @@ function AnnouncementContent() {
                     : <span>{formatUploadAt(data.createdAt ?? "")}</span>}
                 </div>
               </div>
-              {canUpload && (
+              {allowButtons && (
                 <div>
                   <button
-                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-gray-600 hover:bg-gray-50 mr-2"
+                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-gray-600 hover:bg-gray-50 mr-2 cursor-pointer"
                     onClick={() => {
                       setSelectedAnnouncement(data);
                       setEditOpen(true);
@@ -165,7 +188,7 @@ function AnnouncementContent() {
                   </button>
                   <button
                     title="Delete"
-                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                    className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50 cursor-pointer"
                     onClick={() => handleDeleteAnnouncement(data.id)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -237,7 +260,7 @@ function AnnouncementContent() {
                                   const res = await downloadCourseFileAPI(file.id);
                                   const url = res.data.url;
                                   if (url) {
-                                    window.open(url, "_blank"); // Open in new tab
+                                    window.open(url, "_blank"); 
                                   } else {
                                     alert("Open link not found.");
                                   }
@@ -246,7 +269,7 @@ function AnnouncementContent() {
                                 }
                                 setOpenDropdown(null);
                               }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-green-50 hover:text-green-700 transition-colors cursor-pointer"
                               type="button"
                             >
                               <FileText className="w-4 h-4" />
@@ -257,7 +280,7 @@ function AnnouncementContent() {
                                 e.stopPropagation();
                                 handleDownload(file, data.createdBy.name);
                               }}
-                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors cursor-pointer"
                               type="button"
                             >
                               <Download className="w-4 h-4" />
