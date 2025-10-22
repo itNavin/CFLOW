@@ -437,7 +437,7 @@ export default function CreateGroupModal({
               disabled={!canSave}
               className="rounded px-5 py-2 text-white bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320]"
             >
-              {isCreating ? "Saving..." : "Save"}
+              {isCreating ? "Creating..." : "Create"}
             </button>
           </div>
         </div>
