@@ -8,7 +8,9 @@ import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
 import { deleteGroupAPI } from "@/api/group/deleteGroup";
 import { Trash2 } from "lucide-react";
+import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 
+type Program = "CS" | "DSI";
 
 interface Member {
   studentId: string;
@@ -27,13 +29,18 @@ interface UpdateGroupModalProps {
   group: getGroup.Group;
   onCancel: () => void;
   onSave: () => void;
+  courseProgram?: Program | null;
 }
 
 export default function UpdateGroupModal({
   group,
   onCancel,
   onSave,
+  courseProgram: propCourseProgram = null,
 }: UpdateGroupModalProps) {
+  const [courseProgram, setCourseProgram] = useState<Program | null>(propCourseProgram ?? null);
+  const isCS = courseProgram === "CS";
+  const isDSI = courseProgram === "DSI";
   const [groupNo, setGroupNo] = useState(group.codeNumber || "");
   const [projectTitle, setProjectTitle] = useState(group.projectName || "");
   const [productTitle, setProductTitle] = useState(group.productName || "");
@@ -189,6 +196,25 @@ export default function UpdateGroupModal({
     return [{ id: advisor?.courseMemberId }];
   };
 
+  useEffect(() => {
+    if (propCourseProgram) return;
+    (async () => {
+      try {
+        const res = await getStaffCourseAPI();
+        const found = res.data?.course?.find((c: any) => c.id === group.courseId);
+        if (found && found.program) setCourseProgram(found.program as Program);
+        else setCourseProgram(null);
+      } catch {
+        setCourseProgram(null);
+      }
+    })();
+  }, [group.courseId, propCourseProgram]);
+
+  // if prop provided, keep courseProgram updated
+  useEffect(() => {
+    if (propCourseProgram) setCourseProgram(propCourseProgram);
+  }, [propCourseProgram]);
+
   const handleSave = async () => {
     if (advisor && coAdvisor && advisor === coAdvisor) {
       alert("Advisor and Co-Advisor cannot be the same person.");
@@ -206,8 +232,8 @@ export default function UpdateGroupModal({
         group.id,
         groupNo.trim(),
         projectTitle.trim(),
-        productTitle.trim() || null,
-        company.trim() || null,
+        (!isDSI ? (productTitle.trim() || null) : null),
+        (!isCS ? (company.trim() || null) : null),
         memberIds,
         advisorIds,
         coAdvisorIds
@@ -226,8 +252,7 @@ export default function UpdateGroupModal({
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;  // ⟵ prevent SSR output for this modal
-
+  if (!mounted) return null;
 
   return (
     <>
@@ -268,27 +293,31 @@ export default function UpdateGroupModal({
               />
             </Field>
 
-            <Field label="Product Title" htmlFor="productTitle">
-              <input
-                id="productTitle"
-                value={productTitle}
-                onChange={(e) => setProductTitle(e.target.value)}
-                disabled={isUpdating}
-                className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                placeholder="Product Name"
-              />
-            </Field>
+            {!isDSI && (
+              <Field label="Product Title" htmlFor="productTitle">
+                <input
+                  id="productTitle"
+                  value={productTitle}
+                  onChange={(e) => setProductTitle(e.target.value)}
+                  disabled={isUpdating}
+                  className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                  placeholder="Product Name"
+                />
+              </Field>
+            )}
 
-            <Field label="Company" htmlFor="company">
-              <input
-                id="company"
-                value={company}
-                onChange={(e) => setCompany(e.target.value)}
-                disabled={isUpdating}
-                className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                placeholder="Company Name"
-              />
-            </Field>
+            {!isCS && (
+              <Field label="Company" htmlFor="company">
+                <input
+                  id="company"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  disabled={isUpdating}
+                  className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                  placeholder="Company Name"
+                />
+              </Field>
+            )}
 
             <Field label="Members">
               <div className="space-y-2">
