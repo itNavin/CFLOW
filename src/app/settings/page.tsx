@@ -38,6 +38,7 @@ function SettingsPageContent() {
   const [q, setQ] = useState("");
   const [role, setRole] = useState<RoleFilter>("ALL");
   const [program, setProgram] = useState<ProgramFilter>("ALL");
+  const [studentYearFilter, setStudentYearFilter] = useState<string>("");
   const [course, setCourse] = useState<string | "ALL">("ALL");
 
   const [sortKey, setSortKey] = useState<SortKey>("id");
@@ -97,6 +98,7 @@ function SettingsPageContent() {
 
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase();
+    const yearFilter = studentYearFilter.trim();
     const mapUiToApi = (r: RoleFilter) => {
       if (r === "LECTURER") return "lecturer";
       if (r === "SOLAR_LECTURER") return "advisor";
@@ -108,6 +110,7 @@ function SettingsPageContent() {
     };
     return users
       .filter((u) => {
+        const matchYear = role === "STUDENT" && yearFilter ? String(u.id || "").startsWith(yearFilter) : true;
         const matchText =
           !text ||
           u.name?.toLowerCase().includes(text) ||
@@ -134,7 +137,7 @@ function SettingsPageContent() {
               }
               return true;
             })();
-        return matchText && matchRole && matchProgram && matchCourse;
+        return matchText && matchRole && matchProgram && matchCourse && matchYear;
       })
       .sort((a, b) => {
         const dir = sortDir === "asc" ? 1 : -1;
@@ -162,7 +165,11 @@ function SettingsPageContent() {
         if (va > vb) return 1 * dir;
         return 0;
       });
-  }, [users, q, role, program, course, sortKey, sortDir, hasCourseField]);
+  }, [users, q, role, program, course, sortKey, sortDir, hasCourseField, studentYearFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, role, program, course, sortKey, sortDir, studentYearFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const pageItems = useMemo(() => {
@@ -226,7 +233,9 @@ function SettingsPageContent() {
       setAddProgram("CS");
       await fetchUsers();
     } catch (e: any) {
-      alert(e?.response?.data?.message || e?.message || "Create failed");
+      console.error("Create user error response:", e?.response || e);
+      const serverMsg = e?.response?.data || e?.response?.data?.message || e?.message;
+      alert(JSON.stringify(serverMsg, null, 2));
     } finally {
       setCreating(false);
     }
@@ -302,6 +311,7 @@ function SettingsPageContent() {
               </select>
 
               {role === "STUDENT" && (
+                <>
                 <select
                   value={program}
                   onChange={(e) => setProgram(e.target.value as ProgramFilter)}
@@ -311,6 +321,14 @@ function SettingsPageContent() {
                   <option value="CS">CS</option>
                   <option value="DSI">DSI</option>
                 </select>
+                <input
+                  value={studentYearFilter}
+                  onChange={(e) => setStudentYearFilter(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                  placeholder="Academic year (e.g. 65)"
+                  className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
+                  style={{ width: 140 }}
+                />
+                </>
               )}
 
               {hasCourseField && (
