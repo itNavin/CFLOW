@@ -53,7 +53,7 @@ function SettingsPageContent() {
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
   const [addEmail, setAddEmail] = useState("");
-  const [addProgram, setAddProgram] = useState("");
+  const [addProgram, setAddProgram] = useState<"CS" | "DSI">("CS");
   const [addRole, setAddRole] = useState<"STAFF" | "LECTURER" | "SOLAR_LECTURER">("STAFF");
   const [creating, setCreating] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
@@ -281,7 +281,7 @@ function SettingsPageContent() {
               )}
             >
               <Upload className="h-6 w-6 mr-2" />
-              Add Students
+              Sync Students
             </button>
           </div>
         </header>
@@ -452,11 +452,6 @@ function SettingsPageContent() {
                   Next
                 </button>
               </div>
-              {/* <div>
-                Showing <span className="font-semibold">{(page - 1) * pageSize + 1}</span>–
-                <span className="font-semibold">{Math.min(page * pageSize, filtered.length)}</span> of{" "}
-                <span className="font-semibold">{filtered.length}</span>
-              </div> */}
             </div>
           )}
         </section>
@@ -538,7 +533,7 @@ function SettingsPageContent() {
       {addStudentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h2 className="text-2xl font-semibold mb-4">Add Students by Academic Year</h2>
+            <h2 className="text-2xl font-semibold mb-4">Sync Students by Academic Year</h2>
             <div className="mb-4">
               <label className="block mb-1">Academic Year</label>
               <input
@@ -563,7 +558,7 @@ function SettingsPageContent() {
                   try {
                     const res = await fetchStudentDataAPI(academicYear);
                     setStudentData(res.data);
-                    alert(`Fetched ${res.data?.length || 0} students for academic year ${academicYear}`);
+                    await fetchUsers();
                     setAddStudentOpen(false);
                   } catch (err: any) {
                     setStudentError(err?.response?.data?.message || err?.message || "Fetch failed");

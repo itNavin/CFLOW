@@ -76,14 +76,30 @@ function GroupTabContent() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return group;
-    return group.filter(g =>
-      [g.codeNumber, g.projectName, g.productName, g.company]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
+
+    const base = !q
+      ? group.slice()
+      : group.filter(g =>
+        [g.codeNumber, g.projectName, g.productName, g.company]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q)
+      );
+
+    base.sort((a, b) => {
+      const aId = String(a.codeNumber ?? "").trim();
+      const bId = String(b.codeNumber ?? "").trim();
+      const ai = Number(aId);
+      const bi = Number(bId);
+      if (!Number.isNaN(ai) && !Number.isNaN(bi)) {
+        return ai - bi;
+      }
+
+      return aId.localeCompare(bId, undefined, { numeric: true, sensitivity: "base" });
+    });
+
+    return base;
   }, [group, query]);
 
   const handleCreate = async (newGroup: getGroup.Group) => {
@@ -115,7 +131,13 @@ function GroupTabContent() {
 
     const maxMembers = group.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
 
-    const front = ["ID", "Project Title", "Product Title", "Company"];
+    const showProduct = course?.program !== "DSI";
+    const showCompany = course?.program !== "CS";
+
+    const front: string[] = ["ID", "Project Title"];
+    if (showProduct) front.push("Product Title");
+    if (showCompany) front.push("Company");
+
     const membersHeader = ["Members", ...Array(Math.max(0, maxMembers - 1)).fill("")];
     const tail = ["Advisor", "Co-Advisor"];
     const headerRow = [...front, ...membersHeader, ...tail];
@@ -125,18 +147,18 @@ function GroupTabContent() {
       const memberCells = Array.from({ length: maxMembers }, (_, i) =>
         members[i] ? formatMember(members[i], i) : ""
       );
-      return [
-        String(g.codeNumber ?? ""),
-        g.projectName ?? "",
-        g.productName ?? "",
-        g.company ?? "",
-        ...memberCells,
-        fullNameUpper(g.advisors?.[0]?.courseMember?.user) || "",
-        fullNameUpper(g.advisors?.[1]?.courseMember?.user) || "",
-      ];
+
+      const row: any[] = [];
+      row.push(String(g.codeNumber ?? ""));
+      row.push(g.projectName ?? "");
+      if (showProduct) row.push(g.productName ?? "");
+      if (showCompany) row.push(g.company ?? "");
+      row.push(...memberCells);
+      row.push(fullNameUpper(g.advisors?.[0]?.courseMember?.user) || "");
+      row.push(fullNameUpper(g.advisors?.[1]?.courseMember?.user) || "");
+      return row;
     });
 
-    // Build excel data: title, info rows, header, data
     const excelData = [
       [pageTitle],
       ...infoRows,
@@ -148,9 +170,9 @@ function GroupTabContent() {
 
     const totalCols = headerRow.length;
     ws["!merges"] = ws["!merges"] || [];
-    ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } }); // Title
-    ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } }); // Course Name
-    ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } }); // Department
+    ws["!merges"].push({ s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } });
+    ws["!merges"].push({ s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } });
+    ws["!merges"].push({ s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } });
 
     const membersStartCol = front.length;
     const membersEndCol = front.length + Math.max(0, maxMembers - 1);
@@ -207,7 +229,7 @@ function GroupTabContent() {
       }
     });
 
-    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const today = new Date().toISOString().slice(0, 10); 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Groups");
     XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data_${today}.xlsx`);
@@ -368,6 +390,7 @@ function GroupTabContent() {
         <CreateGroupModal
           nextGroupNo={nextGroupNo}
           courseId={courseId}
+          courseProgram={course?.program ?? null}
           onCancel={() => setOpenCreate(false)}
           onSave={handleCreate}
         />
@@ -376,6 +399,7 @@ function GroupTabContent() {
       {editTarget && (
         <UpdateGroupModal
           group={editTarget}
+          courseProgram={course?.program ?? null}
           onCancel={() => setEditTarget(null)}
           onSave={() => {
             fetchGroup();

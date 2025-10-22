@@ -31,19 +31,32 @@ function StudentTabContent() {
   const [deletingStudent, setDeletingStudent] = useState(false);
   const [courseProgram, setCourseProgram] = useState<Program | null>(null);
 
+  const sortByIdAsc = (aId?: string | number, bId?: string | number) => {
+    const a = String(aId ?? "").trim();
+    const b = String(bId ?? "").trim();
+    const an = a.replace(/\D/g, "");
+    const bn = b.replace(/\D/g, "");
+    if (/^\d+$/.test(an) && /^\d+$/.test(bn)) {
+      try {
+        const ai = BigInt(an);
+        const bi = BigInt(bn);
+        if (ai < bi) return -1;
+        if (ai > bi) return 1;
+        return 0;
+      } catch {
+      }
+    }
+    return a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+  };
+
   const fetchStudentNotInCourse = async (courseId: string) => {
     try {
       setLoadingAvailable(true);
       if (!courseId) return;
-
       const response = await getStudentNotInCourseAPI(courseId);
-
-      if (response.data?.students && Array.isArray(response.data.students)) {
-        setStudentNotInCourse(response.data.students);
-      } else {
-        console.warn("Unexpected response structure:", response.data);
-        setStudentNotInCourse([]);
-      }
+      const list = Array.isArray(response.data?.students) ? response.data.students.slice() : [];
+      list.sort((x, y) => sortByIdAsc(x.id, y.id));
+      setStudentNotInCourse(list);
     } catch (error) {
       console.error("Failed to load students not in course:", error);
       setError("Failed to load available students");

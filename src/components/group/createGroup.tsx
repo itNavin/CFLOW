@@ -6,6 +6,9 @@ import { getGroup } from "@/types/api/group";
 import { createGroupAPI } from "@/api/group/createGroup";
 import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
+import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
+
+type Program = "CS" | "DSI";
 
 interface Member {
   studentId: string;
@@ -25,6 +28,7 @@ interface CreateGroupModalProps {
   courseId: string;
   onCancel: () => void;
   onSave: (g: getGroup.Group) => void;
+  courseProgram?: Program | null;
 }
 
 export default function CreateGroupModal({
@@ -32,7 +36,11 @@ export default function CreateGroupModal({
   courseId,
   onCancel,
   onSave,
+  courseProgram: propCourseProgram = null,
 }: CreateGroupModalProps) {
+  const [courseProgram, setCourseProgram] = useState<Program | null>(propCourseProgram ?? null);
+  const isCS = courseProgram === "CS";
+  const isDSI = courseProgram === "DSI";
   const [projectTitle, setProjectTitle] = useState("");
   const [productTitle, setProductTitle] = useState("");
   const [company, setCompany] = useState("");
@@ -100,6 +108,18 @@ export default function CreateGroupModal({
 
     fetchAvailableStudents();
     fetchAvailableAdvisors();
+    if (!propCourseProgram) {
+      (async () => {
+        try {
+          const res = await getStaffCourseAPI();
+          const found = res.data?.course?.find((c: any) => c.id === courseId);
+          if (found && found.program) setCourseProgram(found.program as Program);
+          else setCourseProgram(null);
+        } catch (e) {
+          setCourseProgram(null);
+        }
+      })();
+    }
   }, [courseId]);
 
   useEffect(() => {
@@ -132,9 +152,9 @@ export default function CreateGroupModal({
     if (!q) return [];
     return availableAdvisors
       .filter((a) =>
-      (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
-      a.name !== coAdvisor 
-    )
+        (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
+        a.name !== coAdvisor
+      )
       .slice(0, 6);
   }, [qAdvisor, availableAdvisors]);
 
@@ -144,7 +164,7 @@ export default function CreateGroupModal({
     return availableAdvisors
       .filter((a) =>
         (a.name.toLowerCase().includes(q) || a.id.toLowerCase().includes(q)) &&
-        a.name !== advisor 
+        a.name !== advisor
       ).slice(0, 6);
   }, [qCoAdvisor, availableAdvisors]);
 
@@ -209,8 +229,8 @@ export default function CreateGroupModal({
         courseId,
         groupNo,
         projectTitle.trim(),
-        productTitle.trim() || null,
-        company.trim() || null,
+        (!isDSI ? (productTitle.trim() || null) : null),
+        (!isCS ? (company.trim() || null) : null),
         memberIds,
         advisorIds,
         coAdvisorIds
@@ -282,7 +302,7 @@ export default function CreateGroupModal({
                 placeholder="Project Name"
               />
             </Field>
-
+{/* 
             <Field label="Product Title" htmlFor="productTitle">
               <input
                 id="productTitle"
@@ -292,8 +312,20 @@ export default function CreateGroupModal({
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                 placeholder="Product Name"
               />
-            </Field>
-
+            </Field> */}
+            {!isDSI && (
+              <Field label="Product Title" htmlFor="productTitle">
+                <input
+                  id="productTitle"
+                  value={productTitle}
+                  onChange={(e) => setProductTitle(e.target.value)}
+                  disabled={isCreating}
+                  className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                  placeholder="Product Name"
+                />
+              </Field>
+            )}
+{/* 
             <Field label="Company" htmlFor="company">
               <input
                 id="company"
@@ -303,7 +335,19 @@ export default function CreateGroupModal({
                 className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                 placeholder="Company Name"
               />
-            </Field>
+            </Field> */}
+            {!isCS && (
+              <Field label="Company" htmlFor="company">
+                <input
+                  id="company"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  disabled={isCreating}
+                  className="w-full rounded border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                  placeholder="Company Name"
+                />
+              </Field>
+            )}
 
             <Field label="Members">
               <div className="space-y-2">
