@@ -115,8 +115,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
               <label className="block font-medium mb-1">Attach Files (Optional)</label>
               <FileUpload
                 onFilesChange={handleFilesChange}
-                maxFiles={5}
-                maxFileSize={10}
                 disabled={isSubmitting}
               />
             </div>

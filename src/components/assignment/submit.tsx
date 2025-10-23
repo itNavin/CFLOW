@@ -255,7 +255,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
                             <button
                               type="button"
                               onClick={() => removeDraft(del.id, aft.id)}
-                              className="text-red-600 text-sm underline"
+                              className="text-red-600 text-sm underline cursor-pointer"
                             >
                               remove
                             </button>
