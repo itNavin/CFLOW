@@ -58,3 +58,20 @@ export namespace fetchStudentData{
         admittedAcademicYear: string;
     }
 }
+
+export namespace updateStfAndLec {
+  export type updateStfAndLec = {
+    message: string;
+  };
+}
+
+export namespace updateUserStatus {
+  export type updateUserStatus = {
+    message: string;
+    user: User;
+  };
+
+  export type User = {
+    count : number;
+  };
+}

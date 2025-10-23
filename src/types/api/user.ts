@@ -17,7 +17,8 @@ export type User = {
   name: string;
   role: "student" | "advisor" | "admin" | "super_admin"; // strict
   program: "CS" | "DSI";
-  createdAt: string; // ISO string
+  createdAt: string;
+  status: string;
 };
 
 export namespace getAllUsers {

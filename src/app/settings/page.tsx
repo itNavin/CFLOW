@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Upload, Search, UserPlus, Filter, ListOrdered, SortAsc, SortDesc } from "lucide-react"; // Add needed icons
+import { Upload, Search, UserPlus, Filter, ListOrdered, SortAsc, SortDesc, Pencil } from "lucide-react";
 import { getAllUsersAPI } from "@/api/user/getAllUser";
 import type { getAllUsers } from "@/types/api/user";
 import Navbar from "@/components/navbar";
@@ -11,6 +11,8 @@ import { createLecturerUserAPI } from "@/api/setting/createLecturerUser";
 import { createSolarLecturerUserAPI } from "@/api/setting/createSolarLecturerUser";
 import { fetchStudentDataAPI } from "@/api/setting/fetchStudentData";
 import { fetchStudentData } from "@/types/api/setting";
+import { updateStfAndLecApi } from "@/api/setting/updateStfAndLec";
+import { updateUserStatusApi } from "@/api/setting/updateUserStatus";
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
@@ -62,6 +64,29 @@ function SettingsPageContent() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const [studentData, setStudentData] = useState<fetchStudentData.data[]>([]);
 
+  // selection state (stores selected user ids)
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED">("ACTIVE");
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const selectedUsers = useMemo(() => users.filter((u) => selected.has(u.id)), [users, selected]);
+
+
+  // edit modal state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editProgram, setEditProgram] = useState<"CS" | "DSI">("CS");
+  const [editRole, setEditRole] = useState<
+    "student" | "staff" | "lecturer" | "advisor" | "admin" | "super_admin" | "solar_lecturer"
+  >("staff");
+  // whether current edit modal is for a student (read-only for fields above status)
+  const [editIsStudent, setEditIsStudent] = useState(false);
+  // status state (editable for all roles)
+  const [editStatus, setEditStatus] = useState<string>("ACTIVE");
+  const lockProgramRole = editIsStudent || ["staff", "lecturer", "solar_lecturer"].includes(String(editRole).toLowerCase());
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -78,6 +103,30 @@ function SettingsPageContent() {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  const allowedForRole = (r: string) => {
+    const k = (r || "").toLowerCase();
+    if (k === "student") return ["ACTIVE", "GRADUATED"];
+    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "RESIGNED", "RETIRED"];
+    return ["ACTIVE"];
+  };
+
+  const commonAllowedStatuses = useMemo(() => {
+    if (selectedUsers.length === 0) return ["ACTIVE", "RESIGNED", "RETIRED", "GRADUATED"];
+    // start with first user's allowed set then intersect
+    let common = new Set(allowedForRole(selectedUsers[0].role));
+    for (let i = 1; i < selectedUsers.length; i++) {
+      const s = new Set(allowedForRole(selectedUsers[i].role));
+      common = new Set(Array.from(common).filter((x) => s.has(x)));
+    }
+    return Array.from(common);
+  }, [selectedUsers]);
+  
+  useEffect(() => {
+    if (!commonAllowedStatuses.includes(bulkStatus)) {
+      setBulkStatus((commonAllowedStatuses[0] ?? "ACTIVE") as "ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED");
+    }
+  }, [commonAllowedStatuses, bulkStatus]);
 
   const hasCourseField = useMemo(() => {
     return users.some((u: any) => "courseId" in u || ("course" in u && u.course && (u.course.id || u.course.name)));
@@ -115,7 +164,7 @@ function SettingsPageContent() {
           !text ||
           u.name?.toLowerCase().includes(text) ||
           u.email?.toLowerCase().includes(text) ||
-          u.id?.toLowerCase().includes(text)
+          u.id?.toLowerCase().includes(text);
         const apiRoleTarget = mapUiToApi(role);
         const matchRole = role === "ALL" ? true : u.role.toLowerCase() === apiRoleTarget;
         const matchProgram =
@@ -182,6 +231,45 @@ function SettingsPageContent() {
     setPage(1);
   }, [q, role, program, course, sortKey, sortDir]);
 
+  // derived: whether all items on current page are selected
+  const isAllSelectedOnPage = pageItems.length > 0 && pageItems.every((u) => selected.has(u.id));
+
+  // toggle a single row
+  const toggleRow = (id: string) => {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id);
+      else s.add(id);
+      return s;
+    });
+  };
+
+  // toggle select all on current page
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const s = new Set(prev);
+      const allSelected = pageItems.length > 0 && pageItems.every((u) => prev.has(u.id));
+      if (allSelected) {
+        pageItems.forEach((u) => s.delete(u.id));
+      } else {
+        pageItems.forEach((u) => s.add(u.id));
+      }
+      return s;
+    });
+  };
+
+  // prune selections when users list changes
+  useEffect(() => {
+    setSelected((prev) => {
+      const s = new Set<string>();
+      const ids = new Set(users.map((u) => u.id));
+      prev.forEach((id) => {
+        if (ids.has(id)) s.add(id);
+      });
+      return s;
+    });
+  }, [users]);
+
   const onAddStudentsClick = () => fileInputRef.current?.click();
 
   const onFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
@@ -238,6 +326,96 @@ function SettingsPageContent() {
       alert(JSON.stringify(serverMsg, null, 2));
     } finally {
       setCreating(false);
+    }
+  };
+
+  // compute available status options based on role
+  const getStatusOptions = (r: string) => {
+    const k = (r || "").toLowerCase();
+    if (k === "student") return ["ACTIVE", "GRADUATED"];
+    // employment roles (staff/lecturer/solar/advisor)
+    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "RESIGNED", "RETIRED"];
+    // fallback: only ACTIVE
+    return ["ACTIVE"];
+  };
+
+  // open edit modal and populate fields
+  const openEdit = (u: any) => {
+    setEditUserId(u.id);
+    setEditName(u.name || "");
+    setEditEmail(u.email || "");
+    setEditProgram((u.program && (u.program === "CS" || u.program === "DSI") ? u.program : "CS") as "CS" | "DSI");
+    // map role to one of expected values (best-effort)
+    const r = (u.role || "").toLowerCase();
+    setEditRole((r as any) || "staff");
+    setEditIsStudent(r === "student");
+    // set status from user or default ACTIVE
+    setEditStatus(u.status || "ACTIVE");
+    setEditOpen(true);
+  };
+
+  // refresh currently opened user's data from server (re-fetch all users then pick)
+  const refreshEditUser = async () => {
+    if (!editUserId) return;
+    try {
+      setLoading(true);
+      await fetchUsers();
+      const updated =
+        users.find((x) => x.id === editUserId) ??
+        (await getAllUsersAPI()).users?.find((x) => x.id === editUserId);
+      if (updated) {
+        setEditName(updated.name || "");
+        setEditEmail(updated.email || "");
+        setEditProgram((updated.program === "CS" || updated.program === "DSI") ? updated.program : "CS");
+        const r = (updated.role || "").toLowerCase();
+        setEditRole((r as any) || "staff");
+        setEditIsStudent(r === "student");
+        setEditStatus(updated.status || "ACTIVE");
+      }
+    } catch (err) {
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSaveEdit = async () => {
+    if (!editUserId) return;
+    // if editing non-student, require name/email
+    if (!editIsStudent && (!editName.trim() || !editEmail.trim())) {
+      alert("Please fill name and email");
+      return;
+    }
+    try {
+      setEditing(true);
+
+      if (!editIsStudent) {
+        try {
+          await updateStfAndLecApi(editUserId, editName.trim(), editEmail.trim());
+        } catch (apiErr: any) {
+          console.error("Update staff/lecturer error:", apiErr?.response ?? apiErr);
+          const msg = apiErr?.response?.data?.message || apiErr?.message || "Failed to update user";
+          alert(msg);
+          return;
+        }
+      }
+
+      // update status for any role (API expects array of ids)
+      try {
+        await updateUserStatusApi([editUserId], editStatus as "ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED");
+      } catch (statusErr: any) {
+        console.error("Update status error:", statusErr?.response ?? statusErr);
+        const msg = statusErr?.response?.data?.message || statusErr?.message || "Failed to update status";
+        alert(msg);
+        return;
+      }
+
+      setEditOpen(false);
+      setEditUserId(null);
+      await fetchUsers();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || err?.message || "Update failed");
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -310,24 +488,26 @@ function SettingsPageContent() {
                 <option value="LECTURER">Lecturer</option>
               </select>
 
-              {role === "STUDENT" && (
+              {(role === "STUDENT" || role === "LECTURER") && (
                 <>
-                <select
-                  value={program}
-                  onChange={(e) => setProgram(e.target.value as ProgramFilter)}
-                  className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
-                >
-                  <option value="ALL">All Programs</option>
-                  <option value="CS">CS</option>
-                  <option value="DSI">DSI</option>
-                </select>
-                <input
-                  value={studentYearFilter}
-                  onChange={(e) => setStudentYearFilter(e.target.value.replace(/\D/g, "").slice(0, 2))}
-                  placeholder="Academic year (e.g. 65)"
-                  className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
-                  style={{ width: 140 }}
-                />
+                  <select
+                    value={program}
+                    onChange={(e) => setProgram(e.target.value as ProgramFilter)}
+                    className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
+                  >
+                    <option value="ALL">All Programs</option>
+                    <option value="CS">CS</option>
+                    <option value="DSI">DSI</option>
+                  </select>
+                  {role === "STUDENT" && (
+                    <input
+                      value={studentYearFilter}
+                      onChange={(e) => setStudentYearFilter(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      placeholder="Academic year (e.g. 65)"
+                      className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
+                      style={{ width: 160 }}
+                    />
+                  )}
                 </>
               )}
 
@@ -357,14 +537,12 @@ function SettingsPageContent() {
                 className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
               >
                 <option value="id">Sorted By: ID</option>
-                <option value="createdAt">Sorted By: Created At</option>
                 <option value="name">Sorted By: Fullname</option>
-                <option value="role">Sorted By: Role</option>
-                <option value="program">Sorted By: Program</option>
+                <option value="createdAt">Sorted By: Created At</option>
               </select>
               <select
                 value={sortDir}
-                onChange={e => setSortDir(e.target.value as SortDir)}
+                onChange={(e) => setSortDir(e.target.value as SortDir)}
                 className="rounded-2xl border px-4 py-3 text-lg focus:outline-none focus:ring-2 focus:ring-black/10"
               >
                 <option value="asc">Ascending</option>
@@ -375,36 +553,113 @@ function SettingsPageContent() {
         </section>
 
         <section className="rounded-2xl border bg-white p-0 shadow-sm overflow-hidden">
+          {selected.size > 0 && (
+            <div className="flex items-center justify-between gap-3 p-4 border-b bg-white">
+              <div className="text-lg">{selected.size} selected</div>
+              
+              <div className="flex items-center gap-2">
+                {/* If commonAllowedStatuses is empty, show notice and disable actions */}
+                {/* Cancel (clear selection) placed left of status chooser */}
+                <button
+                  onClick={() => setSelected(new Set())}
+                  className="rounded-xl border px-4 py-2 text-lg"
+                >
+                  Cancel
+                </button>
+
+                {/* If commonAllowedStatuses is empty, show notice and disable actions */}
+                {commonAllowedStatuses.length === 0 ? (
+                  <div className="text-sm text-red-600">Selected users have incompatible roles — cannot bulk-change status.</div>
+                ) : (
+                  <>
+                    <select
+                      value={bulkStatus}
+                      onChange={(e) => {
+                        const v = e.target.value as any;
+                        if (!commonAllowedStatuses.includes(v)) {
+                          alert("Selected users do not allow this status. Pick another.");
+                          return;
+                        }
+                        setBulkStatus(v);
+                      }}
+                      className="rounded-xl border px-3 py-2"
+                    >
+                      {commonAllowedStatuses.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={async () => {
+                        if (selected.size === 0) return;
+                        if (!commonAllowedStatuses.includes(bulkStatus)) {
+                          alert("Cannot apply this status to the selected users.");
+                          return;
+                        }
+                        if (!confirm(`Apply status "${bulkStatus}" to ${selected.size} users?`)) return;
+                        try {
+                          setBulkUpdating(true);
+                          await updateUserStatusApi(Array.from(selected), bulkStatus);
+                          await fetchUsers();
+                          setSelected(new Set());
+                        } catch (err: any) {
+                          alert(err?.response?.data?.message || err?.message || "Failed to update status");
+                        } finally {
+                          setBulkUpdating(false);
+                        }
+                      }}
+                      disabled={bulkUpdating}
+                      className="rounded-xl bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white px-4 py-2"
+                    >
+                      {bulkUpdating ? "Saving…" : "Save"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead className="bg-gray-50 text-left text-2xl text-gray-700">
                 <tr>
+                  <th className="px-4 py-5">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelectedOnPage}
+                      onChange={toggleSelectAll}
+                      className="h-4 w-4 accent-[#326295]"
+                      aria-label="Select all on page"
+                    />
+                  </th>
                   <th className="px-6 py-5">ID</th>
                   <th className="px-6 py-5">Fullname</th>
                   <th className="px-6 py-5">Email</th>
                   <th className="px-6 py-5">Role</th>
                   <th className="px-6 py-5">Program</th>
+                  <th className="px-6 py-5">Status</th>
                   <th className="px-6 py-5">Created At</th>
+                  <th className="px-6 py-5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="text-lg">
                 {loading && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                       Loading users…
                     </td>
                   </tr>
                 )}
                 {!loading && error && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-red-600">
+                    <td colSpan={9} className="px-6 py-8 text-center text-red-600">
                       {error}
                     </td>
                   </tr>
                 )}
                 {!loading && !error && pageItems.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                       No users found.
                     </td>
                   </tr>
@@ -413,6 +668,15 @@ function SettingsPageContent() {
                   !error &&
                   pageItems.map((u) => (
                     <tr key={u.id} className="border-t hover:bg-gray-50/60 text-xl">
+                      <td className="px-4 py-5 align-top">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(u.id)}
+                          onChange={() => toggleRow(u.id)}
+                          className="h-4 w-4 accent-[#326295]"
+                          aria-label={`Select user ${u.id}`}
+                        />
+                      </td>
                       <td className="px-6 py-5 align-top">{u.id}</td>
                       <td className="px-6 py-5 align-top">
                         <div>{u.name || "—"}</div>
@@ -424,7 +688,18 @@ function SettingsPageContent() {
                         </span>
                       </td>
                       <td className="px-6 py-5 align-top">{u.program || "—"}</td>
+                      <td className="px-6 py-5 align-top">{u.status || "—"}</td>
                       <td className="px-6 py-5 align-top">{formatDate(u.createdAt)}</td>
+                      <td className="px-6 py-5 align-top text-right">
+                        <button
+                          title="Edit"
+                          className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => openEdit(u)}
+                          aria-label={`Edit ${u.id}`}
+                        >
+                          <Pencil className="h-4 w-6" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -530,6 +805,107 @@ function SettingsPageContent() {
         </div>
       )}
 
+      {editOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-2xl font-semibold mb-4">{editIsStudent ? "View Student" : "Edit User"}</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-left mb-1">Name</label>
+                {editIsStudent ? (
+                  <div className="w-full rounded-xl border px-3 py-2 bg-gray-50 text-gray-700">
+                    {editName || "—"}
+                  </div>
+                ) : (
+                  <input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full rounded-xl border px-3 py-2 focus:outline-none"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-left mb-1">Email</label>
+                {editIsStudent ? (
+                  <div className="w-full rounded-xl border px-3 py-2 bg-gray-50 text-gray-700">
+                    {editEmail || "—"}
+                  </div>
+                ) : (
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="w-full rounded-xl border px-3 py-2 focus:outline-none"
+                  />
+                )}
+              </div>
+
+              <div>
+                <label className="block text-left mb-1">Program</label>
+                <div className="w-full rounded-xl border px-3 py-2 bg-gray-50 text-gray-700">
+                  {editProgram}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-left mb-1">Role</label>
+                <div className="w-full rounded-xl border px-3 py-2 bg-gray-50 text-gray-700">
+                  {String(editRole)
+                    .replace(/_/g, " ")
+                    .replace(/\b\w/g, (c) => c.toUpperCase())}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-left mb-1">Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full rounded-xl border px-3 py-2 focus:outline-none cursor-pointer"
+                >
+                  {getStatusOptions(editRole).map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {editIsStudent && (
+                <div className="text-md text-gray-600">
+                  Student fields above are view-only. To update student records use the "Sync Students" button on the main page — here you may only change the student's status.
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex items-center justify-start gap-3">
+              <button
+                onClick={() => {
+                  setEditOpen(false);
+                  setEditUserId(null);
+                }}
+                className="rounded-xl border px-5 py-2 text-lg cursor-pointer"
+              >
+                {editIsStudent ? "Close" : "Cancel"}
+              </button>
+
+              <button
+                onClick={onSaveEdit}
+                disabled={editing}
+                className={cx(
+                  "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg px-5 py-2 rounded-xl shadow hover:from-[#28517c] hover:to-[#071320] cursor-pointer",
+                  editing && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {editing ? "Saving…" : "Save"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {addStudentOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -539,7 +915,7 @@ function SettingsPageContent() {
               <input
                 type="text"
                 value={academicYear}
-                onChange={e => setAcademicYear(e.target.value)}
+                onChange={(e) => setAcademicYear(e.target.value)}
                 className="w-full rounded-xl border px-3 py-2 focus:outline-none"
                 placeholder="e.g. 2565"
               />
