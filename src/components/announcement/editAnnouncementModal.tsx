@@ -25,7 +25,7 @@ export default function EditAnnouncementModal({
   onSubmit,
 }: Props) {
   const [name, setName] = useState(announcement.name);
-  const [description, setDescription] = useState(announcement.description);
+  const [description, setDescription] = useState(announcement.description ?? "");
   const [scheduleAt, setScheduleAt] = useState(
     announcement.schedule && announcement.schedule !== "1970-01-01T00:00:00.000Z"
       ? announcement.schedule.slice(0, 16)
@@ -46,7 +46,7 @@ export default function EditAnnouncementModal({
 
   useEffect(() => {
     setName(announcement.name);
-    setDescription(announcement.description);
+    setDescription(announcement.description ?? "");
     setIsScheduled(
       !!(
         announcement.schedule &&
@@ -67,7 +67,6 @@ export default function EditAnnouncementModal({
 
   const canSubmit =
     name.trim() &&
-    description.trim() &&
     (!isScheduled || scheduleAt) &&
     !submitting;
 
@@ -76,20 +75,13 @@ export default function EditAnnouncementModal({
     setError(null);
     try {
       const scheduleISO =
-      isScheduled && scheduleAt
-        ? new Date(scheduleAt).toISOString()
-        : new Date().toISOString();
-
-      console.log({
-        name: name.trim(),
-        description: description.trim(),
-        schedule: scheduleISO,
-        keepUrls,
-        files: newFile,
-      });
+        isScheduled && scheduleAt
+          ? new Date(scheduleAt).toISOString()
+          : new Date().toISOString();
+      const descToSend = (description || "").trim();
       await onSubmit({
         name: name.trim(),
-        description: description.trim(),
+        description: descToSend,
         schedule: scheduleISO,
         keepUrls,
         files: newFile,
@@ -106,7 +98,6 @@ export default function EditAnnouncementModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
       <div className="absolute left-1/2 top-10 -translate-x-1/2 w-[min(900px,92vw)] font-dbheavent">
         <div className="rounded-2xl bg-white shadow-xl border border-gray-200 flex flex-col max-h-[90vh]">
-          {/* ===== Header ===== */}
           <div className="flex items-center justify-between px-6 py-4 border-b">
             <h2 className="text-xl font-semibold">Edit Announcement</h2>
             <button
@@ -120,7 +111,6 @@ export default function EditAnnouncementModal({
             </button>
           </div>
 
-          {/* ===== Body ===== */}
           <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
             {error && (
               <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
@@ -128,7 +118,6 @@ export default function EditAnnouncementModal({
               </div>
             )}
 
-            {/* Title */}
             <div>
               <label className="block font-medium mb-1">
                 Title <span className="text-red-500">*</span>
@@ -142,7 +131,6 @@ export default function EditAnnouncementModal({
               />
             </div>
 
-            {/* Description */}
             <div>
               <label className="block font-medium mb-1">
                 Description <span className="text-red-500">*</span>
@@ -153,7 +141,6 @@ export default function EditAnnouncementModal({
                 className="w-full min-h-[120px] border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
                 rows={6}
                 disabled={submitting}
-                required
               />
             </div>
 
@@ -203,7 +190,6 @@ export default function EditAnnouncementModal({
               <label className="block font-medium mb-2">Add New Files</label>
               <FileUpload
                 onFilesChange={(files) => setNewFile(files[0])}
-                maxFiles={10}
                 maxFileSize={20}
                 disabled={submitting}
               />

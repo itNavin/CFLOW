@@ -5,7 +5,6 @@ import { Upload, X, File, Image, FileText } from "lucide-react";
 
 interface FileUploadProps {
   onFilesChange: (files: File[]) => void;
-  maxFiles?: number;
   maxFileSize?: number; // in MB
   acceptedTypes?: string[];
   disabled?: boolean;
@@ -13,8 +12,7 @@ interface FileUploadProps {
 
 export const FileUpload: React.FC<FileUploadProps> = ({
   onFilesChange,
-  maxFiles = 5,
-  maxFileSize = 10,
+  maxFileSize = 100,
   acceptedTypes = ["image/*", "application/pdf", ".doc", ".docx", ".txt"],
   disabled = false,
 }) => {
@@ -47,12 +45,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   const handleFiles = (newFiles: FileList | File[]) => {
     setError(null);
     const filesArray = Array.from(newFiles);
-    
-    // Check total file count
-    if (selectedFiles.length + filesArray.length > maxFiles) {
-      setError(`Maximum ${maxFiles} files allowed.`);
-      return;
-    }
 
     // Validate each file
     for (const file of filesArray) {
@@ -144,9 +136,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         <p className="text-gray-600 mb-1">
           Drag and drop files here, or <span className="text-blue-500">browse</span>
         </p>
-        <p className="text-sm text-gray-400">
-          Maximum {maxFiles} files, {maxFileSize}MB each
-        </p>
         <input
           ref={fileInputRef}
           type="file"
@@ -158,18 +147,16 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         />
       </div>
 
-      {/* Error Message */}
       {error && (
         <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded">
           {error}
         </div>
       )}
 
-      {/* Selected Files List */}
       {selectedFiles.length > 0 && (
         <div className="space-y-2">
           <h4 className="font-medium text-gray-700">
-            Selected Files ({selectedFiles.length}/{maxFiles})
+            Selected Files ({selectedFiles.length})
           </h4>
           {selectedFiles.map((file, index) => (
             <div

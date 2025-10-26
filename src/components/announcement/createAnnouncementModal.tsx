@@ -33,16 +33,45 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
 
     try {
       const scheduleDate = isScheduled && scheduleAt ? new Date(scheduleAt).toISOString() : null;
-
-      const res = await createAnnouncementByCourseIdAPI(
-        courseId,
-        title.trim(),
-        description.trim(),
-        scheduleDate
-      );
+      const descToSend = (description || "").trim();
+      let res;
+      try {
+        res = await createAnnouncementByCourseIdAPI(
+          courseId,
+          title.trim(),
+          descToSend,
+          scheduleDate
+        );
+      } catch (err: any) {
+        const msg = err?.response?.data?.message ?? err?.response?.data?.error ?? err?.message ?? "";
+        if (typeof msg === "string" && msg.toLowerCase().includes("description")) {
+          try {
+            res = await createAnnouncementByCourseIdAPI(
+              courseId,
+              title.trim(),
+              null as any,
+              scheduleDate
+            );
+          } catch (err2: any) {
+            throw err2;
+          }
+        } else {
+          throw err;
+        }
+      }
 
       const announcementId = res.data?.announcement?.id;
       if (!announcementId) throw new Error("Missing announcementId");
+      // const announcementId =
+      //   res?.data?.announcement?.id;
+
+      // if (!announcementId) {
+      //   // show server response to help debugging instead of throwing generic error
+      //   const payload = res?.data ? JSON.stringify(res.data, null, 2) : "no response body";
+      //   setError(`Missing announcementId in server response:\n${payload}`);
+      //   setIsSubmitting(false);
+      //   return;
+      // }
 
       if (selectedFiles.length > 0) {
         await uploadAnnouncementFileAPI(courseId, announcementId, selectedFiles);
@@ -56,8 +85,7 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
     }
   };
 
-  const canSubmit =
-    title.trim() && description.trim() && courseId && (!isScheduled || scheduleAt) && !isSubmitting;
+  const canSubmit = title.trim() && courseId && (!isScheduled || scheduleAt) && !isSubmitting;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
@@ -108,7 +136,6 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isSubmitting}
-                required
               />
             </div>
             <div>

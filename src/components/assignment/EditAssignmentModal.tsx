@@ -82,13 +82,24 @@ export default function EditAssignmentModal({
 
     const canSubmit = useMemo(() => {
         const hasTitle = title.trim().length > 0;
-        const hasDesc = descriptionHtml.trim().length > 0;
         const hasValidDeliv =
             deliverables.length > 0 &&
             deliverables.every((d) => d.name.trim() && d.requiredTypes.length > 0);
         const hasDates = dueAt && endAt;
-        return hasTitle && hasDesc && hasValidDeliv && !!hasDates && !submitting;
-    }, [title, descriptionHtml, deliverables, dueAt, endAt, submitting]);
+        let datesValid = false;
+        if (hasDates) {
+            const dueTs = new Date(dueAt!).getTime();
+            const endTs = new Date(endAt!).getTime();
+            const nowTs = Date.now();
+            datesValid =
+                !isNaN(dueTs) &&
+                !isNaN(endTs) &&
+                dueTs >= nowTs &&
+                endTs >= nowTs &&
+                endTs >= dueTs;
+        }
+        return hasTitle && hasValidDeliv && !!hasDates && !submitting;
+    }, [title, deliverables, dueAt, endAt, submitting]);
 
     const patchDeliverable = (id: string, patch: Partial<Deliverable>) => {
         setDeliverables((prev) =>
@@ -129,7 +140,7 @@ export default function EditAssignmentModal({
             const payload = {
                 assignmentId,
                 name: title,
-                description: descriptionHtml,
+                description: (descriptionHtml || "").trim() === "" ? null : (descriptionHtml || "").trim(),
                 endDate: endAt,
                 dueDate: dueAt,
                 schedule: scheduleAt || null,
@@ -144,11 +155,6 @@ export default function EditAssignmentModal({
                                     case "XLSX": return EXTENSION_TO_MIME["xlsx"];
                                     case "PPTX": return EXTENSION_TO_MIME["pptx"];
                                     case "ZIP": return EXTENSION_TO_MIME["zip"];
-                                    // case "TXT": return EXTENSION_TO_MIME["txt"];
-                                    // case "CSV": return EXTENSION_TO_MIME["csv"];
-                                    // case "PNG": return EXTENSION_TO_MIME["png"];
-                                    // case "JPG": return EXTENSION_TO_MIME["jpg"];
-                                    // case "JPEG": return EXTENSION_TO_MIME["jpeg"];
                                     default: return String(t).toLowerCase();
                                 }
                             })
@@ -218,7 +224,7 @@ export default function EditAssignmentModal({
                                 {/* Description */}
                                 <div>
                                     <label className="block font-medium mb-1">
-                                        Description <span className="text-red-500">*</span>
+                                        Description
                                     </label>
                                     <textarea
                                         value={descriptionHtml}
@@ -276,8 +282,6 @@ export default function EditAssignmentModal({
                                 {/* File Upload */}
                                 <FileUpload
                                     onFilesChange={setSelectedFiles}
-                                    maxFiles={5}
-                                    maxFileSize={10}
                                     acceptedTypes={["image/*", "application/pdf", ".doc", ".docx", ".txt"]}
                                     disabled={submitting}
                                 />
@@ -318,6 +322,9 @@ export default function EditAssignmentModal({
                                             onChange={(e) => setDueAt(e.target.value)}
                                             className="w-full rounded border border-gray-300 px-3 py-2"
                                         />
+                                        {dueAt && new Date(dueAt).getTime() < Date.now() && (
+                                            <p className="text-md text-red-500 mt-1">Due date cannot be before now</p>
+                                        )}
                                     </div>
 
                                     <div>
@@ -330,6 +337,12 @@ export default function EditAssignmentModal({
                                             onChange={(e) => setEndAt(e.target.value)}
                                             className="w-full rounded border border-gray-300 px-3 py-2"
                                         />
+                                        {endAt && new Date(endAt).getTime() < Date.now() && (
+                                            <p className="text-md text-red-500 mt-1">End date cannot be before now</p>
+                                        )}
+                                        {dueAt && endAt && new Date(endAt).getTime() < new Date(dueAt).getTime() && (
+                                            <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
+                                        )}
                                     </div>
 
                                     <div>
