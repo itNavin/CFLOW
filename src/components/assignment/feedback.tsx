@@ -342,7 +342,11 @@ export default function GiveFeedbackLecturer({
                 <label className="font-semibold">Status:</label>
                 <select
                   value={newStatus}
-                  onChange={e => setNewStatus(e.target.value)}
+                  onChange={e => {
+                    const v = e.target.value;
+                    setNewStatus(v);
+                    if (v === "APPROVED") setNewDueDate("");
+                  }}
                   className="ml-2 border rounded px-2 py-1"
                 >
                   <option value="APPROVED">APPROVED</option>
@@ -350,15 +354,17 @@ export default function GiveFeedbackLecturer({
                   <option value="REJECTED">NOT APPROVED</option>
                 </select>
               </div>
-              <div>
-                <label className="font-semibold">Set new due date:</label>
-                <input
-                  type="date"
-                  value={newDueDate}
-                  onChange={e => setNewDueDate(e.target.value)}
-                  className="ml-2 border rounded px-2 py-1"
-                />
-              </div>
+              {newStatus !== "FINAL" && newStatus !== "APPROVED" && (
+                <div>
+                  <label className="font-semibold">Set new due date:</label>
+                  <input
+                    type="date"
+                    value={newDueDate}
+                    onChange={e => setNewDueDate(e.target.value)}
+                    className="ml-2 border rounded px-2"
+                  />
+                </div>
+              )}
             </div>
 
             {submitError && <div className="text-red-600 text-sm mt-2">{submitError}</div>}
