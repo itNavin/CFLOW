@@ -9,7 +9,7 @@ import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
 
 export type AssignmentPayload = {
   title: string;
-  descriptionHtml: string;
+  descriptionHtml: string | null;
   deliverables: Deliverable[];
   dueAt?: string;     // ISO
   endAt?: string;     // ISO
@@ -55,14 +55,27 @@ export default function AssignmentModal({
 
   const canSubmit = useMemo(() => {
     const hasTitle = title.trim().length > 0;
-    const hasDesc = descriptionHtml.trim().length > 0;
     const hasValidDeliv =
       deliverables.length > 0 &&
       deliverables.every(
         (d) => d.name.trim() && d.requiredTypes.length > 0
       );
     const hasDates = dueAt && endAt; // scheduleAt optional
-    return hasTitle && hasDesc && hasValidDeliv && !!hasDates && !submitting;
+
+    const nowTs = Date.now();
+    let datesValid = false;
+    if (hasDates) {
+      const dueTs = new Date(dueAt!).getTime();
+      const endTs = new Date(endAt!).getTime();
+      // both dates must be valid and not before now, and end must be >= due
+      datesValid =
+        !isNaN(dueTs) &&
+        !isNaN(endTs) &&
+        dueTs >= nowTs &&
+        endTs >= nowTs &&
+        endTs >= dueTs;
+    }
+    return hasTitle && hasValidDeliv && !!hasDates && !submitting;
   }, [title, descriptionHtml, deliverables, dueAt, endAt, submitting]);
 
   const patchDeliverable = (id: string, patch: Partial<Deliverable>) => {
@@ -84,17 +97,30 @@ export default function AssignmentModal({
       const scheduleValue = scheduleAt && scheduleAt.trim()
         ? scheduleAt
         : new Date().toISOString();
-      // Create assignment and get its id/courseId
-      const assignment = await onSubmit({
+      const descTrim = (descriptionHtml || "").trim();
+      const basePayload: any = {
         title,
-        descriptionHtml,
+        descriptionHtml: descTrim, // may be "" (empty)
         deliverables,
         dueAt,
         endAt,
         scheduleAt: scheduleValue,
-      });
+      };
 
-      // Upload attached files
+      let assignment: AssignmentSubmitResult | void;
+      try {
+        assignment = await onSubmit(basePayload);
+      } catch (err: any) {
+        const msg = err?.response?.data?.message || err?.message || String(err);
+        // If server complains about description, retry sending null
+        if (typeof msg === "string" && msg.toLowerCase().includes("description")) {
+          basePayload.descriptionHtml = null;
+          assignment = await onSubmit(basePayload);
+        } else {
+          throw err;
+        }
+      }
+
       if (selectedFiles.length > 0 && assignment?.id && assignment?.courseId) {
         for (const file of selectedFiles) {
           await uploadAssignmentFileAPI(assignment.courseId, assignment.id, file);
@@ -151,7 +177,7 @@ export default function AssignmentModal({
             {/* Description (simple) */}
             <div>
               <label className="block font-medium mb-1">
-                Description <span className="text-red-500">*</span>
+                Description
               </label>
               <textarea
                 value={descriptionHtml}
@@ -163,8 +189,6 @@ export default function AssignmentModal({
             </div>
             <FileUpload
               onFilesChange={setSelectedFiles}
-              maxFiles={5}
-              maxFileSize={10}
               acceptedTypes={["image/*", "application/pdf", ".doc", ".docx", ".txt"]}
             />
 
@@ -207,6 +231,9 @@ export default function AssignmentModal({
                   onChange={(e) => setDueAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
+                {dueAt && new Date(dueAt).getTime() < Date.now() && (
+                  <p className="text-md text-red-500 mt-1">Due date cannot be before today/time</p>
+                )}
               </div>
 
               <div>
@@ -219,6 +246,12 @@ export default function AssignmentModal({
                   onChange={(e) => setEndAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
+                {endAt && new Date(endAt).getTime() < Date.now() && (
+                 <p className="text-md text-red-500 mt-1">End date cannot be before today/time</p>
+                )}
+                {dueAt && endAt && new Date(endAt).getTime() < new Date(dueAt).getTime() && (
+                  <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
+                )}
               </div>
 
               <div>
