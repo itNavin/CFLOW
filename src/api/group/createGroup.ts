@@ -7,7 +7,7 @@ export const createGroupAPI = async (
   projectName: string,
   productName: string | null,
   company: string | null,
-  memberIds: { id: string; workRole: null }[], // <-- update this type
+  memberIds: { id: string; workRole: string | null }[],
   advisorIds: { id: string }[],
   coAdvisorIds: { id: string }[]
 ) => {

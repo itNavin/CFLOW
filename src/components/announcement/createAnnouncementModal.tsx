@@ -128,7 +128,7 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
             </div>
             <div>
               <label className="block font-medium mb-1">
-                Description <span className="text-red-500">*</span>
+                Description
               </label>
               <textarea
                 className="w-full border border-gray-300 rounded px-3 py-2 min-h-[120px] focus:outline-none focus:ring-2 focus:ring-[#326295]"

@@ -16,6 +16,7 @@ interface Member {
   studentId: string;
   name: string;
   courseMemberId: string;
+  workRole?: string | null;
 }
 
 interface Advisor {
@@ -68,7 +69,8 @@ export default function UpdateGroupModal({
     const initialMembers = group.members?.map(m => ({
       studentId: String(m.courseMember.user.id),
       name: m.courseMember.user.name,
-      courseMemberId: String(m.courseMember.id)
+      courseMemberId: String(m.courseMember.id),
+      workRole: String(m.workRole ?? "")
     })) || [];
     setMembers(initialMembers);
 
@@ -180,9 +182,13 @@ export default function UpdateGroupModal({
   const addMember = (m: Member) => {
     setMembers((prev) => {
       if (prev.find(mem => mem.studentId == m.studentId)) return prev;
-      return [...prev, m];
+      return [...prev, { ...m, workRole: m.workRole ?? "" }];
     });
     setQMember("");
+  };
+
+  const updateWorkRole = (courseMemberId: string, value: string) => {
+    setMembers((prev) => prev.map((mm) => mm.courseMemberId === courseMemberId ? { ...mm, workRole: value } : mm));
   };
 
   const removeMember = (studentIdToRemove: string) => {
@@ -210,7 +216,6 @@ export default function UpdateGroupModal({
     })();
   }, [group.courseId, propCourseProgram]);
 
-  // if prop provided, keep courseProgram updated
   useEffect(() => {
     if (propCourseProgram) setCourseProgram(propCourseProgram);
   }, [propCourseProgram]);
@@ -223,7 +228,10 @@ export default function UpdateGroupModal({
     try {
       setIsUpdating(true);
 
-      const memberIds = members.map(m => ({ id: m.courseMemberId }));
+      const memberIds = members.map(m => ({
+        id: m.courseMemberId,
+        workRole: isDSI ? (m.workRole && m.workRole.trim() !== "" ? m.workRole.trim() : null) : null
+      }));
       const advisorIds = extractAdvisorId(advisor);
       const coAdvisorIds = extractAdvisorId(coAdvisor);
 
@@ -321,14 +329,24 @@ export default function UpdateGroupModal({
 
             <Field label="Members">
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-col space-y-2">
                   {members.map((m) => (
                     <Chip
                       key={m.courseMemberId}
                       label={`${m.studentId} ${m.name}`}
                       onRemove={() => !isUpdating && removeMember(m.studentId)}
                       disabled={isUpdating}
-                    />
+                    >
+                      {isDSI && (
+                        <input
+                          value={m.workRole ?? ""}
+                          onChange={(e) => updateWorkRole(m.courseMemberId, e.target.value)}
+                          placeholder="Work role"
+                          disabled={isUpdating}
+                          className="w-56 rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                        />
+                      )}
+                    </Chip>
                   ))}
                 </div>
                 <div className="relative">
@@ -470,28 +488,33 @@ export default function UpdateGroupModal({
 }
 
 function Chip({
-  label,
-  onRemove,
-  disabled = false,
-}: {
-  label: string;
-  onRemove: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className={`inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm ${disabled ? 'opacity-50' : ''}`}>
-      {label}
-      <button
-        type="button"
-        onClick={(e) => { e.stopPropagation(); onRemove(); }}
-        onMouseDown={(e) => e.stopPropagation()}
-        disabled={disabled}
-        className="rounded-full p-0.5 hover:bg-gray-200"
-      >
-        <X className="w-3.5 h-3.5 text-gray-700" />
-      </button>
-    </div>
-  );
+   label,
+   children,
+   onRemove,
+   disabled = false,
+ }: {
+   label: string;
+   children?: React.ReactNode;
+   onRemove: () => void;
+   disabled?: boolean;
+ }) {
+   return (
+     <div className={`flex items-center justify-between w-full gap-3 rounded-full bg-gray-100 px-3 py-2 text-sm ${disabled ? 'opacity-50' : ''}`}>
+       <div className="flex items-center gap-3">
+         <span className="font-medium">{label}</span>
+         {children}
+       </div>
+       <button
+         type="button"
+         onClick={(e) => { e.stopPropagation(); onRemove(); }}
+         onMouseDown={(e) => e.stopPropagation()}
+         disabled={disabled}
+         className="rounded-full p-0.5 hover:bg-gray-200"
+       >
+         <X className="w-3.5 h-3.5 text-red-700" />
+       </button>
+     </div>
+   );
 }
 
 
