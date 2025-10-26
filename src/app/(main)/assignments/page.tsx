@@ -354,7 +354,7 @@ function AssignmentPageContent() {
                       const payload = {
                         courseId,
                         name: data.title,
-                        description: data.descriptionHtml,
+                        description: data.descriptionHtml ?? "",
                         endDate: data.endAt ?? "",
                         schedule: data.scheduleAt ?? null,
                         dueDate: data.dueAt ?? "",
