@@ -112,7 +112,11 @@ function GroupTabContent() {
     console.log("openCreate changed:", openCreate);
   }, [openCreate]);
 
-  const handleDownloadAll = () => {
+  const handleDownloadAll = (idsToInclude?: string[]) => {
+    const source = Array.isArray(idsToInclude) && idsToInclude.length
+      ? group.filter((g) => idsToInclude.includes(g.id))
+      : group.slice();
+
     const pageTitle = `Student Group Data`;
 
     const infoRows = [
@@ -126,10 +130,14 @@ function GroupTabContent() {
     const formatMember = (m: any, idx: number) => {
       const sid = String(m?.courseMember?.user?.id ?? "");
       const nm = fullNameUpper(m?.courseMember?.user);
-      return `${idx + 1}. ${sid} ${nm}`.trim();
+      const role =
+        course?.program === "DSI" && m?.workRole
+          ? ` (${String(m.workRole)})`
+          : "";
+      return `${idx + 1}. ${sid} ${nm}${role}`.trim();
     };
 
-    const maxMembers = group.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
+    const maxMembers = source.reduce((mx, g) => Math.max(mx, g.members?.length ?? 0), 0);
 
     const showProduct = course?.program !== "DSI";
     const showCompany = course?.program !== "CS";
@@ -142,7 +150,7 @@ function GroupTabContent() {
     const tail = ["Advisor", "Co-Advisor"];
     const headerRow = [...front, ...membersHeader, ...tail];
 
-    const dataRows = group.map((g) => {
+    const dataRows = source.map((g) => {
       const members = g.members ?? [];
       const memberCells = Array.from({ length: maxMembers }, (_, i) =>
         members[i] ? formatMember(members[i], i) : ""
@@ -165,7 +173,6 @@ function GroupTabContent() {
       headerRow,
       ...dataRows
     ];
-
     const ws = XLSX.utils.aoa_to_sheet(excelData);
 
     const totalCols = headerRow.length;
@@ -229,7 +236,7 @@ function GroupTabContent() {
       }
     });
 
-    const today = new Date().toISOString().slice(0, 10); 
+    const today = new Date().toISOString().slice(0, 10);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Groups");
     XLSX.writeFile(wb, `Course_${course?.name ?? "Unknown"}_Groups_Data_${today}.xlsx`);
@@ -247,6 +254,9 @@ function GroupTabContent() {
 
     return String(maxNo + 1).padStart(4, '0');
   }, [group]);
+
+  const showProduct = course?.program !== "DSI";
+  const showCompany = course?.program !== "CS";
 
   const handleDeleteGroup = async (groupId: string) => {
     if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) return;
@@ -279,7 +289,7 @@ function GroupTabContent() {
           </button>
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
-            onClick={handleDownloadAll}
+            onClick={() => handleDownloadAll(filtered.map((g) => g.id))}
           >
             <Download className="w-4 h-4" />
             Download
@@ -333,10 +343,19 @@ function GroupTabContent() {
                   <dt className="text-gray-900 text-xl">Project Title :</dt>
                   <dd className="text-xl">{data.projectName}</dd>
                 </div>
-                <div className="grid grid-cols-[110px_1fr]">
-                  <dt className="text-gray-900 text-xl">Product Title :</dt>
-                  <dd className="text-xl">{data.productName}</dd>
-                </div>
+                {showProduct ? (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <dt className="text-gray-900 text-xl">Product Title :</dt>
+                    <dd className="text-xl">{data.productName ?? "—"}</dd>
+                  </div>
+                ) : null}
+
+                {showCompany ? (
+                  <div className="grid grid-cols-[110px_1fr]">
+                    <dt className="text-gray-900 text-xl">Company :</dt>
+                    <dd className="text-xl">{data.company ?? "—"}</dd>
+                  </div>
+                ) : null}
 
                 <div className="grid grid-cols-[110px_1fr]">
                   <dt className="text-gray-900 text-xl">Member :</dt>
@@ -356,6 +375,11 @@ function GroupTabContent() {
                             <span className="text-gray-900 text-xl mr-2">
                               {members.courseMember.user.name}
                             </span>
+                            {course?.program === "DSI" && (
+                              <span className="text-gray-900 text-xl mr-2">
+                                ({members.workRole})
+                              </span>
+                            )}
                           </li>
                         ))}
                     </ol>

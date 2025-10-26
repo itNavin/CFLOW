@@ -14,6 +14,7 @@ interface Member {
   studentId: string;
   name: string;
   courseMemberId: string;
+  workRole?: string | null;
 }
 
 interface Advisor {
@@ -171,9 +172,13 @@ export default function CreateGroupModal({
   const addMember = (m: Member) => {
     setMembers((prev) => {
       if (prev.find((mem) => mem.studentId === m.studentId)) return prev;
-      return [...prev, m];
+      return [...prev, { ...m, workRole: m.workRole ?? "" }];
     });
     setQMember("");
+  };
+
+  const updateWorkRole = (courseMemberId: string, value: string) => {
+    setMembers((prev) => prev.map((mm) => mm.courseMemberId === courseMemberId ? { ...mm, workRole: value } : mm));
   };
 
   const removeMember = (studentIdToRemove: string) => {
@@ -351,14 +356,24 @@ export default function CreateGroupModal({
 
             <Field label="Members">
               <div className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
+                <div className="flex flex-col space-y-2">
                   {members.map((m) => (
                     <Chip
                       key={m.courseMemberId}
                       label={`${m.studentId} ${m.name}`}
                       onRemove={() => !isCreating && removeMember(m.studentId)}
                       disabled={isCreating}
-                    />
+                    >
+                      {isDSI && (
+                        <input
+                          value={m.workRole ?? ""}
+                          onChange={(e) => updateWorkRole(m.courseMemberId, e.target.value)}
+                          placeholder="Work role"
+                          disabled={isCreating}
+                          className="w-56 rounded border px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-[#326295]"
+                        />
+                      )}
+                    </Chip>
                   ))}
                 </div>
                 <div className="relative">
@@ -492,19 +507,23 @@ export default function CreateGroupModal({
 
 function Chip({
   label,
+  children,
   onRemove,
   disabled = false,
 }: {
   label: string;
+  children?: React.ReactNode;
   onRemove: () => void;
   disabled?: boolean;
 }) {
   return (
     <div
-      className={`inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm ${disabled ? "opacity-50" : ""
-        }`}
+      className={`flex items-center justify-between w-full gap-3 rounded-full bg-gray-100 px-3 py-2 text-sm ${disabled ? 'opacity-50' : ''}`}
     >
-      {label}
+      <div className="flex items-center gap-3">
+        <span className="font-medium">{label}</span>
+        {children}
+      </div>
       <button
         type="button"
         onClick={(e) => {
@@ -515,7 +534,7 @@ function Chip({
         disabled={disabled}
         className="rounded-full p-0.5 hover:bg-gray-200"
       >
-        <X className="w-3.5 h-3.5 text-gray-700" />
+        <X className="w-3.5 h-3.5 text-red-700 cursor-pointer" />
       </button>
     </div>
   );

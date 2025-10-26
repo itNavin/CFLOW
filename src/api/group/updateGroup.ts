@@ -8,7 +8,7 @@ export const updateGroupAPI = async (
   projectName: string,
   productName: string | null,
   company: string | null,
-  memberIds: { id: string }[],
+  memberIds: { id: string; workRole: string | null }[],
   advisorIds: { id: string }[],
   coAdvisorIds: { id: string }[]
 ) => {
