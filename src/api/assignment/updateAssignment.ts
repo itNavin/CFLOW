@@ -9,22 +9,24 @@ type UpdateDeliverablePayload = {
 export const updateAssignmentAPI = async (
   assignmentId: string,
   name: string,
-  description: string,
-  endDate: string,
-  dueDate: string,
-  schedule: string | null,
-  deliverables: UpdateDeliverablePayload[], 
-  keepUrls: string[],
-  files: File | null
+  description?: string | null,
+  endDate?: string,
+  dueDate?: string,
+  schedule?: string | null,
+  deliverables?: UpdateDeliverablePayload[], 
+  keepUrls?: string[],
+  files?: File | null
 ) => {
   const form = new FormData();
 
   form.append("assignmentId", assignmentId);
   form.append("name", name);
-  form.append("description", description);
-  form.append("endDate", endDate);
-  form.append("dueDate", dueDate);
-  if (schedule) form.append("schedule", schedule);
+  if (typeof description !== "undefined") {
+    form.append("description", description === null ? "null" : description);
+  }
+  if (typeof endDate !== "undefined") form.append("endDate", endDate ?? "");
+  if (typeof dueDate !== "undefined") form.append("dueDate", dueDate ?? "");
+  if (typeof schedule !== "undefined" && schedule !== null) form.append("schedule", schedule);
 
   form.append("deliverables", JSON.stringify(deliverables));
   if (keepUrls) form.append("keepUrls", JSON.stringify(keepUrls));

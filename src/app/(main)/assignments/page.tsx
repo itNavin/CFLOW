@@ -409,7 +409,15 @@ function AssignmentPageContent() {
                     : [];
 
                   const name = keepValue(data.title ?? data.name, prev.name);
-                  const description = keepValue(data.description, prev.description);
+                  let description: string | undefined;
+                  if (Object.prototype.hasOwnProperty.call(data, "description")) {
+                    description =
+                      typeof data.description === "string"
+                        ? data.description
+                        : String(data.description ?? "");
+                  } else {
+                    description = prev.description;
+                  }
                   const endDate = keepValue(data.endDate, prev.endDate);
                   const dueDate = keepValue(data.dueDate, prev.dueDate);
                   const schedule = keepValue(data.schedule, prev.schedule);
@@ -417,7 +425,7 @@ function AssignmentPageContent() {
                     ? data.deliverables
                     : (prev as any).deliverables ?? [];
 
-                    console.log("Deliverables to send:", deliverables);
+                  console.log("Deliverables to send:", deliverables);
 
 
                   if (data.files && Array.isArray(data.files) && data.files.length > 0) {

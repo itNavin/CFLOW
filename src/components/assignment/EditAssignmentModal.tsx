@@ -43,10 +43,35 @@ export default function EditAssignmentModal({
     const [dueAt, setDueAt] = useState("");
     const [endAt, setEndAt] = useState("");
     const [scheduleAt, setScheduleAt] = useState("");
+    const [originalDueIso, setOriginalDueIso] = useState<string | null>(null);
+    const [originalEndIso, setOriginalEndIso] = useState<string | null>(null);
+    const [originalScheduleIso, setOriginalScheduleIso] = useState<string | null>(null);
+    const [dueChanged, setDueChanged] = useState(false);
+    const [endChanged, setEndChanged] = useState(false);
+    const [scheduleChanged, setScheduleChanged] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [existingFiles, setExistingFiles] = useState<any[]>([]);
     const [keepFileIds, setKeepFileIds] = useState<string[]>([]);
+
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const isoToBangkokInput = (iso?: string | null) => {
+        if (!iso) return "";
+        const d = new Date(iso);
+        const thMs = d.getTime() + 7 * 3600 * 1000; // shift UTC -> Bangkok
+        const t = new Date(thMs);
+        return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
+    };
+    const bangkokInputToIso = (input?: string) => {
+        if (!input) return null;
+        const [date, time] = input.split("T");
+        if (!date || !time) return null;
+        const [y, m, d] = date.split("-").map(Number);
+        const [hh, mm] = time.split(":").map(Number);
+        // Treat input as Bangkok local -> compute UTC ms by subtracting +7h
+        const utcMs = Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0) - 7 * 3600 * 1000;
+        return new Date(utcMs).toISOString();
+    };
 
     useEffect(() => {
         if (!open || !assignmentId) return;
@@ -61,9 +86,15 @@ export default function EditAssignmentModal({
                         ? a.deliverables.map(toDeliverable)
                         : [{ id: "edit-0", name: "", requiredTypes: [] }]
                 );
-                setDueAt(a.dueDate ? a.dueDate.slice(0, 16) : "");
-                setEndAt(a.endDate ? a.endDate.slice(0, 16) : "");
-                setScheduleAt(a.schedule ? a.schedule.slice(0, 16) : "");
+                setDueAt(isoToBangkokInput(a.dueDate ?? null));
+                setEndAt(isoToBangkokInput(a.endDate ?? null));
+                setScheduleAt(isoToBangkokInput(a.schedule ?? null));
+                setOriginalDueIso(a.dueDate ?? null);
+                setOriginalEndIso(a.endDate ?? null);
+                setOriginalScheduleIso(a.schedule ?? null);
+                setDueChanged(false);
+                setEndChanged(false);
+                setScheduleChanged(false);
                 setExistingFiles(a.assignmentFiles ?? []);
                 setKeepFileIds((a.assignmentFiles ?? []).map((f: any) => f.id));
             })
@@ -85,11 +116,13 @@ export default function EditAssignmentModal({
         const hasValidDeliv =
             deliverables.length > 0 &&
             deliverables.every((d) => d.name.trim() && d.requiredTypes.length > 0);
-        const hasDates = dueAt && endAt;
+        const dueIso = bangkokInputToIso(dueAt);
+        const endIso = bangkokInputToIso(endAt);
+        const hasDates = !!dueIso && !!endIso;
         let datesValid = false;
         if (hasDates) {
-            const dueTs = new Date(dueAt!).getTime();
-            const endTs = new Date(endAt!).getTime();
+            const dueTs = dueIso ? new Date(dueIso).getTime() : NaN;
+            const endTs = endIso ? new Date(endIso).getTime() : NaN;
             const nowTs = Date.now();
             datesValid =
                 !isNaN(dueTs) &&
@@ -121,7 +154,6 @@ export default function EditAssignmentModal({
         if (!canSubmit) return;
         setSubmitting(true);
         try {
-            // Map keepUrls from existingFiles using keepFileIds
             const keepUrls = existingFiles
                 .filter((f) => keepFileIds.includes(f.id))
                 .map((f) => f.filepath);
@@ -140,10 +172,10 @@ export default function EditAssignmentModal({
             const payload = {
                 assignmentId,
                 name: title,
-                description: (descriptionHtml || "").trim() === "" ? null : (descriptionHtml || "").trim(),
-                endDate: endAt,
-                dueDate: dueAt,
-                schedule: scheduleAt || null,
+                description: (descriptionHtml ?? "").trim() === "" ? null : (descriptionHtml ?? "").trim(),
+                endDate: endChanged ? bangkokInputToIso(endAt) : originalEndIso,
+                dueDate: dueChanged ? bangkokInputToIso(dueAt) : originalDueIso,
+                schedule: scheduleChanged ? bangkokInputToIso(scheduleAt) : originalScheduleIso,
                 deliverables: deliverables.map((d) => ({
                     name: d.name,
                     allowedFileTypes: Array.from(new Set(
@@ -319,7 +351,7 @@ export default function EditAssignmentModal({
                                         <input
                                             type="datetime-local"
                                             value={dueAt}
-                                            onChange={(e) => setDueAt(e.target.value)}
+                                            onChange={(e) => { setDueAt(e.target.value); setDueChanged(true); }}
                                             className="w-full rounded border border-gray-300 px-3 py-2"
                                         />
                                         {dueAt && new Date(dueAt).getTime() < Date.now() && (
@@ -334,7 +366,7 @@ export default function EditAssignmentModal({
                                         <input
                                             type="datetime-local"
                                             value={endAt}
-                                            onChange={(e) => setEndAt(e.target.value)}
+                                            onChange={(e) => { setEndAt(e.target.value); setEndChanged(true); }}
                                             className="w-full rounded border border-gray-300 px-3 py-2"
                                         />
                                         {endAt && new Date(endAt).getTime() < Date.now() && (
@@ -350,7 +382,7 @@ export default function EditAssignmentModal({
                                         <input
                                             type="datetime-local"
                                             value={scheduleAt}
-                                            onChange={(e) => setScheduleAt(e.target.value)}
+                                            onChange={(e) => { setScheduleAt(e.target.value); setScheduleChanged(true); }}
                                             className="w-full rounded border border-gray-300 px-3 py-2"
                                         />
                                         <p className="text-xs text-gray-500 mt-1">Optional</p>
