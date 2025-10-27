@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Search, Plus, Download, Pencil, X } from "lucide-react";
+import { Search, Plus, Download, Pencil, X, Trash2 } from "lucide-react";
 import { getAllGroupAPI } from "@/api/group/getAllGroup";
 import { getGroup } from "@/types/api/group";
 import { User } from "@/types/api/user";
@@ -14,10 +14,12 @@ import * as XLSX from "xlsx-js-style";
 import { Course } from "@/types/api/course";
 import { getStaffCourse } from "@/types/api/course";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
-import { Trash2 } from "lucide-react";
 import { deleteGroupAPI } from "@/api/group/deleteGroup";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
 
 function GroupTabContent() {
+  const { showToast } = useToast();
   const courseId = useSearchParams().get("courseId") || "";
   const [error, setError] = useState<string | null>(null);
   const [group, setGroup] = useState<getGroup.Group[]>([]);
@@ -26,6 +28,14 @@ function GroupTabContent() {
   const [editTarget, setEditTarget] = useState<getGroup.Group | null>(null);
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<Course | null>(null);
+
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title?: string;
+    message?: string;
+    payload?: any;
+    loading?: boolean;
+  }>({ open: false });
 
   const fetchGroup = async () => {
     try {
@@ -59,10 +69,8 @@ function GroupTabContent() {
     try {
       if (!courseId) return;
       const response = await getStaffCourseAPI();
-      const found = response.data.course.find(c => c.id === courseId);
+      const found = response.data.course.find((c: any) => c.id === courseId);
       setCourse(found || null);
-
-      console.log("course", found);
     } catch (error) {
       console.error("Error fetching course info:", error);
       setCourse(null);
@@ -79,13 +87,13 @@ function GroupTabContent() {
 
     const base = !q
       ? group.slice()
-      : group.filter(g =>
-        [g.codeNumber, g.projectName, g.productName, g.company]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q)
-      );
+      : group.filter((g) =>
+          [g.codeNumber, g.projectName, g.productName, g.company]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+            .includes(q)
+        );
 
     base.sort((a, b) => {
       const aId = String(a.codeNumber ?? "").trim();
@@ -107,10 +115,6 @@ function GroupTabContent() {
     setOpenCreate(false);
     await fetchGroup();
   };
-
-  useEffect(() => {
-    console.log("openCreate changed:", openCreate);
-  }, [openCreate]);
 
   const handleDownloadAll = (idsToInclude?: string[]) => {
     const source = Array.isArray(idsToInclude) && idsToInclude.length
@@ -258,17 +262,30 @@ function GroupTabContent() {
   const showProduct = course?.program !== "DSI";
   const showCompany = course?.program !== "CS";
 
-  const handleDeleteGroup = async (groupId: string) => {
-    if (!confirm("Are you sure you want to delete this group? This action cannot be undone.")) return;
+  const openDeleteConfirm = (groupId: string, projectName?: string) => {
+    setConfirmState({
+      open: true,
+      title: "Delete group",
+      message: `Are you sure you want to delete group "${projectName ?? groupId}"? This action cannot be undone.`,
+      payload: groupId,
+      loading: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    setConfirmState((s) => ({ ...s, loading: true }));
     try {
-      setLoading(true);
+      const groupId = confirmState.payload;
+      if (!groupId) throw new Error("Missing group id");
       await deleteGroupAPI(groupId);
-      alert("Group deleted successfully!");
-      fetchGroup();
+      showToast({ variant: "success", message: "Group deleted successfully" });
+      await fetchGroup();
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || "Failed to delete group");
+      console.error(error);
+      const msg = error?.response?.data?.message || error?.message || "Failed to delete group";
+      showToast({ variant: "error", message: String(msg) });
     } finally {
-      setLoading(false);
+      setConfirmState({ open: false });
     }
   };
 
@@ -325,7 +342,7 @@ function GroupTabContent() {
                 <button
                   title="Delete"
                   className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50"
-                  onClick={() => handleDeleteGroup(data.id)}
+                  onClick={() => openDeleteConfirm(data.id, data.projectName ?? undefined)}
                   disabled={loading}
                 >
                   <Trash2 className="h-4 w-4" />
@@ -431,6 +448,16 @@ function GroupTabContent() {
           }}
         />
       )}
+
+      {/* Confirm modal for delete */}
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false })}
+        onConfirm={handleConfirmDelete}
+      />
     </section>
   );
 }

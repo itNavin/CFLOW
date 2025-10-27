@@ -10,6 +10,8 @@ import { getStdAssignmentDetailAPI } from "@/api/assignment/stdAssignmentDetail"
 import type { assignmentDetail } from "@/types/api/assignment";
 import { submitAssignmentFileAPI } from "@/api/assignment/submitAssignmentFile";
 import { changeFileName } from "@/util/fileName";
+import { useToast } from "@/components/toast";
+// ...existing code...
 
 type SubmitAssignmentProps = {
   data: getAllAssignments.getAssignmentWithSubmission | undefined;
@@ -32,6 +34,7 @@ const getLatestSubmission = (subs: any[] | undefined) => {
 
 export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignmentProps) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [role, setRole] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const isStudent = (role ?? "") === "student";
@@ -122,11 +125,15 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
       setSubmitSuccess(null);
 
       if (!assignmentId) {
-        setSubmitError("Missing assignmentId from URL.");
+        const msg = "Missing assignmentId from URL.";
+        setSubmitError(msg);
+        showToast({ variant: "error", message: msg });
         return;
       }
       if (!canSubmit) {
-        setSubmitError("You cannot submit while your latest status is SUBMITTED. Please wait for review.");
+        const msg = "You cannot submit while your latest status is SUBMITTED. Please wait for review.";
+        setSubmitError(msg);
+        showToast({ variant: "info", message: msg });
         return;
       }
 
@@ -163,19 +170,28 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
         setUploadingFiles(false);
         const failures = results.filter((r) => r.status === "rejected");
         if (failures.length > 0) {
-          setSubmitError(`Uploaded with ${failures.length} error(s).`);
+          const msg = `Uploaded with ${failures.length} error(s).`;
+          setSubmitError(msg);
+          showToast({ variant: "warning", message: msg });
+        } else {
+          const msg = res.message || "Submitted successfully.";
+          setSubmitSuccess(msg);
+          showToast({ variant: "success", message: msg });
         }
+      } else {
+        const msg = res.message || "Submitted successfully.";
+        setSubmitSuccess(msg);
+        showToast({ variant: "success", message: msg });
       }
 
-      setSubmitSuccess(res.message || "Submitted successfully.");
       setDrafts({});
 
       // tell parent to re-fetch and swap to the view
       onSubmitted?.();
-
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || "Failed to submit.";
       setSubmitError(msg);
+      showToast({ variant: "error", message: String(msg) });
       console.error("[handleSubmit] error:", e);
     } finally {
       setSubmitting(false);
@@ -205,16 +221,6 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
       )}
 
       {submitError && <div className="text-red-600 text-sm">{submitError}</div>}
-      {submitSuccess && (
-        <div className="text-green-700 text-sm">
-          {submitSuccess}
-          {submission && (
-            <span className="ml-2 text-gray-600">
-              (submission ID: {submission.id}, version {submission.version})
-            </span>
-          )}
-        </div>
-      )}
 
       {deliverables.length > 0 ? (
         deliverables.map((del) => {
@@ -301,4 +307,3 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
     </div>
   );
 }
-

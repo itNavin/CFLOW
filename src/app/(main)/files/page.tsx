@@ -11,6 +11,8 @@ import { getUserRole } from "@/util/cookies";
 import { isCanUpload } from "@/util/RoleHelper";
 import { downloadCourseFileAPI } from "@/api/file/downloadCourseFile";
 import { deleteCourseFileAPI } from "@/api/file/deleteCourseFile";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
 
 function formatUploadAt(iso: string, locale: string = "en-GB") {
   if (!iso) return "";
@@ -28,8 +30,15 @@ function formatUploadAt(iso: string, locale: string = "en-GB") {
 }
 
 function FilePageContent() {
+  const { showToast } = useToast();
   const role = getUserRole();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const [confirmState, setConfirmState] = React.useState<{
+    open: boolean;
+    file?: File.Files | null;
+    loading?: boolean;
+  }>({ open: false, file: null, loading: false });
 
   const [canUpload, setCanUpload] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -52,15 +61,15 @@ function FilePageContent() {
   const openMenu = (btn: HTMLButtonElement, idx: number) => {
     const rect = btn.getBoundingClientRect();
     const MENU_WIDTH = 180; // adjust as needed
-    const MENU_HEIGHT = 96; // ~2 items; adjust if you add more
+    const MENU_HEIGHT = 96;
     const GAP = 8;
 
     const spaceBelow = window.innerHeight - rect.bottom;
     const above = spaceBelow < MENU_HEIGHT + GAP;
 
     const x = Math.min(
-      Math.max(rect.right - MENU_WIDTH, 8), // keep inside left
-      window.innerWidth - MENU_WIDTH - 8   // keep inside right
+      Math.max(rect.right - MENU_WIDTH, 8),
+      window.innerWidth - MENU_WIDTH - 8 
     );
     const y = above ? rect.top - MENU_HEIGHT - GAP : rect.bottom + GAP;
 
@@ -68,7 +77,6 @@ function FilePageContent() {
     setMenuPos({ x, y, above });
   };
 
-  // Close on outside click / scroll / resize
   useEffect(() => {
     if (openIdx === null) return;
 
@@ -115,9 +123,11 @@ function FilePageContent() {
       setUploading(true);
       await uploadCourseFileAPI(courseId, Array.from(selectedFiles));
       await fetchFiles();
+      showToast({ variant: "success", message: "Files uploaded successfully." });
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Upload failed:", error);
+      showToast({ variant: "error", message: "Upload failed. Please try again." });
     } finally {
       setUploading(false);
     }
@@ -130,40 +140,21 @@ function FilePageContent() {
       if (url) {
         window.open(url, "_blank");
       } else {
-        alert("Download link not found.");
+        showToast({ variant: "error", message: "Download link not found." });
       }
       closeMenu();
     } catch (error: any) {
       closeMenu();
       if (error?.response?.status === 404) {
-        alert("File not found (404).");
+        showToast({ variant: "error", message: "File not found (404)." });
       } else {
-        alert("Failed to get download link.");
+        showToast({ variant: "error", message: "Failed to get download link." });
       }
     }
   };
 
-  const handleDelete = async (file: File.Files) => {
-    try {
-      if (!confirm(`Delete "${file.name}"? This cannot be undone.`)) return;
-      setDeletingFileId(file.id);
-
-      const res = await deleteCourseFileAPI(file.id);
-      setFiles((prev) => prev.filter((f) => f.id !== file.id));
-
-      alert((res as any).message || "File deleted.");
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
-        alert("File not found (404). It may have been already deleted.");
-      } else if (error?.response?.status === 403) {
-        alert("You do not have permission to delete this file.");
-      } else {
-        alert("Failed to delete the file.");
-      }
-    } finally {
-      setDeletingFileId(null);
-      closeMenu();
-    }
+  const handleDelete = (file: File.Files) => {
+    setConfirmState({ open: true, file, loading: false });
   };
 
   useEffect(() => {
@@ -197,7 +188,7 @@ function FilePageContent() {
                         if (url) {
                           window.open(url, "_blank");
                         } else {
-                          alert("Open link not found.");
+                          showToast({ variant: "error", message: "Open link not found." });
                         }
                       } catch (error) {
                         alert("Failed to get open link.");
@@ -245,7 +236,7 @@ function FilePageContent() {
           <button
             onClick={handleUploadClick}
             disabled={uploading}
-            className={`inline-flex items-center gap-3 rounded-full px-4 py-3 shadow-lg
+            className={`inline-flex items-center gap-3 rounded-full px-4 py-3 shadow-lg cursor-pointer
               bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg font-medium
               hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
               active:scale-[0.98] transition ${uploading ? "opacity-70 cursor-not-allowed" : ""}`}
@@ -283,7 +274,7 @@ function FilePageContent() {
                     if (url) {
                       window.open(url, "_blank");
                     } else {
-                      alert("Open link not found.");
+                      showToast({ variant: "error", message: "Open link not found." });
                     }
                   } catch (error) {
                     alert("Failed to get open link.");
@@ -312,23 +303,20 @@ function FilePageContent() {
                 Download
               </button>
 
-              {/* Delete button */}
               {(role === "staff" || role === "lecturer" || role === "SUPER_ADMIN") && (
                 <button
-                  onClick={async (e) => {
+                  onClick={(e) => {
                     e.stopPropagation();
-                    await handleDelete(files[openIdx]);
+                    closeMenu();
+                    setConfirmState({ open: true, file: files[openIdx], loading: false });
                   }}
-                  disabled={deletingFileId === files[openIdx].id}
                   role="menuitem"
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors
-              ${deletingFileId === files[openIdx].id
-                      ? "text-gray-400 cursor-not-allowed"
-                      : "text-red-600 hover:bg-red-50"}`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-red-600 hover:bg-red-50`}
+                  disabled={confirmState.loading || deletingFileId === files[openIdx].id}
                   type="button"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {deletingFileId === files[openIdx].id ? "Deleting..." : "Delete"}
+                  Delete
                 </button>
               )}
             </div>
@@ -336,6 +324,36 @@ function FilePageContent() {
           document.body
         )
       }
+
+      <ConfirmModal
+        open={confirmState.open}
+        title="Delete file"
+        message={`Are you sure you want to delete "${confirmState.file?.name ?? "this file"}"? This action cannot be undone.`}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false, file: null, loading: false })}
+        onConfirm={async () => {
+          if (!confirmState.file) return setConfirmState({ open: false, file: null, loading: false });
+          setConfirmState((s) => ({ ...s, loading: true }));
+          try {
+            setDeletingFileId(confirmState.file.id);
+            const res = await deleteCourseFileAPI(confirmState.file.id);
+            setFiles((prev) => prev.filter((f) => f.id !== confirmState.file!.id));
+            showToast({ variant: "success", message: (res as any).message || "File deleted." });
+          } catch (error: any) {
+            if (error?.response?.status === 404) {
+              showToast({ variant: "error", message: "File not found (404). It may have been already deleted." });
+            } else if (error?.response?.status === 403) {
+              showToast({ variant: "error", message: "You do not have permission to delete this file." });
+            } else {
+              showToast({ variant: "error", message: "Failed to delete the file." });
+            }
+          } finally {
+            setDeletingFileId(null);
+            setConfirmState({ open: false, file: null, loading: false });
+            closeMenu();
+          }
+        }}
+      />
     </main>
   );
 }

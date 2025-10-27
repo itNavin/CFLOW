@@ -10,6 +10,9 @@ import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 import { getStaffNotInCourseAPI } from "@/api/courseMember/getStaffNotInCourse";
 import { create } from "domain";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
+import { title } from "process";
 
 function AdminTabContent() {
   const searchParams = useSearchParams();
@@ -22,8 +25,72 @@ function AdminTabContent() {
   const [deletingStaff, setDeletingStaff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openCreate, setOpenCreate] = useState(false);
+  const { showToast } = useToast();
   const courseId = searchParams.get("courseId") || "";
   const [staffNotInCourse, setStaffNotInCourse] = useState<getStaffNotInCourse.staffNotInCourse[]>([]);
+
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title?: string;
+    message?: string;
+    action?: "deleteSingle" | "deleteSelected";
+    payload?: any;
+    loading?: boolean;
+  }>({ open: false });
+
+  const openDeleteSingleConfirm = (staff: getStaffMember.staffMember) => {
+    const staffName = staff.user?.name || staff.user?.id || "-";
+    setConfirmState({
+      open: true,
+      title: "Remove staff",
+      message: `Are you sure you want to remove ${staffName} from this course?`,
+      action: "deleteSingle",
+      payload: staff,
+      loading: false,
+    });
+  };
+  const openDeleteSelectedConfirm = (ids: string[]) => {
+    setConfirmState({
+      open: true,
+      title: "Remove selected staff",
+      message: `Are you sure you want to remove ${ids.length} staff member(s) from this course?`,
+      action: "deleteSelected",
+      payload: ids,
+      loading: false,
+    });
+  };
+
+  const handleConfirm = async () => {
+    if (!confirmState.action) return setConfirmState({ open: false });
+    setConfirmState((s) => ({ ...s, loading: true }));
+    try {
+      if (confirmState.action === "deleteSingle") {
+        const staff: getStaffMember.staffMember = confirmState.payload;
+        const resp = await deleteCourseMemberAPI(staff.id);
+        if (resp.data?.result?.deletedIds?.includes(staff.id)) {
+          showToast({ variant: "success", message: `Removed ${staff.user?.name || "-"} from the course.` });
+          await fetchStaff();
+        } else {
+          showToast({ variant: "error", message: `Failed to remove ${staff.user?.name || "-"}.` });
+        }
+      } else if (confirmState.action === "deleteSelected") {
+        const ids: string[] = confirmState.payload || [];
+        const resp = await deleteCourseMemberAPI(ids);
+        if (resp.data?.result?.deletedIds?.length > 0) {
+          showToast({ variant: "success", message: `Removed ${resp.data.result.deletedIds.length} staff member(s).` });
+          setSelected({});
+          await fetchStaff();
+        } else {
+          showToast({ variant: "error", message: "Failed to remove selected staff members." });
+        }
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Delete failed";
+      showToast({ variant: "error", message: String(msg) });
+    } finally {
+      setConfirmState({ open: false });
+    }
+  };
 
   const fetchStaffNotInCourse = async () => {
     try {
@@ -31,9 +98,8 @@ function AdminTabContent() {
       if (!courseId) return;
       const response = await getStaffNotInCourseAPI(courseId);
       if (response.staff && Array.isArray(response.staff)) {
-        // Map staffNotInCourse to staffNotInCourse shape
         const mapped = response.staff.map((s: any) => ({
-          id: s.id, // or s.courseMemberId if available
+          id: s.id,
           name: s.name ?? s.user?.name ?? "",
           email: s.email ?? s.user?.email ?? "",
           role: s.role ?? s.user?.role ?? "",
@@ -79,52 +145,17 @@ function AdminTabContent() {
     }
   };
 
-  const deleteSingleStaff = async (staff: getStaffMember.staffMember) => {
-    try {
-      const staffName = staff.user?.name || staff.user?.id || "-";
-      if (!confirm(`Are you sure you want to remove ${staffName} from this course?`)) {
-        return;
-      }
-      setDeletingStaff(true);
-      const response = await deleteCourseMemberAPI(staff.id);
-      if (response.data?.result?.deletedIds?.includes(staff.id)) {
-        alert(`Successfully removed ${staffName} from the course.`);
-        await fetchStaff();
-      } else {
-        alert(`Failed to remove ${staffName} from the course.`);
-      }
-    } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || "Failed to remove staff from course");
-    } finally {
-      setDeletingStaff(false);
-    }
+  const deleteSingleStaff = (staff: getStaffMember.staffMember) => {
+    openDeleteSingleConfirm(staff);
   };
 
-  // Delete selected staff members
-  const deleteSelectedStaff = async () => {
-    try {
-      const selectedIds = Object.keys(selected).filter(id => selected[id]);
-      if (selectedIds.length === 0) {
-        alert("Please select staff to delete");
-        return;
-      }
-      if (!confirm(`Are you sure you want to remove ${selectedIds.length} staff member(s) from this course?`)) {
-        return;
-      }
-      setDeletingStaff(true);
-      const response = await deleteCourseMemberAPI(selectedIds);
-      if (response.data?.result?.deletedIds?.length > 0) {
-        alert(`Successfully removed ${response.data.result.deletedIds.length} staff member(s).`);
-        setSelected({});
-        await fetchStaff();
-      } else {
-        alert("Failed to remove selected staff members.");
-      }
-    } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || "Failed to remove staff from course");
-    } finally {
-      setDeletingStaff(false);
+  const deleteSelectedStaff = () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 0) {
+      showToast({ variant: "info", message: "Please select staff to delete" });
+      return;
     }
+    openDeleteSelectedConfirm(selectedIds);
   };
 
   // Add staff to course
@@ -135,14 +166,15 @@ function AdminTabContent() {
       const staffIds = selectedStaff.map(staff => staff.user?.id);
       const response = await addCourseMemberAPI(courseId, staffIds);
       if (response.status === 200 || response.status === 201) {
-        alert(`Successfully added ${staffIds.length} staff member(s) to the course.`);
+        showToast({ variant: "success", message: `Added ${staffIds.length} staff member(s) to the course.` });
         await fetchStaff();
         setOpenCreate(false);
       } else {
         throw new Error(`API returned status ${response.status}`);
       }
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || "Failed to add staff to course");
+      const msg = error?.response?.data?.message || error?.message || "Failed to add staff to course";
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setAddingStaff(false);
     }
@@ -198,7 +230,7 @@ function AdminTabContent() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div className="flex gap-3">
           <button
-            className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
+            className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition cursor-pointer"
             onClick={() => setOpenCreate(true)}
             disabled={addingStaff || deletingStaff}
           >
@@ -275,7 +307,7 @@ function AdminTabContent() {
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
                     <button
                       title="Delete"
-                      className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50"
+                      className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 cursor-pointer"
                       onClick={() => deleteSingleStaff(r)}
                       disabled={loading}
                     >
@@ -301,7 +333,7 @@ function AdminTabContent() {
         {selectedCount > 0 && (
           <button
             title="Delete"
-            className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4"
+            className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4 cursor-pointer"
             onClick={deleteSelectedStaff}
             disabled={loading}
           >
@@ -332,11 +364,19 @@ function AdminTabContent() {
           onSave={addStaffToCourse}
         />
       )}
+
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false })}
+        onConfirm={handleConfirm}
+      />
     </section>
   );
 }
 
-/* ------------------------- Add Staff Modal ------------------------- */
 function AddStaffModal({
   availableStaff,
   loading,

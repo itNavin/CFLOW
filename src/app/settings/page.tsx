@@ -13,6 +13,7 @@ import { fetchStudentDataAPI } from "@/api/setting/fetchStudentData";
 import { fetchStudentData } from "@/types/api/setting";
 import { updateStfAndLecApi } from "@/api/setting/updateStfAndLec";
 import { updateUserStatusApi } from "@/api/setting/updateUserStatus";
+import { ToastProvider, useToast } from "@/components/toast";
 
 function cx(...xs: Array<string | false | null | undefined>) {
   return xs.filter(Boolean).join(" ");
@@ -32,6 +33,7 @@ type SortDir = "asc" | "desc";
 
 function SettingsPageContent() {
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   const [users, setUsers] = useState<getAllUsers.Response["users"]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,14 +66,11 @@ function SettingsPageContent() {
   const [studentError, setStudentError] = useState<string | null>(null);
   const [studentData, setStudentData] = useState<fetchStudentData.data[]>([]);
 
-  // selection state (stores selected user ids)
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED">("ACTIVE");
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const selectedUsers = useMemo(() => users.filter((u) => selected.has(u.id)), [users, selected]);
 
-
-  // edit modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
@@ -81,9 +80,7 @@ function SettingsPageContent() {
   const [editRole, setEditRole] = useState<
     "student" | "staff" | "lecturer" | "advisor" | "admin" | "super_admin" | "solar_lecturer"
   >("staff");
-  // whether current edit modal is for a student (read-only for fields above status)
   const [editIsStudent, setEditIsStudent] = useState(false);
-  // status state (editable for all roles)
   const [editStatus, setEditStatus] = useState<string>("ACTIVE");
   const lockProgramRole = editIsStudent || ["staff", "lecturer", "solar_lecturer"].includes(String(editRole).toLowerCase());
 
@@ -113,7 +110,6 @@ function SettingsPageContent() {
 
   const commonAllowedStatuses = useMemo(() => {
     if (selectedUsers.length === 0) return ["ACTIVE", "RESIGNED", "RETIRED", "GRADUATED"];
-    // start with first user's allowed set then intersect
     let common = new Set(allowedForRole(selectedUsers[0].role));
     for (let i = 1; i < selectedUsers.length; i++) {
       const s = new Set(allowedForRole(selectedUsers[i].role));
@@ -121,7 +117,7 @@ function SettingsPageContent() {
     }
     return Array.from(common);
   }, [selectedUsers]);
-  
+
   useEffect(() => {
     if (!commonAllowedStatuses.includes(bulkStatus)) {
       setBulkStatus((commonAllowedStatuses[0] ?? "ACTIVE") as "ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED");
@@ -167,12 +163,12 @@ function SettingsPageContent() {
           u.id?.toLowerCase().includes(text);
         const apiRoleTarget = mapUiToApi(role);
         const matchRole = role === "ALL" ? true : u.role.toLowerCase() === apiRoleTarget;
-        const matchProgram =
-          role === "STUDENT"
-            ? program === "ALL"
-              ? true
-              : (u.program || "").toLowerCase() === program.toLowerCase()
-            : true;
+        const roleUsesProgramFilter = role === "STUDENT" || role === "LECTURER";
+        const matchProgram = roleUsesProgramFilter
+          ? program === "ALL"
+            ? true
+            : String(u.program || "").toLowerCase() === program.toLowerCase()
+          : true;
         const matchCourse =
           !hasCourseField || course === "ALL"
             ? true
@@ -231,10 +227,8 @@ function SettingsPageContent() {
     setPage(1);
   }, [q, role, program, course, sortKey, sortDir]);
 
-  // derived: whether all items on current page are selected
   const isAllSelectedOnPage = pageItems.length > 0 && pageItems.every((u) => selected.has(u.id));
 
-  // toggle a single row
   const toggleRow = (id: string) => {
     setSelected((prev) => {
       const s = new Set(prev);
@@ -244,7 +238,6 @@ function SettingsPageContent() {
     });
   };
 
-  // toggle select all on current page
   const toggleSelectAll = () => {
     setSelected((prev) => {
       const s = new Set(prev);
@@ -258,7 +251,6 @@ function SettingsPageContent() {
     });
   };
 
-  // prune selections when users list changes
   useEffect(() => {
     setSelected((prev) => {
       const s = new Set<string>();
@@ -281,17 +273,18 @@ function SettingsPageContent() {
       ) ||
       [".csv", ".xls", ".xlsx"].some((ext) => f.name.toLowerCase().endsWith(ext));
     if (!ok) {
-      alert("Please select a .csv, .xls, or .xlsx file.");
+      showToast({ variant: "error", message: "Please select a .csv, .xls, or .xlsx file." });
       e.target.value = "";
       return;
     }
     try {
       setUploading(true);
-      alert(`Add Students (stub): ${f.name}`);
+      showToast({ variant: "info", message: `Add Students (stub): ${f.name}` });
       e.target.value = "";
       await fetchUsers();
     } catch (err: any) {
-      alert(err?.response?.data?.message || err?.message || "Upload failed");
+      const msg = err?.response?.data?.message || err?.message || "Upload failed";
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setUploading(false);
     }
@@ -299,7 +292,7 @@ function SettingsPageContent() {
 
   const onCreate = async () => {
     if (!addName.trim() || !addEmail.trim()) {
-      alert("Please fill name and email");
+      showToast({ variant: "error", message: "Please fill name and email" });
       return;
     }
     try {
@@ -319,11 +312,12 @@ function SettingsPageContent() {
       setAddEmail("");
       setAddRole("STAFF");
       setAddProgram("CS");
+      showToast({ variant: "success", message: "User created" });
       await fetchUsers();
     } catch (e: any) {
       console.error("Create user error response:", e?.response || e);
-      const serverMsg = e?.response?.data || e?.response?.data?.message || e?.message;
-      alert(JSON.stringify(serverMsg, null, 2));
+      const serverMsg = e?.response?.data?.message || e?.message || "Create failed";
+      showToast({ variant: "error", message: String(serverMsg) });
     } finally {
       setCreating(false);
     }
@@ -380,9 +374,8 @@ function SettingsPageContent() {
 
   const onSaveEdit = async () => {
     if (!editUserId) return;
-    // if editing non-student, require name/email
     if (!editIsStudent && (!editName.trim() || !editEmail.trim())) {
-      alert("Please fill name and email");
+      showToast({ variant: "error", message: "Please fill name and email" });
       return;
     }
     try {
@@ -394,7 +387,7 @@ function SettingsPageContent() {
         } catch (apiErr: any) {
           console.error("Update staff/lecturer error:", apiErr?.response ?? apiErr);
           const msg = apiErr?.response?.data?.message || apiErr?.message || "Failed to update user";
-          alert(msg);
+          showToast({ variant: "error", message: String(msg) });
           return;
         }
       }
@@ -405,7 +398,7 @@ function SettingsPageContent() {
       } catch (statusErr: any) {
         console.error("Update status error:", statusErr?.response ?? statusErr);
         const msg = statusErr?.response?.data?.message || statusErr?.message || "Failed to update status";
-        alert(msg);
+        showToast({ variant: "error", message: String(msg) });
         return;
       }
 
@@ -413,7 +406,8 @@ function SettingsPageContent() {
       setEditUserId(null);
       await fetchUsers();
     } catch (err: any) {
-      alert(err?.response?.data?.message || err?.message || "Update failed");
+      const msg = err?.response?.data?.message || err?.message || "Update failed";
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setEditing(false);
     }
@@ -556,7 +550,7 @@ function SettingsPageContent() {
           {selected.size > 0 && (
             <div className="flex items-center justify-between gap-3 p-4 border-b bg-white">
               <div className="text-lg">{selected.size} selected</div>
-              
+
               <div className="flex items-center gap-2">
                 {/* If commonAllowedStatuses is empty, show notice and disable actions */}
                 {/* Cancel (clear selection) placed left of status chooser */}
@@ -577,7 +571,7 @@ function SettingsPageContent() {
                       onChange={(e) => {
                         const v = e.target.value as any;
                         if (!commonAllowedStatuses.includes(v)) {
-                          alert("Selected users do not allow this status. Pick another.");
+                          showToast({ variant: "error", message: "Selected users do not allow this status. Pick another." });
                           return;
                         }
                         setBulkStatus(v);
@@ -594,7 +588,7 @@ function SettingsPageContent() {
                       onClick={async () => {
                         if (selected.size === 0) return;
                         if (!commonAllowedStatuses.includes(bulkStatus)) {
-                          alert("Cannot apply this status to the selected users.");
+                          showToast({ variant: "error", message: "Cannot apply this status to the selected users." });
                           return;
                         }
                         if (!confirm(`Apply status "${bulkStatus}" to ${selected.size} users?`)) return;
@@ -604,7 +598,8 @@ function SettingsPageContent() {
                           await fetchUsers();
                           setSelected(new Set());
                         } catch (err: any) {
-                          alert(err?.response?.data?.message || err?.message || "Failed to update status");
+                          const msg = err?.response?.data?.message || err?.message || "Failed to update status";
+                          showToast({ variant: "error", message: String(msg) });
                         } finally {
                           setBulkUpdating(false);
                         }
@@ -961,9 +956,9 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading settings...</div>}>
-      <SettingsPageContent />
-    </Suspense>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading settings...</div>}>
+        <SettingsPageContent />
+      </Suspense>
   );
 }
 

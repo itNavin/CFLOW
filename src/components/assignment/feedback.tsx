@@ -9,6 +9,7 @@ import { Upload } from "lucide-react";
 import { changeFeedbackFileName } from "@/util/fileName";
 import { getProfileAPI } from "@/api/profile/getProfile";
 import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
+import { useToast } from "../toast";
 
 type Props = {
   courseId: string;
@@ -25,6 +26,7 @@ export default function GiveFeedbackLecturer({
   role,
   onFeedbackGiven,
 }: Props) {
+  const { showToast } = useToast();
   const [detail, setDetail] = useState<assignmentDetail.AssignmentLecStfDetail["assignment"] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,10 +125,11 @@ export default function GiveFeedbackLecturer({
         isoDueDate,
         newStatus
       );
-      console.log("API response:", feedbackRes);
       const feedbackId = feedbackRes.feedback?.id;
       if (!feedbackId) {
-        setSubmitError("Feedback ID not returned from server.");
+        const msg = "Feedback ID not returned from server.";
+        setSubmitError(msg);
+        showToast({ variant: "error", message: msg });
         setSubmitting(false);
         return;
       }
@@ -155,16 +158,22 @@ export default function GiveFeedbackLecturer({
         const results = await Promise.allSettled(uploads);
         const failures = results.filter((r) => r.status === "rejected");
         if (failures.length > 0) {
-          setSubmitError(`Uploaded with ${failures.length} error(s).`);
+          const msg = `Uploaded with ${failures.length} error(s).`;
+          setSubmitError(msg);
+          showToast({ variant: "warning", message: msg });
         }
       }
 
-      setSubmitSuccess("Feedback submitted successfully.");
+      const successMsg = "Feedback submitted successfully.";
+      setSubmitSuccess(successMsg);
+      showToast({ variant: "success", message: successMsg });
       setComment("");
       setFiles({});
       onFeedbackGiven?.();
     } catch (e: any) {
-      setSubmitError(e?.response?.data?.message || e?.message || "Failed to submit feedback.");
+      const msg = e?.response?.data?.message || e?.message || "Failed to submit feedback.";
+      setSubmitError(msg);
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setSubmitting(false);
     }
@@ -181,7 +190,8 @@ export default function GiveFeedbackLecturer({
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      alert("Failed to download file.");
+      const msg = "Failed to download file.";
+      showToast({ variant: "error", message: msg });
     }
   }
 

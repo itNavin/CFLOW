@@ -84,9 +84,6 @@ function AssignmentDetailContent() {
     await Promise.all([fetchDetail(), fetchBase()]);
   }, [fetchDetail, fetchBase]);
 
-  // console.log("selectedGroup:", selectedGroup, "courseId:", courseId, "assignmentId:", assignmentId, "role:", role);
-
-
   return (
     <div>
       <AssignmentInformation
@@ -103,7 +100,7 @@ function AssignmentDetailContent() {
           courseId={courseId ?? ""}
           assignmentId={assignmentId ?? ""}
           groupId={selectedGroup}
-          onFeedbackGiven={() => { /* refresh or show message */ }}
+          onFeedbackGiven={handleSubmitted}
           role={role!}
         />
       )}
