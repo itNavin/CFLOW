@@ -11,9 +11,12 @@ import { getAdvisorNotInCourseAPI } from "@/api/courseMember/getAdvisorNotInCour
 import { addCourseMember } from "@/types/api/courseMember";
 import { addCourseMemberAPI } from "@/api/courseMember/addCourseMember";
 import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
 
 function AdvisorTabContent() {
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
 
   const [rows, setRows] = useState<any[]>([]);
   const [query, setQuery] = useState("");
@@ -28,6 +31,15 @@ function AdvisorTabContent() {
   const courseId = searchParams.get("courseId") || "";
   const [advisorsNotInCourse, setAdvisorsNotInCourse] = useState<any[]>([]);
 
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title?: string;
+    message?: string;
+    action?: "deleteSingle" | "deleteSelected";
+    payload?: any;
+    loading?: boolean;
+  }>({ open: false });
+
   const fetchAdvisorsNotInCourse = async () => {
     try {
       setLoadingAvailable(true);
@@ -41,7 +53,6 @@ function AdvisorTabContent() {
         console.error("Unexpected response structure:", response.data);
         setAdvisorsNotInCourse([]);
       }
-
     } catch (error) {
       console.error("Failed to load advisors not in course:", error);
       setError("Failed to load available advisors");
@@ -64,206 +75,17 @@ function AdvisorTabContent() {
       if (response.data?.advisors && Array.isArray(response.data.advisors)) {
         setRows(response.data.advisors);
       } else if (Array.isArray(response.data)) {
-        // Fallback for direct array response
         setRows(response.data);
       } else {
         console.warn("Unexpected response structure:", response.data);
         setRows([]);
       }
-
-
     } catch (e: any) {
       console.error("Error fetching advisors:", e);
       setError(e?.message || "Failed to load advisors");
-      setRows([]); // Ensure array on error
+      setRows([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const deleteSingleAdvisor = async (advisor: any) => {
-    try {
-      const advisorName = advisor.user?.name || advisor.name || `ID: ${advisor.id}`;
-
-      if (!confirm(`Are you sure you want to remove ${advisorName} from this course?`)) {
-        return;
-      }
-
-      setDeletingAdvisors(true);
-
-      const response = await deleteCourseMemberAPI(advisor.id);
-      if (response.data?.result) {
-        const { deletedIds, notFoundIds, blocked } = response.data.result;
-
-        if (deletedIds && deletedIds.includes(advisor.id)) {
-          alert(`Successfully removed ${advisorName} from the course.`);
-          await fetchAdvisors();
-        } else if (notFoundIds && notFoundIds.includes(advisor.id)) {
-          alert(`Error: Advisor ${advisorName} was not found in the course.`);
-        } else if (blocked && blocked.includes(advisor.id)) {
-          alert(`Error: Cannot remove ${advisorName} - advisor may be supervising groups or have assignments.`);
-        } else {
-          alert(`Error: Failed to remove ${advisorName} from the course.`);
-        }
-      } else if (response.data?.message) {
-        alert(response.data.message);
-        await fetchAdvisors();
-      } else {
-        alert(`Successfully removed ${advisorName} from the course.`);
-        await fetchAdvisors();
-      }
-
-    } catch (error: any) {
-      console.error("Error deleting advisor from course:", error);
-
-      let errorMessage = "Failed to remove advisor from course";
-
-      if (error?.response?.status === 400) {
-        errorMessage = error?.response?.data?.message || "Bad request - check if advisor can be removed";
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Error: ${errorMessage}`);
-    } finally {
-      setDeletingAdvisors(false);
-    }
-  };
-
-  const deleteSelectedAdvisors = async () => {
-    try {
-      const selectedIds = Object.keys(selected).filter(id => selected[id]);
-
-      if (selectedIds.length === 0) {
-        alert("Please select advisors to delete");
-        return;
-      }
-
-      const selectedAdvisors = rows.filter(advisor => selectedIds.includes(advisor.id));
-      const advisorNames = selectedAdvisors.map(a =>
-        a.user?.name || a.name || `ID: ${a.id}`
-      );
-
-      const confirmMessage = `Are you sure you want to remove ${selectedIds.length} advisor(s) from this course?\n\n${advisorNames.join(", ")}`;
-
-      if (!confirm(confirmMessage)) {
-        return;
-      }
-
-      setDeletingAdvisors(true);
-
-      const response = await deleteCourseMemberAPI(selectedIds);
-      if (response.data?.result) {
-        const { deletedIds, notFoundIds, blocked } = response.data.result;
-
-        let message = "";
-
-        if (deletedIds && deletedIds.length > 0) {
-          message += `Successfully removed ${deletedIds.length} advisor(s).`;
-        }
-
-        if (blocked && blocked.length > 0) {
-          message += `\n${blocked.length} advisor(s) could not be removed (may be supervising groups or have assignments).`;
-        }
-
-        if (notFoundIds && notFoundIds.length > 0) {
-          message += `\n${notFoundIds.length} advisor(s) were not found.`;
-        }
-
-        alert(message || "Operation completed.");
-
-      } else if (response.data?.message) {
-        alert(response.data.message);
-      } else {
-        alert(`Successfully removed ${selectedIds.length} advisor(s) from the course.`);
-      }
-
-      // Clear selection and refresh
-      setSelected({});
-      await fetchAdvisors();
-
-    } catch (error: any) {
-      console.error("Error deleting advisors from course:", error);
-
-      let errorMessage = "Failed to remove advisors from course";
-
-      if (error?.response?.status === 400) {
-        errorMessage = error?.response?.data?.message || "Bad request - check if advisors can be removed";
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Error: ${errorMessage}`);
-    } finally {
-      setDeletingAdvisors(false);
-    }
-  };
-
-  const addAdvisorsToCourse = async (selectedAdvisors: any[]) => {
-    try {
-      setAddingAdvisors(true);
-
-      if (!courseId) {
-        throw new Error("Invalid course ID");
-      }
-
-      const advisorsIds = selectedAdvisors.map(advisor => advisor.id);
-      const response = await addCourseMemberAPI(courseId, advisorsIds);
-
-      if (response.status === 200 || response.status === 201) {
-        let message = "";
-
-        if (response.data) {
-          const { insertedCount, skippedAsDuplicate, requestedCount, message: apiMessage } = response.data;
-          if (apiMessage) {
-            message = apiMessage;
-          } else {
-            if (insertedCount !== undefined && insertedCount > 0) {
-              message += `Successfully added ${insertedCount} advisor(s) to the course.`;
-            }
-            if (skippedAsDuplicate !== undefined && skippedAsDuplicate > 0) {
-              message += ` ${skippedAsDuplicate} advisor(s) were already in the course.`;
-            }
-
-            if (!message) {
-              message = `Successfully processed ${selectedAdvisors.length} advisor(s).`;
-            }
-          }
-        } else {
-          message = `Successfully added ${selectedAdvisors.length} advisor(s) to the course.`;
-        }
-
-        alert(message);
-
-        await fetchAdvisors();
-        setOpenCreate(false);
-
-      } else {
-        throw new Error(`API returned status ${response.status}`);
-      }
-
-    } catch (error: any) {
-      console.error("Error adding advisors to course:", error);
-      console.error("Error response:", error?.response);
-      console.error("Error data:", error?.response?.data);
-
-      let errorMessage = "Failed to add advisors to course";
-
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      alert(`Error: ${errorMessage}`);
-    } finally {
-      setAddingAdvisors(false);
     }
   };
 
@@ -276,6 +98,7 @@ function AdvisorTabContent() {
       fetchAdvisorsNotInCourse();
     }
   }, [openCreate, courseId]);
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -321,8 +144,164 @@ function AdvisorTabContent() {
     }
   };
 
-  const toggleOne = (id: string) =>
-    setSelected((s) => ({ ...s, [id]: !s[id] }));
+  const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
+
+  const openDeleteSingleConfirm = (advisor: any) => {
+    const advisorName = advisor.user?.name || advisor.name || `ID: ${advisor.id}`;
+    setConfirmState({
+      open: true,
+      title: "Remove advisor",
+      message: `Are you sure you want to remove ${advisorName} from this course?`,
+      action: "deleteSingle",
+      payload: advisor,
+      loading: false,
+    });
+  };
+
+  const openDeleteSelectedConfirm = () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 0) {
+      showToast({ variant: "info", message: "Please select advisors to delete" });
+      return;
+    }
+    const selectedAdvisors = rows.filter((advisor) => selectedIds.includes(advisor.id));
+    const advisorNames = selectedAdvisors.map((a) => a.user?.name || a.name || `ID: ${a.id}`);
+    setConfirmState({
+      open: true,
+      title: "Remove selected advisors",
+      message: `Are you sure you want to remove ${selectedIds.length} advisor(s)?\n\n${advisorNames.join(", ")}`,
+      action: "deleteSelected",
+      payload: selectedIds,
+      loading: false,
+    });
+  };
+
+  const deleteSelectedAdvisors = async (ids: string[]) => {
+    setDeletingAdvisors(true);
+    try {
+      const response = await deleteCourseMemberAPI(ids);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+        let message = "";
+        if (deletedIds && deletedIds.length > 0) {
+          message += `Removed ${deletedIds.length} advisor(s). `;
+        }
+        if (blocked && blocked.length > 0) {
+          message += `${blocked.length} advisor(s) could not be removed (may supervise groups or have assignments). `;
+        }
+        if (notFoundIds && notFoundIds.length > 0) {
+          message += `${notFoundIds.length} advisor(s) were not found. `;
+        }
+        showToast({ variant: "info", message: message || "Operation completed." });
+      } else if (response.data?.message) {
+        showToast({ variant: "error", message: String(response.data.message) });
+      } else {
+        showToast({ variant: "success", message: `Removed ${ids.length} advisor(s) from the course.` });
+      }
+      setSelected({});
+      await fetchAdvisors();
+    } catch (error: any) {
+      console.error("Error deleting advisors from course:", error);
+      const errorMessage =
+        error?.response?.data?.message || error?.message || "Failed to remove advisors from course";
+      showToast({ variant: "error", message: String(errorMessage) });
+    } finally {
+      setDeletingAdvisors(false);
+    }
+  };
+
+  const deleteSingleAdvisor = async (advisor: any) => {
+    setDeletingAdvisors(true);
+    try {
+      const response = await deleteCourseMemberAPI(advisor.id);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+        if (deletedIds && deletedIds.includes(advisor.id)) {
+          showToast({ variant: "success", message: `Removed ${advisor.user?.name || advisor.name || "-"} from the course.` });
+        } else if (notFoundIds && notFoundIds.includes(advisor.id)) {
+          showToast({ variant: "error", message: `Advisor was not found in the course.` });
+        } else if (blocked && blocked.includes(advisor.id)) {
+          showToast({ variant: "error", message: `Cannot remove advisor - they may supervise groups or have assignments.` });
+        } else {
+          showToast({ variant: "error", message: `Failed to remove advisor.` });
+        }
+      } else if (response.data?.message) {
+        showToast({ variant: "error", message: String(response.data.message) });
+      } else {
+        showToast({ variant: "success", message: `Removed ${advisor.user?.name || advisor.name || "-"} from the course.` });
+      }
+      await fetchAdvisors();
+    } catch (error: any) {
+      console.error("Error deleting advisor from course:", error);
+      const errorMessage =
+        error?.response?.data?.message || error?.message || "Failed to remove advisor from course";
+      showToast({ variant: "error", message: String(errorMessage) });
+    } finally {
+      setDeletingAdvisors(false);
+    }
+  };
+
+  const addAdvisorsToCourse = async (selectedAdvisors: any[]) => {
+    try {
+      setAddingAdvisors(true);
+
+      if (!courseId) {
+        throw new Error("Invalid course ID");
+      }
+
+      const advisorsIds = selectedAdvisors.map((advisor) => advisor.id);
+      const response = await addCourseMemberAPI(courseId, advisorsIds);
+
+      if (response.status === 200 || response.status === 201) {
+        let message = "";
+
+        if (response.data) {
+          const { insertedCount, skippedAsDuplicate, requestedCount, message: apiMessage } = response.data;
+          if (apiMessage) {
+            message = apiMessage;
+          } else {
+            if (insertedCount !== undefined && insertedCount > 0) {
+              message += `Successfully added ${insertedCount} advisor(s) to the course.`;
+            }
+            if (skippedAsDuplicate !== undefined && skippedAsDuplicate > 0) {
+              message += ` ${skippedAsDuplicate} advisor(s) were already in the course.`;
+            }
+
+            if (!message) {
+              message = `Successfully processed ${selectedAdvisors.length} advisor(s).`;
+            }
+          }
+        } else {
+          message = `Successfully added ${selectedAdvisors.length} advisor(s) to the course.`;
+        }
+
+        showToast({ variant: "success", message });
+
+        await fetchAdvisors();
+        setOpenCreate(false);
+      } else {
+        throw new Error(`API returned status ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error("Error adding advisors to course:", error);
+      console.error("Error response:", error?.response);
+      console.error("Error data:", error?.response?.data);
+
+      let errorMessage = "Failed to add advisors to course";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      showToast({ variant: "error", message: String(errorMessage) });
+    } finally {
+      setAddingAdvisors(false);
+    }
+  };
 
   return (
     <section className="min-h-[60vh]">
@@ -364,7 +343,7 @@ function AdvisorTabContent() {
           <div className="p-6 text-center text-red-600 text-lg">
             {error}
             <div className="mt-2 text-sm text-gray-500">
-              Debug: rows type: {typeof rows}, is array: {Array.isArray(rows) ? 'yes' : 'no'}
+              Debug: rows type: {typeof rows}, is array: {Array.isArray(rows) ? "yes" : "no"}
             </div>
           </div>
         ) : (
@@ -388,7 +367,7 @@ function AdvisorTabContent() {
             </thead>
             <tbody>
               {safeFiltered.map((r, index) => (
-                <tr key={r.id || `advisor-${index}`} className={`border-t ${deletingAdvisors ? 'opacity-50' : ''}`}>
+                <tr key={r.id || `advisor-${index}`} className={`border-t ${deletingAdvisors ? "opacity-50" : ""}`}>
                   <td className="py-3 pl-4 align-top">
                     <input
                       type="checkbox"
@@ -398,14 +377,10 @@ function AdvisorTabContent() {
                       disabled={deletingAdvisors}
                     />
                   </td>
+                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.name || r.name || "-"}</td>
+                  <td className="py-3 align-top text-gray-900 text-lg">{r.user?.email || r.email || "-"}</td>
                   <td className="py-3 align-top text-gray-900 text-lg">
-                    {r.user?.name || r.name || "-"}
-                  </td>
-                  <td className="py-3 align-top text-gray-900 text-lg">
-                    {r.user?.email || r.email || "-"}
-                  </td>
-                  <td className="py-3 align-top text-gray-900 text-lg">
-                    {(Array.isArray(r.projects) && r.projects.length) ? (
+                    {Array.isArray(r.projects) && r.projects.length ? (
                       <ol className="list-decimal ml-4 space-y-0.5">
                         {r.projects.map((p: any, i: any) => (
                           <li key={p.id ?? `${r.id}-${i}`}>{p.projectName || "(untitled)"}</li>
@@ -417,17 +392,10 @@ function AdvisorTabContent() {
                   </td>
 
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    {/* <button
-                      onClick={() => deleteSingleAdvisor(r)}
-                      className="text-red-500 hover:underline text-lg"
-                      disabled={deletingAdvisors}
-                    >
-                      {deletingAdvisors ? "Deleting..." : "Delete"}
-                    </button> */}
                     <button
                       title="Delete"
                       className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50"
-                      onClick={() => deleteSingleAdvisor(r)}
+                      onClick={() => openDeleteSingleConfirm(r)}
                       disabled={loading}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -451,17 +419,10 @@ function AdvisorTabContent() {
         <div>{selectedCount} selected</div>
 
         {selectedCount > 0 && (
-          // <button
-          //   className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
-          //   onClick={deleteSelectedAdvisors}
-          //   disabled={addingAdvisors || deletingAdvisors}
-          // >
-          //   {deletingAdvisors ? "Removing..." : `Delete`}
-          // </button>
           <button
             title="Delete"
             className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4"
-            onClick={deleteSelectedAdvisors}
+            onClick={openDeleteSelectedConfirm}
             disabled={loading}
           >
             <Trash2 className="h-4 w-4" />
@@ -478,6 +439,34 @@ function AdvisorTabContent() {
           onSave={addAdvisorsToCourse}
         />
       )}
+
+      {/* Confirm modal */}
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false })}
+        onConfirm={async () => {
+          if (!confirmState.action) return setConfirmState({ open: false });
+          setConfirmState((s) => ({ ...s, loading: true }));
+          try {
+            if (confirmState.action === "deleteSingle") {
+              const advisor = confirmState.payload;
+              await deleteSingleAdvisor(advisor);
+            } else if (confirmState.action === "deleteSelected") {
+              const ids: string[] = confirmState.payload || [];
+              await deleteSelectedAdvisors(ids);
+            }
+          } catch (err: any) {
+            console.error("Confirm delete error:", err);
+            const msg = err?.response?.data?.message || err?.message || "Delete failed";
+            showToast({ variant: "error", message: String(msg) });
+          } finally {
+            setConfirmState({ open: false });
+          }
+        }}
+      />
     </section>
   );
 }
@@ -499,38 +488,38 @@ function AddAdvisorModal({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAdvisors, setSelectedAdvisors] = useState<Record<string, boolean>>({});
 
-  // Ensure we always have an array
   const safeAvailableAdvisors = Array.isArray(availableAdvisors) ? availableAdvisors : [];
 
   const filteredAdvisors = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return safeAvailableAdvisors;
-    return safeAvailableAdvisors.filter(advisor =>
-      advisor?.id?.toString().includes(q) ||
-      advisor?.name?.toLowerCase().includes(q) ||
-      advisor?.email?.toLowerCase().includes(q)
+    return safeAvailableAdvisors.filter(
+      (advisor) =>
+        advisor?.id?.toString().includes(q) ||
+        advisor?.name?.toLowerCase().includes(q) ||
+        advisor?.email?.toLowerCase().includes(q)
     );
   }, [searchQuery, safeAvailableAdvisors]);
 
-  const allSelected = filteredAdvisors.length > 0 && filteredAdvisors.every(a => selectedAdvisors[a.id]);
-  const someSelected = filteredAdvisors.some(a => selectedAdvisors[a.id]) && !allSelected;
+  const allSelected = filteredAdvisors.length > 0 && filteredAdvisors.every((a) => selectedAdvisors[a.id]);
+  const someSelected = filteredAdvisors.some((a) => selectedAdvisors[a.id]) && !allSelected;
 
   const toggleAll = () => {
     if (allSelected) {
       setSelectedAdvisors({});
     } else {
       const newSelected: Record<string, boolean> = {};
-      filteredAdvisors.forEach(a => newSelected[a.id] = true);
+      filteredAdvisors.forEach((a) => (newSelected[a.id] = true));
       setSelectedAdvisors(newSelected);
     }
   };
 
   const toggleAdvisor = (id: string) => {
-    setSelectedAdvisors(prev => ({ ...prev, [id]: !prev[id] }));
+    setSelectedAdvisors((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleSave = () => {
-    const selected = safeAvailableAdvisors.filter(a => selectedAdvisors[a.id]);
+    const selected = safeAvailableAdvisors.filter((a) => selectedAdvisors[a.id]);
     onSave(selected);
   };
 
@@ -598,7 +587,9 @@ function AddAdvisorModal({
                         <input
                           type="checkbox"
                           checked={allSelected}
-                          ref={(el) => { if (el) el.indeterminate = someSelected; }}
+                          ref={(el) => {
+                            if (el) el.indeterminate = someSelected;
+                          }}
                           onChange={toggleAll}
                           className="accent-[#326295] cursor-pointer"
                           disabled={filteredAdvisors.length === 0}
@@ -629,10 +620,7 @@ function AddAdvisorModal({
                     ) : (
                       <tr>
                         <td colSpan={4} className="py-8 text-center text-gray-500">
-                          {safeAvailableAdvisors.length === 0
-                            ? "No advisors available to add to this course."
-                            : "No advisors match your search."
-                          }
+                          {safeAvailableAdvisors.length === 0 ? "No advisors available to add to this course." : "No advisors match your search."}
                         </td>
                       </tr>
                     )}
@@ -641,19 +629,11 @@ function AddAdvisorModal({
               )}
             </div>
 
-            {selectedCount > 0 && (
-              <div className="mt-3 text-sm text-gray-600">
-                {selectedCount} advisor{selectedCount === 1 ? '' : 's'} selected
-              </div>
-            )}
+            {selectedCount > 0 && <div className="mt-3 text-sm text-gray-600">{selectedCount} advisor{selectedCount === 1 ? "" : "s"} selected</div>}
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
-            <button
-              onClick={onCancel}
-              disabled={adding}
-              className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            <button onClick={onCancel} disabled={adding} className="rounded px-4 py-2 text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
               Cancel
             </button>
             <button
@@ -661,7 +641,7 @@ function AddAdvisorModal({
               disabled={selectedCount === 0 || loading || adding}
               className="rounded px-5 py-2 text-white disabled:opacity-60 shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition disabled:cursor-not-allowed"
             >
-              {adding ? "Adding..." : `Add ${selectedCount} Advisor${selectedCount === 1 ? '' : 's'}`}
+              {adding ? "Adding..." : `Add ${selectedCount} Advisor${selectedCount === 1 ? "" : "s"}`}
             </button>
           </div>
         </div>

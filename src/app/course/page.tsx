@@ -16,6 +16,7 @@ import { isCanUpload } from "@/util/RoleHelper";
 import { updateCourse } from "@/types/api/course";
 import { updateCourseAPI } from "@/api/course/updateCourse";
 import ErrorPopUp from "@/components/errorPopUp";
+import { ToastProvider, useToast } from "@/components/toast";
 
 const asArray = <T = any>(data: any, key?: string): T[] => {
   if (Array.isArray(data)) return data as T[];
@@ -32,7 +33,8 @@ const pickArray = <T = any>(res: any, key?: string): T[] => {
   return [];
 };
 
-export default function CoursePage() {
+function CoursePageContent() {
+  const { showToast } = useToast();
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | undefined>(undefined);
   const [courses, setCourses] = useState<Course[]>([]);
@@ -49,22 +51,22 @@ export default function CoursePage() {
 
   useEffect(() => {
     setUserRole(getUserRole());
-    setCanUpload(isCanUpload()); 
+    setCanUpload(isCanUpload());
   }, []);
 
   const fetchCourses = useCallback(async () => {
-    if (userRole === undefined) return; 
+    if (userRole === undefined) return;
 
     try {
       setLoading(true);
       setError(null);
 
       if (userRole === "staff" || userRole === "SUPER_ADMIN") {
-        const res = await getStaffCourseAPI(); 
+        const res = await getStaffCourseAPI();
         const list = pickArray<Course>(res, "course");
         setCourses(list);
       } else {
-        const res = await getCourseAPI(); 
+        const res = await getCourseAPI();
         const memberships = pickArray<any>(res, "course");
         const list: Course[] = memberships
           .map((m) => m?.course ?? m)
@@ -106,22 +108,40 @@ export default function CoursePage() {
       setLoading(true);
       setError(null);
 
+      const nameNormalized = (payload.name ?? "").trim().toLowerCase();
+      if (courses.some((c) => (c.name ?? "").trim().toLowerCase() === nameNormalized)) {
+        showToast({ variant: "error", message: "Course name already exists" });
+        return;
+      }
+
       const response = await createCourseAPI(
         payload.program,
         payload.name,
         payload.description || null
       );
+
+      const status = (response as any)?.status ?? ((response as any)?.assignment ? 201 : 0);
+      const bodyMsg = (response as any)?.message ?? (response as any)?.error ?? null;
+      if (!response || status >= 400) {
+        const errMsg = bodyMsg ?? `Failed to create course (HTTP ${status || "unknown"})`;
+        setError(errMsg);
+        showToast({ variant: "error", message: errMsg });
+        return;
+      }
       await fetchCourses();
 
       setOpenCreate(false);
+      showToast({ variant: "success", message: "Course created successfully" });
     } catch (err: any) {
-      setError(
-        err?.response?.status
-          ? `Failed to create course (HTTP ${err.response.status})`
-          : err instanceof Error
-            ? err.message
-            : "Failed to create course"
-      );
+      console.error("createCourse error:", err);
+      const status = err?.response?.status;
+      const serverMsg = err?.response?.data?.message ?? err?.response?.data ?? err?.message ?? String(err);
+      setError(typeof serverMsg === "string" ? serverMsg : `Failed to create course (HTTP ${status ?? "unknown"})`);
+      // Prefer backend message if provided
+      showToast({
+        variant: "error",
+        message: typeof serverMsg === "string" ? serverMsg : `Create failed: HTTP ${status ?? "unknown"}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -148,28 +168,25 @@ export default function CoursePage() {
         payload.description || null
       );
       setCourses((prev) =>
-        prev.map((c) => 
-          c.id === editing.id 
+        prev.map((c) =>
+          c.id === editing.id
             ? {
-                id: response.data.course.id,
-                name: response.data.course.name,
-                description: response.data.course.description || "",
-                program: response.data.course.program,
-              }
+              id: response.data.course.id,
+              name: response.data.course.name,
+              description: response.data.course.description || "",
+              program: response.data.course.program,
+            }
             : c
         )
       );
 
       setEditing(null);
-
-      // Show success message
-      alert("Course updated successfully!");
-
+      showToast({ variant: "success", message: "Course updated successfully" });
     } catch (err: any) {
       const errorMessage = err?.response?.data?.message || err?.message || "Failed to update course";
       setError(errorMessage);
-      alert(`Error: ${errorMessage}`);
-      throw err; 
+      showToast({ variant: "error", message: `Update failed: ${String(errorMessage)}` });
+      throw err;
     } finally {
       setUpdating(false);
     }
@@ -186,10 +203,11 @@ export default function CoursePage() {
     try {
       setDeleting(true);
       setError(null);
-      
+
       await deleteCourseAPI(courseToDelete.id);
       setCourses((prev) => prev.filter((c) => c.id !== courseToDelete.id));
       setCourseToDelete(null);
+      showToast({ variant: "success", message: "Course deleted" });
     } catch (err: any) {
       setError(
         err?.response?.status
@@ -198,6 +216,7 @@ export default function CoursePage() {
             ? err.message
             : "Failed to delete course"
       );
+      showToast({ variant: "error", message: `Delete failed: ${String(err?.message ?? err)}` });
     } finally {
       setDeleting(false);
     }
@@ -297,9 +316,6 @@ export default function CoursePage() {
                     >
                       Edit
                     </button>
-                    {/* <button className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100">
-                      Hide
-                    </button> */}
                     <button
                       className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
                       onClick={() => {
@@ -324,7 +340,7 @@ export default function CoursePage() {
               <div className="px-6 py-4 border-b">
                 <h3 className="text-xl font-semibold text-gray-900">Delete Course</h3>
               </div>
-              
+
               <div className="px-6 py-4">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
@@ -341,14 +357,14 @@ export default function CoursePage() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="bg-red-50 border border-red-200 rounded-md p-3">
                   <p className="text-sm text-red-800">
                     <strong>Warning:</strong> All course data and related data will be permanently deleted.
                   </p>
                 </div>
               </div>
-              
+
               <div className="flex items-center justify-end gap-3 px-6 py-4 border-t bg-gray-50 rounded-b-2xl">
                 <button
                   onClick={() => setCourseToDelete(null)}
@@ -389,5 +405,13 @@ export default function CoursePage() {
 
       <ErrorPopUp message={error || ""} onClose={() => setError(null)} />
     </>
+  );
+}
+
+export default function CoursePage() {
+  return (
+    <ToastProvider>
+      <CoursePageContent />
+    </ToastProvider>
   );
 }

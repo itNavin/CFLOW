@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { createAnnouncementByCourseIdAPI } from "@/api/announcement/createAnnouncementByCourseId";
 import { FileUpload } from "@/components/uploadFile";
 import { uploadAnnouncementFileAPI } from "@/api/storage/uploadAnnouncementFile";
+import { useToast } from "@/components/toast";
 
 type Props = {
   open: boolean;
@@ -14,6 +15,8 @@ type Props = {
 };
 
 export default function CreateAnnouncementModal({ open, onClose, courseId, onSubmit }: Props) {
+  const { showToast } = useToast();
+
   const [description, setDescription] = useState("");
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,24 +65,25 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
 
       const announcementId = res.data?.announcement?.id;
       if (!announcementId) throw new Error("Missing announcementId");
-      // const announcementId =
-      //   res?.data?.announcement?.id;
-
-      // if (!announcementId) {
-      //   // show server response to help debugging instead of throwing generic error
-      //   const payload = res?.data ? JSON.stringify(res.data, null, 2) : "no response body";
-      //   setError(`Missing announcementId in server response:\n${payload}`);
-      //   setIsSubmitting(false);
-      //   return;
-      // }
 
       if (selectedFiles.length > 0) {
         await uploadAnnouncementFileAPI(courseId, announcementId, selectedFiles);
       }
-      window.location.reload();
+
+      if (onSubmit) {
+        try {
+          await onSubmit();
+        } catch (e) {
+          // ignore — onSubmit is optional but best-effort
+        }
+      }
+
+      showToast({ variant: "success", message: "Announcement created" });
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || "Failed to create announcement");
+      const msg = err?.response?.data?.message || err?.message || "Failed to create announcement";
+      setError(msg);
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setIsSubmitting(false);
     }

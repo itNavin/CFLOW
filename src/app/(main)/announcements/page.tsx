@@ -14,6 +14,8 @@ import { updateAnnouncementAPI } from "@/api/announcement/updateAnnouncement";
 import { deleteAnnouncementAPI } from "@/api/announcement/deleteAnnouncement";
 import CreateAnnouncementModal from "@/components/announcement/createAnnouncementModal";
 import { getProfileAPI } from "@/api/profile/getProfile";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
 
 function formatUploadAt(iso: string, locale: string = "en-GB") {
   if (!iso) return "";
@@ -31,6 +33,7 @@ function formatUploadAt(iso: string, locale: string = "en-GB") {
 }
 
 function AnnouncementContent() {
+  const { showToast } = useToast();
   const [announcements, setAnnouncements] = useState<Announcement.Announcements[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -42,6 +45,14 @@ function AnnouncementContent() {
   const [role, setRole] = useState<string | null>(null);
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [profileLoaded, setProfileLoaded] = useState(false);
+
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    payload?: string;
+    title?: string;
+    message?: string;
+    loading?: boolean;
+  }>({ open: false });
 
   useEffect(() => {
     (async () => {
@@ -86,27 +97,42 @@ function AnnouncementContent() {
       if (url) {
         window.open(url, "_blank");
       } else {
-        alert("Download link not found.");
+        showToast({ variant: "error", message: "Download link not found." });
       }
       setOpenDropdown(null);
     } catch (error: any) {
       setOpenDropdown(null);
       if (error.response && error.response.status === 404) {
-        alert("File not found (404).");
+        showToast({ variant: "error", message: "File not found (404)." });
       } else {
-        alert("Failed to get download link.");
+        showToast({ variant: "error", message: "Failed to get download link." });
       }
     }
   };
 
-  const handleDeleteAnnouncement = async (announcementId: string) => {
-    if (!window.confirm("Are you sure you want to delete this announcement?")) return;
+  const requestDeleteAnnouncement = (announcementId: string) => {
+    setConfirmState({
+      open: true,
+      payload: announcementId,
+      title: "Delete announcement",
+      message: "Are you sure you want to delete this announcement?",
+      loading: false,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    setConfirmState((s) => ({ ...s, loading: true }));
     try {
-      await deleteAnnouncementAPI(announcementId);
+      const id = confirmState.payload;
+      if (!id) throw new Error("Missing announcement id");
+      await deleteAnnouncementAPI(id);
+      showToast({ variant: "success", message: "Announcement deleted" });
       await fetchAnnouncements();
-    } catch (e) {
-      alert("Failed to delete announcement.");
-      console.error(e);
+    } catch (e: any) {
+      console.error("Failed to delete announcement:", e);
+      showToast({ variant: "error", message: e?.response?.data?.message || e?.message || "Failed to delete announcement" });
+    } finally {
+      setConfirmState({ open: false });
     }
   };
 
@@ -189,7 +215,7 @@ function AnnouncementContent() {
                   <button
                     title="Delete"
                     className="inline-flex items-center justify-center rounded-md border bg-white p-3 text-xl text-red-600 hover:bg-red-50 cursor-pointer"
-                    onClick={() => handleDeleteAnnouncement(data.id)}
+                    onClick={() => requestDeleteAnnouncement(data.id)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -222,10 +248,10 @@ function AnnouncementContent() {
                             if (url) {
                               window.open(url, "_blank");
                             } else {
-                              alert("Open link not found.");
+                              showToast({ variant: "error", message: "Open link not found." });
                             }
                           } catch (error) {
-                            alert("Failed to get open link.");
+                            showToast({ variant: "error", message: "Failed to get open link." });
                           }
                         }}>
                         {file.name || file.filepath}
@@ -260,12 +286,12 @@ function AnnouncementContent() {
                                   const res = await downloadCourseFileAPI(file.id);
                                   const url = res.data.url;
                                   if (url) {
-                                    window.open(url, "_blank"); 
+                                    window.open(url, "_blank");
                                   } else {
-                                    alert("Open link not found.");
+                                    showToast({ variant: "error", message: "Open link not found." });
                                   }
                                 } catch (error) {
-                                  alert("Failed to get open link.");
+                                  showToast({ variant: "error", message: "Failed to get open link." });
                                 }
                                 setOpenDropdown(null);
                               }}
@@ -339,13 +365,25 @@ function AnnouncementContent() {
                 files: form.files,
               });
               await fetchAnnouncements();
+              showToast({ variant: "success", message: "Announcement updated" });
             } catch (e) {
-              alert("Failed to update announcement.");
+              showToast({ variant: "error", message: "Failed to update announcement." });
               console.error(e);
+              throw e;
             }
           }}
         />
       )}
+
+      {/* Confirm modal for delete */}
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false })}
+        onConfirm={handleConfirmDelete}
+      />
     </main>
   );
 }

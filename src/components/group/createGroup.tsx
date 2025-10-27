@@ -7,6 +7,7 @@ import { createGroupAPI } from "@/api/group/createGroup";
 import { getStudentNotInGroupAPI } from "@/api/group/studentNotInGroup";
 import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
+import { useToast } from "../toast";
 
 type Program = "CS" | "DSI";
 
@@ -39,6 +40,7 @@ export default function CreateGroupModal({
   onSave,
   courseProgram: propCourseProgram = null,
 }: CreateGroupModalProps) {
+  const { showToast } = useToast();
   const [courseProgram, setCourseProgram] = useState<Program | null>(propCourseProgram ?? null);
   const isCS = courseProgram === "CS";
   const isDSI = courseProgram === "DSI";
@@ -216,7 +218,7 @@ export default function CreateGroupModal({
 
   const handleSave = async () => {
     if (advisor && coAdvisor && advisor === coAdvisor) {
-      alert("Advisor and Co-Advisor cannot be the same person.");
+      showToast({ variant: "error", message: "Advisor and Co-Advisor cannot be the same person." });
       return;
     }
 
@@ -247,14 +249,13 @@ export default function CreateGroupModal({
           members: [],
           advisors: [],
         };
+        showToast({ variant: "success", message: "Group created successfully" });
         onSave(createdGroup);
       } else {
         throw new Error("No group data in response");
       }
     } catch (error: any) {
-      alert(
-        `Error: ${error?.response?.data?.message || error?.message || "Failed to create group"}`
-      );
+      showToast({ variant: "error", message: String(error?.response?.data?.message || error?.message || "Failed to create group") });
     } finally {
       setIsCreating(false);
     }

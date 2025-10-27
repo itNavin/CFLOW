@@ -9,6 +9,7 @@ import { getAdvisorMemberAPI } from "@/api/courseMember/getAdvisorMembers";
 import { deleteGroupAPI } from "@/api/group/deleteGroup";
 import { Trash2 } from "lucide-react";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
+import { useToast } from "../toast";
 
 type Program = "CS" | "DSI";
 
@@ -39,6 +40,7 @@ export default function UpdateGroupModal({
   onSave,
   courseProgram: propCourseProgram = null,
 }: UpdateGroupModalProps) {
+  const { showToast } = useToast();
   const [courseProgram, setCourseProgram] = useState<Program | null>(propCourseProgram ?? null);
   const isCS = courseProgram === "CS";
   const isDSI = courseProgram === "DSI";
@@ -222,7 +224,7 @@ export default function UpdateGroupModal({
 
   const handleSave = async () => {
     if (advisor && coAdvisor && advisor === coAdvisor) {
-      alert("Advisor and Co-Advisor cannot be the same person.");
+      showToast({ variant: "error", message: "Advisor and Co-Advisor cannot be the same person." });
       return;
     }
     try {
@@ -247,12 +249,12 @@ export default function UpdateGroupModal({
         coAdvisorIds
       );
 
-      alert("Group updated successfully!");
+      showToast({ variant: "success", message: "Group updated successfully" });
       onSave();
 
     } catch (error: any) {
       console.error("Error updating group:", error);
-      alert(`Error: ${error?.response?.data?.message || error?.message || "Failed to update group"}`);
+      showToast({ variant: "error", message: `Error: ${error?.response?.data?.message || error?.message || "Failed to update group"}` });
     } finally {
       setIsUpdating(false);
     }
@@ -404,7 +406,7 @@ export default function UpdateGroupModal({
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
                             if (advisor && advisor === a.name) {
-                              alert("Advisor and Co-Advisor cannot be the same person.");
+                              showToast({ variant: "error", message: "Advisor and Co-Advisor cannot be the same person." });
                               return;
                             }
                             setAdvisor(a.name);
@@ -448,7 +450,7 @@ export default function UpdateGroupModal({
                           className="px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
                           onClick={() => {
                             if (advisor && advisor === a.name) {
-                              alert("Advisor and Co-Advisor cannot be the same person.");
+                              showToast({ variant: "error", message: "Advisor and Co-Advisor cannot be the same person." });
                               return;
                             }
                             setCoAdvisor(a.name);

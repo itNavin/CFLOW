@@ -13,10 +13,13 @@ import { deleteCourseMemberAPI } from "@/api/courseMember/deleteCourseMember";
 import { getStaffCourseAPI } from "@/api/course/getStaffCourse";
 import DownloadTemplateButton from "@/components/downloadTemplateButton";
 import { uploadTemplateAPI } from "@/api/excel/uploadTemplate";
+import { useToast } from "@/components/toast";
+import ConfirmModal from "@/components/confirmModal";
 
 type Program = "CS" | "DSI";
 
 function StudentTabContent() {
+  const { showToast } = useToast();
   const courseId = useSearchParams().get("courseId") || "";
   const [rows, setRows] = useState<studentMember[]>([]);
   const [studentNotInCourse, setStudentNotInCourse] = useState<studentNotInCourse[]>([]);
@@ -25,11 +28,20 @@ function StudentTabContent() {
   const [openCreate, setOpenCreate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingAvailable, setLoadingAvailable] = useState(false);
-  const [addingStudents, setAddingStudents] = useState(false); // New state for adding students
+  const [addingStudents, setAddingStudents] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
   const [courseProgram, setCourseProgram] = useState<Program | null>(null);
+
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title?: string;
+    message?: string;
+    action?: "deleteSingle" | "deleteSelected";
+    payload?: any;
+    loading?: boolean;
+  }>({ open: false });
 
   const sortByIdAsc = (aId?: string | number, bId?: string | number) => {
     const a = String(aId ?? "").trim();
@@ -76,8 +88,6 @@ function StudentTabContent() {
       }
 
       const response = await getStudentMemberAPI(courseId);
-      console.log("Students response:", response.data);
-
       if (response.data?.students && Array.isArray(response.data.students)) {
         setRows(response.data.students);
       } else {
@@ -88,69 +98,6 @@ function StudentTabContent() {
       console.error("Error fetching students:", e);
       setError(e?.message || "Failed to load students");
       setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addStudentsToCourse = async (selectedStudents: studentNotInCourse[]) => {
-    try {
-      setAddingStudents(true);
-
-      if (!courseId) {
-        throw new Error("Invalid course ID");
-      }
-
-      const userIds = selectedStudents.map(student => student.id);
-
-      console.log("Adding students to course:", {
-        courseId: courseId,
-        userIds,
-        selectedStudents
-      });
-
-      const response = await addCourseMemberAPI(courseId, userIds);
-
-      console.log("Add students response:", response.data);
-
-      if (response.data?.message) {
-        alert(`Successfully processed ${selectedStudents.length} student(s).`);
-      } else {
-        alert(`Added ${selectedStudents.length} student(s) to the course.`);
-      }
-
-      await fetchStudents();
-      setOpenCreate(false);
-
-    } catch (error: any) {
-      if (error?.response?.status === 404) {
-        alert("Error: API endpoint not found. Please check if the add course member API is properly configured.");
-      } else {
-        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add students to course";
-        alert(`Error: ${errorMessage}`);
-      }
-    } finally {
-      setAddingStudents(false);
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    console.log("files selected:", files);
-    if (!files.length || !courseId) return;
-    try {
-      setLoading(true);
-      const result = await uploadTemplateAPI(courseId, files);
-      console.log("Uploaded files:", result);
-      alert("Files uploaded successfully");
-
-      await fetchStudents();
-      if (openCreate) await fetchStudentNotInCourse(courseId);
-
-      if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      alert("Failed to upload files");
     } finally {
       setLoading(false);
     }
@@ -185,110 +132,67 @@ function StudentTabContent() {
     }
   }, [openCreate, courseId]);
 
-  const handleUploadClick = () => fileInputRef.current?.click();
-  const selectedCount = Object.values(selected).filter(Boolean).length;
-
-  const deleteSingleStudent = async (student: studentMember) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !courseId) return;
     try {
-      const studentName = student.user?.name || `ID: ${student.id}`;
-
-      if (!confirm(`Are you sure you want to remove ${studentName} from this course?`)) {
-        return;
-      }
-      setDeletingStudent(true);
-      const response = await deleteCourseMemberAPI(student.id);
-      if (response.data?.result) {
-        const { deletedIds, notFoundIds, blocked } = response.data.result;
-
-        if (deletedIds.includes(student.id)) {
-          alert(`Successfully removed ${studentName} from the course.`);
-          await fetchStudents(); // Refresh the list
-        } else if (blocked.includes(student.id)) {
-          alert(`Error: Cannot remove ${studentName} - student may be assigned to a group or have submissions.`);
-        }
-      }
+      setLoading(true);
+      const result = await uploadTemplateAPI(courseId, files);
+      console.log("Uploaded files:", result);
+      showToast({ variant: "success", message: "Files uploaded successfully" });
+      await fetchStudents();
+      if (openCreate) await fetchStudentNotInCourse(courseId);
+      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
+      console.error("Error uploading files:", error);
+      showToast({ variant: "error", message: "Failed to upload files" });
     } finally {
-      setDeletingStudent(false);
+      setLoading(false);
     }
   };
 
-  const deleteSelectedStudents = async () => {
+  const addStudentsToCourse = async (selectedStudents: studentNotInCourse[]) => {
     try {
-      const selectedIds = Object.keys(selected).filter(id => selected[id]);
+      setAddingStudents(true);
 
-      if (selectedIds.length === 0) {
-        alert("Please select students to delete");
-        return;
+      if (!courseId) {
+        throw new Error("Invalid course ID");
       }
 
-      const selectedStudents = rows.filter(student => selectedIds.includes(student.id));
-      const studentNames = selectedStudents.map(s =>
-        s.user?.name || `ID: ${s.id}`
-      );
+      const userIds = selectedStudents.map((student) => student.id);
 
-      const confirmMessage = `Are you sure you want to remove ${selectedIds.length} student(s) from this course?\n\n${studentNames.join(", ")}`;
+      const response = await addCourseMemberAPI(courseId, userIds);
 
-      if (!confirm(confirmMessage)) {
-        return;
-      }
-
-      setDeletingStudent(true);
-
-      const response = await deleteCourseMemberAPI(selectedIds);
-      console.log("Bulk delete response:", response.data);
-
-      if (response.data?.result) {
-        const { deletedIds, notFoundIds, blocked } = response.data.result;
-
-        let message = "";
-        if (deletedIds && deletedIds.length > 0) {
-          message += `Successfully removed ${deletedIds.length} student(s).`;
-        }
-        if (blocked && blocked.length > 0) {
-          message += `\n${blocked.length} student(s) could not be removed (may be assigned to groups or have submissions).`;
-        }
-        if (notFoundIds && notFoundIds.length > 0) {
-          message += `\n${notFoundIds.length} student(s) were not found.`;
-        }
-
-        alert(message || "Operation completed.");
-      } else if (response.data?.message) {
-        alert(response.data.message);
+      if (response.data?.message) {
+        showToast({ variant: "success", message: `Successfully processed ${selectedStudents.length} student(s).` });
       } else {
-        alert(`Successfully removed ${selectedIds.length} student(s) from the course.`);
+        showToast({ variant: "success", message: `Added ${selectedStudents.length} student(s) to the course.` });
       }
 
-      setSelected({});
       await fetchStudents();
-
+      setOpenCreate(false);
     } catch (error: any) {
-      console.error("Error deleting students from course:", error);
-
-      let errorMessage = "Failed to remove students from course";
-      if (error?.response?.status === 400) {
-        errorMessage = error?.response?.data?.message || "Bad request - check if students can be removed";
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
+      if (error?.response?.status === 404) {
+        showToast({ variant: "error", message: "Error: API endpoint not found. Please check configuration." });
+      } else {
+        const errorMessage = error?.response?.data?.message || error?.message || "Failed to add students to course";
+        showToast({ variant: "error", message: String(errorMessage) });
       }
-
-      alert(`Error: ${errorMessage}`);
     } finally {
-      setDeletingStudent(false);
+      setAddingStudents(false);
     }
   };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return rows;
-    return rows.filter((r) =>
-      r.user?.id?.toString().includes(q) ||
-      r.user?.name?.toLowerCase().includes(q) ||
-      r.user?.email?.toLowerCase().includes(q) ||
-      r.groupMembers?.[0]?.group?.projectName?.toLowerCase().includes(q) ||
-      r.groupMembers?.[0]?.group?.productName?.toLowerCase().includes(q)
+    return rows.filter(
+      (r) =>
+        r.user?.id?.toString().includes(q) ||
+        r.user?.name?.toLowerCase().includes(q) ||
+        r.user?.email?.toLowerCase().includes(q) ||
+        r.groupMembers?.[0]?.group?.projectName?.toLowerCase().includes(q) ||
+        r.groupMembers?.[0]?.group?.productName?.toLowerCase().includes(q)
     );
   }, [query, rows]);
 
@@ -302,8 +206,110 @@ function StudentTabContent() {
     setSelected(next);
   };
 
-  const toggleOne = (id: string) =>
-    setSelected((s) => ({ ...s, [id]: !s[id] }));
+  const toggleOne = (id: string) => setSelected((s) => ({ ...s, [id]: !s[id] }));
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+  const selectedCount = Object.values(selected).filter(Boolean).length;
+
+  const openDeleteSingleConfirm = (student: studentMember) => {
+    const studentName = student.user?.name || `ID: ${student.id}`;
+    setConfirmState({
+      open: true,
+      title: "Remove student",
+      message: `Are you sure you want to remove ${studentName} from this course?`,
+      action: "deleteSingle",
+      payload: student,
+      loading: false,
+    });
+  };
+
+  const openDeleteSelectedConfirm = () => {
+    const selectedIds = Object.keys(selected).filter((id) => selected[id]);
+    if (selectedIds.length === 0) {
+      showToast({ variant: "info", message: "Please select students to delete" });
+      return;
+    }
+    const selectedStudents = rows.filter((s) => selectedIds.includes(s.id));
+    const studentNames = selectedStudents.map((s) => s.user?.name || `ID: ${s.id}`);
+    setConfirmState({
+      open: true,
+      title: "Remove selected students",
+      message: `Are you sure you want to remove ${selectedIds.length} student(s)?\n\n${studentNames.join(", ")}`,
+      action: "deleteSelected",
+      payload: selectedIds,
+      loading: false,
+    });
+  };
+
+  const deleteSingleStudentApi = async (student: studentMember) => {
+    setDeletingStudent(true);
+    try {
+      const response = await deleteCourseMemberAPI(student.id);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+        if (deletedIds && deletedIds.includes(student.id)) {
+          showToast({ variant: "success", message: `Successfully removed ${student.user?.name || `ID: ${student.id}`} from the course.` });
+        } else if (blocked && blocked.includes(student.id)) {
+          showToast({ variant: "error", message: `Cannot remove student - they may be assigned to groups or have submissions.` });
+        } else if (notFoundIds && notFoundIds.includes(student.id)) {
+          showToast({ variant: "error", message: `Student was not found in the course.` });
+        } else {
+          showToast({ variant: "error", message: `Failed to remove student.` });
+        }
+      } else if (response.data?.message) {
+        showToast({ variant: "error", message: String(response.data.message) });
+      } else {
+        showToast({ variant: "success", message: `Successfully removed ${student.user?.name || `ID: ${student.id}`} from the course.` });
+      }
+      await fetchStudents();
+    } catch (error: any) {
+      console.error("Error deleting student from course:", error);
+      const errorMessage = error?.response?.data?.message || error?.message || "Failed to remove student from course";
+      showToast({ variant: "error", message: String(errorMessage) });
+    } finally {
+      setDeletingStudent(false);
+    }
+  };
+
+  const deleteSelectedStudentsApi = async (ids: string[]) => {
+    setDeletingStudent(true);
+    try {
+      const response = await deleteCourseMemberAPI(ids);
+      if (response.data?.result) {
+        const { deletedIds, notFoundIds, blocked } = response.data.result;
+        let message = "";
+        if (deletedIds && deletedIds.length > 0) {
+          message += `Successfully removed ${deletedIds.length} student(s). `;
+        }
+        if (blocked && blocked.length > 0) {
+          message += `${blocked.length} student(s) could not be removed (may be assigned to groups or have submissions). `;
+        }
+        if (notFoundIds && notFoundIds.length > 0) {
+          message += `${notFoundIds.length} student(s) were not found. `;
+        }
+        showToast({ variant: "info", message: message || "Operation completed." });
+      } else if (response.data?.message) {
+        showToast({ variant: "error", message: String(response.data.message) });
+      } else {
+        showToast({ variant: "success", message: `Successfully removed ${ids.length} student(s) from the course.` });
+      }
+      setSelected({});
+      await fetchStudents();
+    } catch (error: any) {
+      console.error("Error deleting students from course:", error);
+      let errorMessage = "Failed to remove students from course";
+      if (error?.response?.status === 400) {
+        errorMessage = error?.response?.data?.message || "Bad request - check if students can be removed";
+      } else if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      showToast({ variant: "error", message: String(errorMessage) });
+    } finally {
+      setDeletingStudent(false);
+    }
+  };
 
   return (
     <section className="min-h-[60vh]">
@@ -398,15 +404,10 @@ function StudentTabContent() {
                     {r.groupMembers?.[0]?.group?.productName || <span className="text-gray-400">-</span>}
                   </td>
                   <td className="py-3 pr-4 align-top text-right whitespace-nowrap">
-                    {/* <button
-                      onClick={() => deleteSingleStudent(r)}
-                      className="text-red-500 hover:underline text-lg">
-                      {deletingStudent ? "Deleting..." : "Delete"}
-                    </button> */}
                     <button
                       title="Delete"
                       className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50"
-                      onClick={() => deleteSingleStudent(r)}
+                      onClick={() => openDeleteSingleConfirm(r)}
                       disabled={loading}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -429,17 +430,10 @@ function StudentTabContent() {
         <div>{selectedCount} selected</div>
 
         {selectedCount > 0 && (
-          // <button
-          //   className="inline-flex items-center gap-1 px-3 py-1 text-lg text-red-600  rounded bordertransition disabled:opacity-50 disabled:cursor-not-allowed hover:underline"
-          //   onClick={deleteSelectedStudents}
-          //   disabled={addingStudents || deletingStudent}
-          // >
-          //   {deletingStudent ? "Removing..." : `Delete`}
-          // </button>
           <button
             title="Delete"
             className="inline-flex items-center justify-center bg-white p-3 text-xl text-red-600 hover:bg-red-50 mr-4"
-            onClick={deleteSelectedStudents}
+            onClick={openDeleteSelectedConfirm}
             disabled={loading}
           >
             <Trash2 className="h-4 w-4" />
@@ -451,15 +445,44 @@ function StudentTabContent() {
         <AddStudentModal
           availableStudents={studentNotInCourse}
           loading={loadingAvailable}
-          adding={addingStudents} // Pass adding state to modal
+          adding={addingStudents}
           onCancel={() => setOpenCreate(false)}
-          onSave={addStudentsToCourse} // Use the real API function
+          onSave={addStudentsToCourse}
         />
       )}
+
+      {/* Confirm modal */}
+      <ConfirmModal
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        loading={confirmState.loading}
+        onCancel={() => setConfirmState({ open: false })}
+        onConfirm={async () => {
+          if (!confirmState.action) return setConfirmState({ open: false });
+          setConfirmState((s) => ({ ...s, loading: true }));
+          try {
+            if (confirmState.action === "deleteSingle") {
+              const student: studentMember = confirmState.payload;
+              await deleteSingleStudentApi(student);
+            } else if (confirmState.action === "deleteSelected") {
+              const ids: string[] = confirmState.payload || [];
+              await deleteSelectedStudentsApi(ids);
+            }
+          } catch (err: any) {
+            console.error("Confirm delete error:", err);
+            const msg = err?.response?.data?.message || err?.message || "Delete failed";
+            showToast({ variant: "error", message: String(msg) });
+          } finally {
+            setConfirmState({ open: false });
+          }
+        }}
+      />
     </section>
   );
 }
 
+/* ------------------------- Add Student Modal ------------------------- */
 function AddStudentModal({
   availableStudents,
   loading,
@@ -469,7 +492,7 @@ function AddStudentModal({
 }: {
   availableStudents: studentNotInCourse[];
   loading: boolean;
-  adding: boolean; // New prop for adding state
+  adding: boolean;
   onCancel: () => void;
   onSave: (students: studentNotInCourse[]) => void;
 }) {
@@ -481,32 +504,32 @@ function AddStudentModal({
   const filteredStudents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return safeAvailableStudents;
-    return safeAvailableStudents.filter(student =>
+    return safeAvailableStudents.filter((student) =>
       student.id.toString().includes(q) ||
       student.name.toLowerCase().includes(q) ||
       student.email.toLowerCase().includes(q)
     );
   }, [searchQuery, safeAvailableStudents]);
 
-  const allSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudents[s.id]);
-  const someSelected = filteredStudents.some(s => selectedStudents[s.id]) && !allSelected;
+  const allSelected = filteredStudents.length > 0 && filteredStudents.every((s) => selectedStudents[s.id]);
+  const someSelected = filteredStudents.some((s) => selectedStudents[s.id]) && !allSelected;
 
   const toggleAll = () => {
     if (allSelected) {
       setSelectedStudents({});
     } else {
       const newSelected: Record<string, boolean> = {};
-      filteredStudents.forEach(s => newSelected[s.id] = true);
+      filteredStudents.forEach((s) => (newSelected[s.id] = true));
       setSelectedStudents(newSelected);
     }
   };
 
   const toggleStudent = (id: string) => {
-    setSelectedStudents(prev => ({ ...prev, [id]: !prev[id] }));
+    setSelectedStudents((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const handleSave = () => {
-    const selected = safeAvailableStudents.filter(s => selectedStudents[s.id]);
+    const selected = safeAvailableStudents.filter((s) => selectedStudents[s.id]);
     onSave(selected);
   };
 
@@ -514,7 +537,7 @@ function AddStudentModal({
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !adding && onCancel(); // Prevent closing while adding
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !adding && onCancel();
     const onClick = (e: MouseEvent) => {
       if (!adding && panelRef.current && !panelRef.current.contains(e.target as Node)) onCancel();
     };

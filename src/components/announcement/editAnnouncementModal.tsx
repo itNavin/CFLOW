@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { Announcement } from "@/types/api/announcement";
 import { FileUpload } from "@/components/uploadFile";
+import { useToast } from "@/components/toast";
 
 type Props = {
   open: boolean;
@@ -24,6 +25,8 @@ export default function EditAnnouncementModal({
   announcement,
   onSubmit,
 }: Props) {
+  const { showToast } = useToast();
+
   const [name, setName] = useState(announcement.name);
   const [description, setDescription] = useState(announcement.description ?? "");
   const [scheduleAt, setScheduleAt] = useState(
@@ -86,9 +89,12 @@ export default function EditAnnouncementModal({
         keepUrls,
         files: newFile,
       });
-      window.location.reload();
+      showToast({ variant: "success", message: "Announcement updated" });
+      onClose();
     } catch (e: any) {
-      setError(e?.message || "Failed to save announcement");
+      const msg = e?.response?.data?.message || e?.message || "Failed to save announcement";
+      setError(msg);
+      showToast({ variant: "error", message: String(msg) });
     } finally {
       setSubmitting(false);
     }
@@ -144,7 +150,6 @@ export default function EditAnnouncementModal({
               />
             </div>
 
-            {/* Existing Files */}
             <div>
               <label className="block font-medium mb-2">Existing Files</label>
               {announcement.files?.length ? (
@@ -185,7 +190,6 @@ export default function EditAnnouncementModal({
               )}
             </div>
 
-            {/* Add New Files */}
             <div>
               <label className="block font-medium mb-2">Add New Files</label>
               <FileUpload
@@ -195,7 +199,6 @@ export default function EditAnnouncementModal({
               />
             </div>
 
-            {/* Scheduling */}
             <div>
               <label className="block font-medium mb-3">Post Timing</label>
               <div className="flex items-center space-x-4 mb-4">
@@ -248,7 +251,6 @@ export default function EditAnnouncementModal({
             </div>
           </div>
 
-          {/* ===== Footer ===== */}
           <div className="flex justify-end gap-3 px-6 py-4 border-t">
             <button
               type="button"

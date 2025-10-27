@@ -9,6 +9,7 @@ import { CourseModal } from "@/components/course/courseModal";
 import { updateCourseAPI } from "@/api/course/updateCourse";
 import { Course } from "@/types/api/course";
 import { isCanUpload } from "@/util/RoleHelper";
+import { useToast } from "../toast";
 
 interface CourseInfoProps {
   courseId?: string;
@@ -41,7 +42,7 @@ export default function CourseInfo({
     [propCourseId, searchParams]
   );
 
-  const [mounted, setMounted] = useState(false); // gate client-only stuff
+  const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export default function CourseInfo({
   const [showCourseModal, setShowCourseModal] = useState(false);
   const [courseData, setCourseData] = useState<Course | null>(null);
   const canEdit = mounted && isCanUpload();
+  const { showToast } = useToast();
 
   const fetchDashboardData = async () => {
     try {
@@ -95,10 +97,12 @@ export default function CourseInfo({
       setShowCourseModal(false);
       await fetchDashboardData();
       onCourseUpdated?.();
+      showToast({ variant: "success", message: "Course updated successfully" });
     } catch (error: any) {
       console.error("Failed to update course:", error);
       const msg = error.response?.data?.message || error.message || "Unknown error";
       setError(`Failed to update course: ${msg}`);
+      showToast({ variant: "error", message: String(msg) });
       throw error;
     }
   };
