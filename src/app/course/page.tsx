@@ -17,6 +17,7 @@ import { updateCourse } from "@/types/api/course";
 import { updateCourseAPI } from "@/api/course/updateCourse";
 import ErrorPopUp from "@/components/errorPopUp";
 import { ToastProvider, useToast } from "@/components/toast";
+import { Plus } from "lucide-react";
 
 const asArray = <T = any>(data: any, key?: string): T[] => {
   if (Array.isArray(data)) return data as T[];
@@ -255,7 +256,8 @@ function CoursePageContent() {
                 onClick={() => setOpenCreate(true)}
                 className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
               >
-                <span className="text-2xl mr-2">+</span> Create Course
+                <Plus className="h-5 w-5" />
+                <span className="hidden sm:inline">Create Course</span>
               </button>
             </div>
           )}

@@ -43,7 +43,6 @@ export default function UserDetailCard() {
     );
   }
 
-  // ✅ If no profile in system
   if (!profileData) {
     return (
       <div className="border rounded-md p-4">
@@ -53,7 +52,6 @@ export default function UserDetailCard() {
     );
   }
 
-  // Optional: local var for cleaner JSX
   const user = profileData.profile?.user;
 
   return (
