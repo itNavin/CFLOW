@@ -134,13 +134,15 @@ export function Version({
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-6">
         <section className="p-6 border-b">
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
-          {(statusText === "FINAL" || statusText === "APPROVED")
-            ? (<p className="text-sm text-gray-500">No feedback from advisor.</p>)
-            : feedback.length === 0
-              ? (<p className="text-sm text-gray-500">No feedback yet.</p>)
-              : (
-                <div className="space-y-5 text-[14px] leading-relaxed text-gray-800">
-                  {feedback.map((f, idx) => {
+          {feedback.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              {statusText === "FINAL" || statusText === "APPROVED"
+                ? "No feedback provided."
+                : "No feedback yet."}
+            </p>
+          ) : (
+            <div className="space-y-5 text-[14px] leading-relaxed text-gray-800">
+              {feedback.map((f, idx) => {
                     const comments = arr(f.comments);
                     const files = arr(f.files);
                     return (
