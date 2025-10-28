@@ -13,6 +13,7 @@ import { getCoursename } from "@/types/api/course";
 import { isCanUpload } from "@/util/RoleHelper";
 import { getActivityLogByUserAPI } from "@/api/notification/getActivityLogByUser";
 import { notification } from "@/types/api/notification";
+import { getProfileAPI } from "@/api/profile/getProfile";
 
 export default function Navbar() {
   const searchParams = useSearchParams();
@@ -29,6 +30,7 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<notification.activity[]>([]);
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
 
   const fetchCourses = useCallback(async () => {
     if (!userRole || !courseId || courseId.trim() === "") {
@@ -59,6 +61,26 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    // fetch profile name for navbar display
+    let mounted = true;
+    getProfileAPI()
+      .then((res) => {
+        if (!mounted) return;
+        const u = res?.data?.profile?.user;
+        const n = u?.name ?? u?.id ?? null;
+        setUserName(n);
+      })
+      .catch((e) => {
+        // fail silently — navbar can continue without name
+        console.debug("Failed to load profile for navbar:", e);
+        setUserName(null);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
     fetchCourses();
     setCanUpload(isCanUpload());
   }, [fetchCourses]);
@@ -86,7 +108,12 @@ export default function Navbar() {
           </span>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-5">
+          {userName && (
+            <span className="hidden md:inline text-3xl font-bold text-slate-700 pr-2 border-r border-slate-100">
+              {userName}
+            </span>
+          )}
           {(userRole === "staff") && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
           <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
             <Bell className="w-6 h-6 text-black" />

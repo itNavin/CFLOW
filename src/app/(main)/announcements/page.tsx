@@ -375,7 +375,6 @@ function AnnouncementContent() {
         />
       )}
 
-      {/* Confirm modal for delete */}
       <ConfirmModal
         open={confirmState.open}
         title={confirmState.title}
