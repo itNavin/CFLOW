@@ -33,6 +33,7 @@ function StudentTabContent() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [deletingStudent, setDeletingStudent] = useState(false);
   const [courseProgram, setCourseProgram] = useState<Program | null>(null);
+  const [uploadingExcel, setUploadingExcel] = useState(false);
 
   const [confirmState, setConfirmState] = useState<{
     open: boolean;
@@ -132,21 +133,79 @@ function StudentTabContent() {
     }
   }, [openCreate, courseId]);
 
+  // const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const files = Array.from(e.target.files || []);
+  //   if (!files.length || !courseId) return;
+
+  //   try {
+  //     setLoading(true);
+
+  //     const res = await uploadTemplateAPI(courseId, files);
+
+  //     // if the API returns an HTTP-like status, treat non-2xx as error
+  //     const status = (res && (res as any).status) ?? (res && (res as any).statusCode) ?? null;
+  //     if (typeof status === "number" && status >= 400) {
+  //       throw new Error("Upload failed");
+  //     }
+
+  //     // simple success toast only
+  //     showToast({ variant: "success", message: "Files uploaded successfully" });
+
+  //     await fetchStudents();
+  //     if (openCreate) await fetchStudentNotInCourse(courseId);
+
+  //     if (fileInputRef.current) fileInputRef.current.value = "";
+  //   } catch (error) {
+  //     console.error("Error uploading files:", error);
+  //     showToast({ variant: "error", message: "Upload failed. Please try again." });
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !courseId) return;
+
     try {
+      setUploadingExcel(true);
       setLoading(true);
-      const result = await uploadTemplateAPI(courseId, files);
-      console.log("Uploaded files:", result);
+
+      const res = await uploadTemplateAPI(courseId, files);
+
+      const status = (res && (res as any).status) ?? (res && (res as any).statusCode) ?? null;
+      const data = (res && (res as any).data) ?? (res as any) ?? {};
+
+      if (typeof status === "number" && status >= 400) {
+        console.error("[uploadTemplate] http status error:", status, data);
+        showToast({ variant: "error", message: "Upload failed. Please try again." });
+        return;
+      }
+
+      const bodyMsg = data?.message ?? data?.error ?? "";
+      if (bodyMsg && /error|invalid|failed|forbidden|required/i.test(String(bodyMsg))) {
+        showToast({ variant: "error", message: "Upload failed. Please try again." });
+        return;
+      }
+
+      const details = Array.isArray(data?.result?.details) ? data.result.details : [];
+      const hasFailures = details.some((d: any) => d?.error || d?.ok === false);
+      if (hasFailures) {
+        console.log("[uploadTemplate] validation details:", details);
+        showToast({ variant: "error", message: "Upload failed due to validation errors. Check console for details." });
+        return;
+      }
+
       showToast({ variant: "success", message: "Files uploaded successfully" });
+
       await fetchStudents();
       if (openCreate) await fetchStudentNotInCourse(courseId);
+
       if (fileInputRef.current) fileInputRef.current.value = "";
-    } catch (error) {
-      console.error("Error uploading files:", error);
-      showToast({ variant: "error", message: "Failed to upload files" });
+    } catch (error: any) {
+      showToast({ variant: "error", message: "Upload failed. Please try again." });
     } finally {
+      setUploadingExcel(false);
       setLoading(false);
     }
   };
@@ -313,6 +372,14 @@ function StudentTabContent() {
 
   return (
     <section className="min-h-[60vh]">
+      {uploadingExcel && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/30">
+          <div className="rounded-lg bg-white/95 p-6 flex items-center gap-4 shadow-xl">
+            <span className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#326295]" />
+            <div className="text-lg font-medium">Uploading excel…</div>
+          </div>
+        </div>
+      )}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
         <div className="flex flex-wrap gap-3">
           <button
@@ -327,9 +394,15 @@ function StudentTabContent() {
           <button
             className="inline-flex text-xl items-center gap-2 rounded px-4 py-2 text-white shadow bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition"
             onClick={handleUploadClick}
+            disabled={uploadingExcel}
+            aria-disabled={uploadingExcel}
           >
-            <Upload className="w-4 h-4" />
-            Upload excel
+            {uploadingExcel ? (
+              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+            ) : (
+              <Upload className="w-4 h-4" />
+            )}
+            {uploadingExcel ? "Uploading..." : "Upload excel"}
           </button>
 
           <DownloadTemplateButton program={courseProgram} />
@@ -339,6 +412,7 @@ function StudentTabContent() {
             type="file"
             accept=".xlsx,.xls"
             onChange={handleFileSelect}
+            disabled={uploadingExcel}
             className="hidden"
           />
         </div>
