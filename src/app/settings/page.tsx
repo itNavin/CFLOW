@@ -415,7 +415,7 @@ function SettingsPageContent() {
 
   const badge = (r: string) => {
     const k = r.toLowerCase();
-    if (k === "student") return "border-green-300 bg-green-50 text-green-700"; // green for student
+    if (k === "student") return "border-teal-300 bg-teal-50 text-teal-700";
     if (k === "staff") return "border-violet-300 bg-violet-50 text-violet-700";
     if (k === "lecturer") return "border-blue-300 bg-blue-50 text-blue-700";
     if (k === "admin") return "border-rose-300 bg-rose-50 text-rose-700";
@@ -552,8 +552,7 @@ function SettingsPageContent() {
               <div className="text-lg">{selected.size} selected</div>
 
               <div className="flex items-center gap-2">
-                {/* If commonAllowedStatuses is empty, show notice and disable actions */}
-                {/* Cancel (clear selection) placed left of status chooser */}
+
                 <button
                   onClick={() => setSelected(new Set())}
                   className="rounded-xl border px-4 py-2 text-lg"
@@ -561,7 +560,6 @@ function SettingsPageContent() {
                   Cancel
                 </button>
 
-                {/* If commonAllowedStatuses is empty, show notice and disable actions */}
                 {commonAllowedStatuses.length === 0 ? (
                   <div className="text-sm text-red-600">Selected users have incompatible roles — cannot bulk-change status.</div>
                 ) : (
@@ -683,7 +681,20 @@ function SettingsPageContent() {
                         </span>
                       </td>
                       <td className="px-6 py-5 align-top">{u.program || "—"}</td>
-                      <td className="px-6 py-5 align-top">{u.status || "—"}</td>
+                      <td className="px-6 py-5 align-top">
+                        {u.status ? (
+                          <span
+                            className={cx(
+                              "text-md font-medium",
+                              u.status === "ACTIVE" ? "text-[#4CBB17]" : "text-red-600"
+                            )}
+                          >
+                            {u.status}
+                          </span>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
                       <td className="px-6 py-5 align-top">{formatDate(u.createdAt)}</td>
                       <td className="px-6 py-5 align-top text-right">
                         <button
@@ -956,9 +967,9 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
   return (
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading settings...</div>}>
-        <SettingsPageContent />
-      </Suspense>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-6">Loading settings...</div>}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }
 
