@@ -213,47 +213,79 @@ function StatusTabContent() {
         </div>
       </div>
 
-      <h3 className="font-bold text-xl text-gray-800 mb-3">{assignmentName}</h3>
+      {assignmentId === "All" ? (
+        <>
+          {!loading && !error && statusData?.assignments?.length === 0 && (
+            <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">No results.</div>
+          )}
 
-      <div className="space-y-3">
-        {loading && (
-          <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">
-            Loading...
-          </div>
-        )}
-        {error && (
-          <div className="rounded bg-white p-8 text-center text-red-500 text-xl">
-            {error}
-          </div>
-        )}
-        {!loading && !error && list.map((row) => {
-          const sty = statusStyles[row.status] || statusStyles["Missed"];
-          return (
-            <div
-              key={`${row.assignmentId}-${row.id}`}
-              className={`flex items-center justify-between rounded border px-4 py-3 ${sty.container}`}
-            >
-              <div className="truncate text-xl">{row.name}</div>
-              <div className="flex items-center gap-4 ml-4 shrink-0">
-                <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>
-                  {row.status}
-                </span>
-                {/* <Link
-                  href={`/admin/status/${row.id}/${row.assignmentId}`}
-                  className="text-xl text-[#326295] hover:underline"
-                >
-                  Detail
-                </Link> */}
+          {loading && (
+            <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">Loading...</div>
+          )}
+          {error && (
+            <div className="rounded bg-white p-8 text-center text-red-500 text-xl">{error}</div>
+          )}
+
+          {/* map each assignment into its own section */}
+          {!loading && !error && statusData?.assignments?.map((assignment) => (
+            <div key={assignment.assignmentId} className="mb-6">
+              <h3 className="font-bold text-lg text-gray-800 mb-3">{assignment.assignmentName}</h3>
+              <div className="space-y-3">
+                {assignment.groups && assignment.groups.length > 0 ? (
+                  assignment.groups.map((group) => {
+                    const statusLabel = (() => {
+                      switch (group.status) {
+                        case "APPROVED": return "Approved";
+                        case "SUBMITTED": return "Submitted";
+                        case "NOT_SUBMITTED": return "Not Submitted";
+                        case "MISSED": return "Missed";
+                        default: return group.status.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+                      }
+                    })();
+                    const sty = statusStyles[statusLabel] || statusStyles["Missed"];
+                    return (
+                      <div key={group.groupId} className={`flex items-center justify-between rounded border px-4 py-3 ${sty.container}`}>
+                        <div className="truncate text-xl">{group.projectName || group.codeNumber}</div>
+                        <div className="flex items-center gap-4 ml-4 shrink-0">
+                          <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>{statusLabel}</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded bg-white p-4 text-center text-gray-500">No groups.</div>
+                )}
               </div>
             </div>
-          );
-        })}
-        {!loading && !error && list.length === 0 && (
-          <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">
-            No results.
+          ))}
+        </>
+      ) : (
+        <>
+          <h3 className="font-bold text-xl text-gray-800 mb-3">{assignmentName}</h3>
+          <div className="space-y-3">
+            {loading && (
+              <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">Loading...</div>
+            )}
+            {error && (
+              <div className="rounded bg-white p-8 text-center text-red-500 text-xl">{error}</div>
+            )}
+            {!loading && !error && list.map((row) => {
+              const sty = statusStyles[row.status] || statusStyles["Missed"];
+              return (
+                <div key={`${row.assignmentId}-${row.id}`} className={`flex items-center justify-between rounded border px-4 py-3 ${sty.container}`}>
+                  <div className="truncate text-xl">{row.name}</div>
+                  <div className="flex items-center gap-4 ml-4 shrink-0">
+                    <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>{row.status}</span>
+                  </div>
+                </div>
+              );
+            })}
+            {!loading && !error && list.length === 0 && (
+              <div className="rounded bg-white p-8 text-center text-gray-500 text-xl">No results.</div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
     </section>
   );
 }

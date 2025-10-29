@@ -26,7 +26,7 @@ const asArray = <T = any>(data: any, key?: string): T[] => {
 };
 
 const pickArray = <T = any>(res: any, key?: string): T[] => {
-  const candidates = [res?.data, res?.data?.data, res]; // support {data:{...}}, {data:[]}, or bare array
+  const candidates = [res?.data, res?.data?.data, res]; 
   for (const base of candidates) {
     const arr = asArray<T>(base, key);
     if (arr.length) return arr;
@@ -254,7 +254,7 @@ function CoursePageContent() {
             <div className="flex gap-3">
               <button
                 onClick={() => setOpenCreate(true)}
-                className="flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-[16px] px-4 py-2 rounded shadow hover:from-[#28517c] hover:to-[#071320]"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-white text-xl shadow-md bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] transition cursor-pointer"
               >
                 <Plus className="h-5 w-5" />
                 <span className="hidden sm:inline">Create Course</span>
@@ -299,7 +299,7 @@ function CoursePageContent() {
                 {canUpload && (
                   <button
                     onClick={() => toggleMenu(course.id)}
-                    className="text-[24px] text-gray-600 hover:text-black px-2"
+                    className="text-[24px] text-gray-600 hover:text-black px-2 cursor-pointer"
                     aria-haspopup="menu"
                     aria-expanded={openMenuId === course.id}
                   >
@@ -310,7 +310,7 @@ function CoursePageContent() {
                 {canUpload && openMenuId === course.id && (
                   <div className="absolute right-4 top-14 bg-white border border-gray-200 rounded-md shadow-md z-10 w-32">
                     <button
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 cursor-pointer"
                       onClick={() => {
                         setEditing(course);
                         setOpenMenuId(null);
@@ -319,7 +319,7 @@ function CoursePageContent() {
                       Edit
                     </button>
                     <button
-                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
+                      className="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 cursor-pointer"
                       onClick={() => {
                         handleDeleteCourse(course);
                       }}
