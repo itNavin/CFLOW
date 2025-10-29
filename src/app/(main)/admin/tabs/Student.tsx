@@ -133,36 +133,6 @@ function StudentTabContent() {
     }
   }, [openCreate, courseId]);
 
-  // const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   const files = Array.from(e.target.files || []);
-  //   if (!files.length || !courseId) return;
-
-  //   try {
-  //     setLoading(true);
-
-  //     const res = await uploadTemplateAPI(courseId, files);
-
-  //     // if the API returns an HTTP-like status, treat non-2xx as error
-  //     const status = (res && (res as any).status) ?? (res && (res as any).statusCode) ?? null;
-  //     if (typeof status === "number" && status >= 400) {
-  //       throw new Error("Upload failed");
-  //     }
-
-  //     // simple success toast only
-  //     showToast({ variant: "success", message: "Files uploaded successfully" });
-
-  //     await fetchStudents();
-  //     if (openCreate) await fetchStudentNotInCourse(courseId);
-
-  //     if (fileInputRef.current) fileInputRef.current.value = "";
-  //   } catch (error) {
-  //     console.error("Error uploading files:", error);
-  //     showToast({ variant: "error", message: "Upload failed. Please try again." });
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length || !courseId) return;
@@ -694,9 +664,9 @@ function AddStudentModal({
                               className="accent-[#326295] cursor-pointer mt-2"
                             />
                           </td>
-                          <td className="py-3 text-gray-900">{student.id}</td>
-                          <td className="py-3 text-gray-900">{student.name}</td>
-                          <td className="py-3 text-gray-900">{student.email}</td>
+                          <td className="py-3 text-gray-900 text-lg">{student.id}</td>
+                          <td className="py-3 text-gray-900 text-lg">{student.name}</td>
+                          <td className="py-3 text-gray-900 text-lg">{student.email}</td>
                         </tr>
                       ))
                     ) : (
