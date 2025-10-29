@@ -516,11 +516,11 @@ function AddStaffModal({
                               className="accent-[#326295] cursor-pointer"
                             />
                           </td>
-                          <td className="py-3 text-gray-900">{staff.user?.id}</td>
-                          <td className="py-3 text-gray-900">{staff.user?.name}</td>
-                          <td className="py-3 text-gray-900">{staff.user?.email}</td>
-                          <td className="py-3 text-gray-900">{staff.user?.role}</td>
-                          <td className="py-3 text-gray-900">{staff.user?.program}</td>
+                          <td className="py-3 text-gray-900 text-lg">{staff.user?.id}</td>
+                          <td className="py-3 text-gray-900 text-lg">{staff.user?.name}</td>
+                          <td className="py-3 text-gray-900 text-lg">{staff.user?.email}</td>
+                          <td className="py-3 text-gray-900 text-lg">{staff.user?.role}</td>
+                          <td className="py-3 text-gray-900 text-lg">{staff.user?.program}</td>
                         </tr>
                       ))
                     ) : (

@@ -623,9 +623,9 @@ function AddAdvisorModal({
                               className="accent-[#326295] cursor-pointer"
                             />
                           </td>
-                          <td className="py-3 text-gray-900">{advisor.id}</td>
-                          <td className="py-3 text-gray-900">{advisor.name}</td>
-                          <td className="py-3 text-gray-900">{advisor.email}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.id}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.name}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.email}</td>
                         </tr>
                       ))
                     ) : (
