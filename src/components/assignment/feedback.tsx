@@ -386,7 +386,7 @@ export default function GiveFeedbackLecturer({
                 onClick={handleSubmitFeedback}
                 disabled={submitting}
               >
-                {submitting ? "Submitting…" : "Send"}
+                {submitting ? "Submitting…" : "Confirm Feedback"}
               </button>
             </div>
           </>
