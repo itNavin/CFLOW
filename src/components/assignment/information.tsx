@@ -166,12 +166,12 @@ export default function AssignmentInformation({ data }: InformationAssignmentPro
           <ul className="space-y-2">
             {assignmentFiles.map((file: any) => (
               <li key={file.id} className="flex items-center gap-2">
-                <span className="truncate ml-8">{file.name}</span>
+                <span className="truncate ml-8 text-lg">{file.name}</span>
                 <a
                   href={file.fileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 hover:underline text-lg"
                   download
                 >
                   Download

@@ -89,12 +89,12 @@ function Version({
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
-        <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
-        <p className="mt-1 text-sm" style={{ color }}>
+        <h1 className="text-[18px] font-semibold text-[#000000] ml-8">{versionLabel}</h1>
+        <p className="mt-1 text-sm ml-8" style={{ color }}>
           Status: {statusText === "FINAL" ? "APPROVED" : statusText === "REJECTED" ? "NOT APPROVED" : statusText}
         </p>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-7">
         <section className="p-6 border-b">
           <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
           {feedback.length === 0 ? (
@@ -132,7 +132,7 @@ function Version({
                                     </a>
                                     {file.id && (
                                       <button
-                                        className="text-blue-600 underline"
+                                        className="text-blue-600 underline cursor-pointer"
                                         onClick={() => handleDownloadFeedback(file.id!, file.name)}
                                         title="Download file"
                                       >
@@ -182,7 +182,7 @@ function Version({
                               </a>
                               {file.id && (
                                 <button
-                                  className="text-blue-600 underline"
+                                  className="text-blue-600 underline cursor-pointer"
                                   onClick={() => handleDownloadSubmission(file.id!, displayName)}
                                   title="Download file"
                                 >
