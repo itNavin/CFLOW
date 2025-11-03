@@ -6,31 +6,42 @@ import { getStatusAPI } from "@/api/status/getStatus";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-const statusStyles: Record<string, { container: string; badge: string }> = {
-  Approved: {
-    container: "bg-green-50 border-green-200 text-green-900 hover:bg-green-100",
-    badge: "text-green-800 border-green-300 bg-green-100",
-  },
-  Submitted: {
-    container: "bg-sky-50 border-sky-200 text-sky-900 hover:bg-sky-100",
-    badge: "text-sky-800 border-sky-300 bg-sky-100",
-  },
-  "Not Submitted": {
-    container: "bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100",
-    badge: "text-amber-800 border-amber-300 bg-amber-100",
-  },
-  Missed: {
-    container: "bg-rose-50 border-rose-200 text-rose-900 hover:bg-rose-100",
-    badge: "text-rose-800 border-rose-300 bg-rose-100",
-  },
+const STATUS_COLOR_HEX: Record<string, string> = {
+  NOT_SUBMITTED: "#6b7280",
+  SUBMITTED: "#1d4ed8",
+  REJECTED: "#ef4444",
+  APPROVED_WITH_FEEDBACK: "#f59e0b",
+  FINAL: "#16a34a",
+  APPROVED: "#16a34a",
+  MISSED: "#ef4444",
+  DEFAULT: "#6b7280",
 };
 
+function getStyleForCode(code?: string) {
+  const color = (code && STATUS_COLOR_HEX[code]) || STATUS_COLOR_HEX.DEFAULT;
+  const containerBg = `${color}10`;
+  const badgeBg = `${color}22`;
+  return {
+    containerStyle: {
+      borderColor: color,
+      color,
+      backgroundColor: containerBg,
+    } as React.CSSProperties,
+    badgeStyle: {
+      backgroundColor: badgeBg,
+      color,
+      border: `1px solid ${color}33`,
+    } as React.CSSProperties,
+  };
+}
+
+// removed "Missed", added "Not Approved"
 const ALL_STATUS = [
   "All",
   "Approved",
   "Submitted",
   "Not Submitted",
-  "Missed",
+  "Not Approved",
 ] as const;
 
 type StatusFilter = (typeof ALL_STATUS)[number];
@@ -54,15 +65,27 @@ function StatusTabContent() {
     const options: Record<string, string> = {};
     if (assignmentId !== "All") options.assignmentId = assignmentId;
     if (groupId !== "All") options.groupId = groupId;
-    if (statusFilter !== "All") options.status = statusFilter.toUpperCase().replace(/ /g, "_");
+
+    // map UI filter labels to API status codes when needed
+    if (statusFilter !== "All") {
+      let statusParam: string | null = null;
+      if (statusFilter === "Not Approved") {
+        statusParam = "REJECTED";
+      } else if (statusFilter === "Approved") {
+        // map Approved UI to FINAL (server considers FINAL as approved)
+        statusParam = "FINAL";
+      } else {
+        statusParam = statusFilter.toUpperCase().replace(/ /g, "_");
+      }
+      if (statusParam) options.status = statusParam;
+    }
 
     getStatusAPI(courseId, options)
       .then(data => setStatusData(data))
       .catch(e => setError(e?.message || "Failed to fetch status"))
       .finally(() => setLoading(false));
-  }, [assignmentId, groupId, statusFilter]);
+  }, [assignmentId, groupId, statusFilter, courseId]);
 
-  // Assignment options for select
   const assignmentOptions = useMemo(() => {
     if (!statusData?.assignments) return [{ id: "All", name: "All" }];
     return [
@@ -74,7 +97,6 @@ function StatusTabContent() {
     ];
   }, [statusData]);
 
-  // Group options for select
   const groupOptions = useMemo(() => {
     if (!statusData?.assignments) return [{ id: "All", name: "All" }];
     let groups: { id: string; name: string }[] = [];
@@ -96,12 +118,10 @@ function StatusTabContent() {
         });
       });
     }
-    // Remove duplicates
     const uniqueGroups = Array.from(new Map(groups.map(g => [g.id, g])).values());
     return [{ id: "All", name: "All" }, ...uniqueGroups];
   }, [statusData, assignmentId]);
 
-  // Filtered list for display
   const list = useMemo(() => {
     if (!statusData?.assignments) return [];
     let rows: {
@@ -110,13 +130,20 @@ function StatusTabContent() {
       name: string;
       id: string;
       status: string;
+      statusCode: string;
     }[] = [];
     for (const assignment of statusData.assignments) {
       for (const group of assignment.groups) {
         const statusLabel = (() => {
+          // Map API codes to display labels:
+          // FINAL/APPROVED -> Approved
+          // REJECTED -> Not Approved
           switch (group.status) {
+            case "FINAL":
             case "APPROVED":
               return "Approved";
+            case "REJECTED":
+              return "Not Approved";
             case "SUBMITTED":
               return "Submitted";
             case "NOT_SUBMITTED":
@@ -139,6 +166,7 @@ function StatusTabContent() {
             name: group.projectName || group.codeNumber,
             id: group.groupId,
             status: statusLabel,
+            statusCode: group.status,
           });
         }
       }
@@ -146,7 +174,6 @@ function StatusTabContent() {
     return rows.sort((a, b) => a.name.localeCompare(b.name));
   }, [statusData, assignmentId, groupId, statusFilter]);
 
-  // Assignment name for header
   const assignmentName = useMemo(() => {
     if (assignmentId === "All") return "All Assignments";
     return assignmentOptions.find(a => a.id === assignmentId)?.name ?? "";
@@ -226,7 +253,6 @@ function StatusTabContent() {
             <div className="rounded bg-white p-8 text-center text-red-500 text-xl">{error}</div>
           )}
 
-          {/* map each assignment into its own section */}
           {!loading && !error && statusData?.assignments?.map((assignment) => (
             <div key={assignment.assignmentId} className="mb-6">
               <h3 className="font-bold text-lg text-gray-800 mb-3">{assignment.assignmentName}</h3>
@@ -235,19 +261,25 @@ function StatusTabContent() {
                   assignment.groups.map((group) => {
                     const statusLabel = (() => {
                       switch (group.status) {
+                        case "FINAL": return "Approved";
                         case "APPROVED": return "Approved";
+                        case "REJECTED": return "Not Approved";
                         case "SUBMITTED": return "Submitted";
                         case "NOT_SUBMITTED": return "Not Submitted";
                         case "MISSED": return "Missed";
                         default: return group.status.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
                       }
                     })();
-                    const sty = statusStyles[statusLabel] || statusStyles["Missed"];
+                    const sty = getStyleForCode(group.status);
                     return (
-                      <div key={group.groupId} className={`flex items-center justify-between rounded border px-4 py-3 ${sty.container}`}>
+                      <div
+                        key={group.groupId}
+                        className="flex items-center justify-between rounded border px-4 py-3"
+                        style={sty.containerStyle}
+                      >
                         <div className="truncate text-xl">{group.projectName || group.codeNumber}</div>
                         <div className="flex items-center gap-4 ml-4 shrink-0">
-                          <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>{statusLabel}</span>
+                          <span className="rounded px-2 py-0.5 text-xl" style={sty.badgeStyle}>{statusLabel}</span>
                         </div>
                       </div>
                     );
@@ -270,12 +302,16 @@ function StatusTabContent() {
               <div className="rounded bg-white p-8 text-center text-red-500 text-xl">{error}</div>
             )}
             {!loading && !error && list.map((row) => {
-              const sty = statusStyles[row.status] || statusStyles["Missed"];
+              const sty = getStyleForCode(row.statusCode);
               return (
-                <div key={`${row.assignmentId}-${row.id}`} className={`flex items-center justify-between rounded border px-4 py-3 ${sty.container}`}>
+                <div
+                  key={`${row.assignmentId}-${row.id}`}
+                  className="flex items-center justify-between rounded border px-4 py-3"
+                  style={sty.containerStyle}
+                >
                   <div className="truncate text-xl">{row.name}</div>
                   <div className="flex items-center gap-4 ml-4 shrink-0">
-                    <span className={`rounded px-2 py-0.5 text-xl ${sty.badge}`}>{row.status}</span>
+                    <span className="rounded px-2 py-0.5 text-xl" style={sty.badgeStyle}>{row.status}</span>
                   </div>
                 </div>
               );
