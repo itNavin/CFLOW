@@ -333,7 +333,6 @@ function SettingsPageContent() {
       showToast({ variant: "success", message: "User created" });
       await fetchUsers();
     } catch (e: any) {
-      console.error("Create user error response:", e?.response || e);
       const serverMsg = e?.response?.data?.message || e?.message || "Create failed";
       showToast({ variant: "error", message: String(serverMsg) });
     } finally {
@@ -396,7 +395,6 @@ function SettingsPageContent() {
         try {
           await updateStfAndLecApi(editUserId, editName.trim(), editEmail.trim());
         } catch (apiErr: any) {
-          console.error("Update staff/lecturer error:", apiErr?.response ?? apiErr);
           const msg = apiErr?.response?.data?.message || apiErr?.message || "Failed to update user";
           showToast({ variant: "error", message: String(msg) });
           return;
@@ -407,7 +405,6 @@ function SettingsPageContent() {
         const serverStatus = uiToServerStatus(editStatus);
         await updateUserStatusApi([editUserId], serverStatus as any);
       } catch (statusErr: any) {
-        console.error("Update status error:", statusErr?.response ?? statusErr);
         const msg = statusErr?.response?.data?.message || statusErr?.message || "Failed to update status";
         showToast({ variant: "error", message: String(msg) });
         return;
@@ -416,6 +413,7 @@ function SettingsPageContent() {
       setEditOpen(false);
       setEditUserId(null);
       await fetchUsers();
+  showToast({ variant: "success", message: "User updated" });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Update failed";
       showToast({ variant: "error", message: String(msg) });
@@ -957,8 +955,14 @@ function SettingsPageContent() {
                     setStudentData(res.data);
                     await fetchUsers();
                     setAddStudentOpen(false);
+
+                    const _data: any = (res as any)?.data;
+                    const count = Array.isArray(_data) ? _data.length : (_data?.length ?? 0);
+                    showToast({ variant: "success", message: count > 0 ? `Synced ${count} students` : "Students synced" });
                   } catch (err: any) {
-                    setStudentError(err?.response?.data?.message || err?.message || "Fetch failed");
+                    const msg = err?.response?.data?.message || err?.message || "Fetch failed";
+                    setStudentError(msg);
+                    showToast({ variant: "error", message: String(msg) });
                   } finally {
                     setStudentLoading(false);
                   }

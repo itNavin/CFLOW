@@ -26,10 +26,8 @@ export const useToast = (): ToastContextValue => {
   if (ctx) return ctx;
   return {
     showToast: (t) => {
-      console.warn("[Toast] showToast called without ToastProvider:", t);
     },
     dismissToast: (id: string) => {
-      console.warn("[Toast] dismissToast called without ToastProvider:", id);
     },
   };
 };
@@ -70,7 +68,6 @@ function ToastPortal({ toasts, onClose }: { toasts: Toast[]; onClose: (id: strin
   useEffect(() => {
     setMounted(true);
   }, []);
-
   if (!mounted) return null;
 
   return createPortal(
