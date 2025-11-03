@@ -95,7 +95,21 @@ function AnnouncementContent() {
       const res = await downloadCourseFileAPI(file.id);
       const url = res.data.url;
       if (url) {
-        window.open(url, "_blank");
+        try {
+          const resp = await fetch(url, { mode: "cors" });
+          if (!resp.ok) throw new Error("Network response not ok");
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = file.name || "download";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+          window.open(url, "_blank");
+        }
       } else {
         showToast({ variant: "error", message: "Download link not found." });
       }

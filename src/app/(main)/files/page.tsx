@@ -69,7 +69,7 @@ function FilePageContent() {
 
     const x = Math.min(
       Math.max(rect.right - MENU_WIDTH, 8),
-      window.innerWidth - MENU_WIDTH - 8 
+      window.innerWidth - MENU_WIDTH - 8
     );
     const y = above ? rect.top - MENU_HEIGHT - GAP : rect.bottom + GAP;
 
@@ -138,7 +138,21 @@ function FilePageContent() {
       const res = await downloadCourseFileAPI(file.id);
       const url = (res as any).data?.url ?? (res as any).url; // support either helper shape
       if (url) {
-        window.open(url, "_blank");
+        try {
+          const resp = await fetch(url, { mode: "cors" });
+          if (!resp.ok) throw new Error("Network response not ok");
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = file.name || "download";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+          window.open(url, "_blank");
+        }
       } else {
         showToast({ variant: "error", message: "Download link not found." });
       }
