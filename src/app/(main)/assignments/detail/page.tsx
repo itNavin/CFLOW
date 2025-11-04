@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AssignmentInformation from "@/components/assignment/information";
 import SubmitAssignment from "@/components/assignment/submit";
@@ -12,8 +12,6 @@ import ViewSubmissionVersions from "@/components/assignment/versionStd";
 import GiveFeedback from "@/components/assignment/feedback";
 import GiveFeedbackLecturer from "@/components/assignment/feedback";
 import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
-
-export const dynamic = "force-dynamic";
 
 const clean = (v: string | null | undefined) =>
   v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
@@ -27,7 +25,7 @@ const latestOf = (subs?: any[]) => {
   })[0];
 };
 
-function AssignmentDetailContent() {
+export default function AssignmentDetailContent() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -117,13 +115,5 @@ function AssignmentDetailContent() {
         </>
       )}
     </div>
-  );
-}
-
-export default function AssignmentDetailPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-gray-500">Loading assignment…</div>}>
-      <AssignmentDetailContent />
-    </Suspense>
   );
 }
