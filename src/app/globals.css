@@ -34,6 +34,20 @@ body {
   font-family: "DB Heavent", sans-serif;
 }
 
+/*
+  When a left sidebar is present the page content should start directly to the
+  right of it. Many pages use `mx-auto max-w-7xl` which centers their container
+  within the available width — this produces large empty whitespace next to the
+  sidebar. The rule below forces inner `.mx-auto` containers to align to the
+  left inside the main content area (only affects elements inside
+  `.main-content`). If you'd rather change pages individually, remove this
+  global override and edit the page containers instead.
+*/
+.main-content .mx-auto {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 /* === Optional: Light/Dark Theme Support ===
 :root {
   --background: #ffffff;

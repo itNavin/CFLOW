@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import DeliverableFields, { Deliverable, FileType } from "@/components/deliverableField";
 import { FileUpload } from "@/components/uploadFile";
 import { getAssignmentByIdAPI } from "@/api/assignment/getAssignmentById";
@@ -337,9 +337,14 @@ export default function EditAssignmentModal({
                                     <button
                                         type="button"
                                         onClick={addDeliverable}
-                                        className="mt-3 px-4 py-2 text-sm font-medium bg-[#326295] text-white rounded shadow hover:bg-[#25446b] transition"
+                                        className="inline-flex items-center gap-2 mt-3 px-4 py-2 text-sm font-medium rounded-full shadow
+                  bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white
+                  hover:from-[#28517c] hover:to-[#071320]
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                  active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        + Add more deliverable
+                                        <Plus className="h-4 w-4" />
+                                        <span className="hidden sm:inline text-base">Add deliverable</span>
                                     </button>
                                 </div>
 
