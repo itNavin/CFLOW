@@ -19,7 +19,6 @@ const AuthHandler: FC<{ children: ReactNode }> = ({ children }) => {
         setVerifying(false);
     }
 
-
     useEffect(() => {
         if (path === "/auth/login" || path === "/auth/register") {
             return;

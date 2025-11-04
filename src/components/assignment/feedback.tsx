@@ -10,6 +10,7 @@ import { changeFeedbackFileName } from "@/util/fileName";
 import { getProfileAPI } from "@/api/profile/getProfile";
 import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 import { useToast } from "../toast";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type Props = {
   courseId: string;
@@ -110,35 +111,6 @@ export default function GiveFeedbackLecturer({
     });
   };
 
-  // format ISO -> input value for datetime-local (YYYY-MM-DDTHH:MM)
-  const toDateTimeLocalValue = (val?: string | null) => {
-    if (!val) return "";
-    const d = new Date(val);
-    if (Number.isNaN(d.getTime())) return "";
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
-      d.getMinutes()
-    )}`;
-  };
-
-  // parse input value (datetime-local or date-only) -> ISO string (UTC)
-  const parseInputToISOString = (val?: string | null) => {
-    if (!val) return null;
-    // datetime-local: "YYYY-MM-DDTHH:MM"
-    if (val.includes("T")) {
-      const [datePart, timePart] = val.split("T");
-      const [y, m, d] = datePart.split("-").map((s) => parseInt(s, 10));
-      const [hh = 0, mm = 0] = (timePart || "").split(":").map((s) => parseInt(s, 10));
-      const dt = new Date(y, m - 1, d, hh, mm, 0, 0); // local time
-      return dt.toISOString();
-    }
-    // date-only: set to end of day local time
-    const [y, m, d] = val.split("-").map((s) => parseInt(s, 10));
-    const dt = new Date(y, m - 1, d, 23, 59, 59, 999);
-    return dt.toISOString();
-  };
-
-  // Return explicit end-like fields (endDate, end_at, end) from assignment detail
   const findAssignmentEndDate = (dt: any): string | null => {
     if (!dt) return null;
 
@@ -172,7 +144,7 @@ export default function GiveFeedbackLecturer({
   const validateNewDueDate = (inputVal: string | null | undefined) => {
     setDueDateError(null);
     if (!inputVal) return true;
-    const iso = parseInputToISOString(inputVal);
+    const iso = bangkokInputToIso(inputVal);
     if (!iso) {
       setDueDateError("Invalid date/time");
       return false;
@@ -197,7 +169,7 @@ export default function GiveFeedbackLecturer({
     const foundFromDetail = findAssignmentEndDate(detail);
     const foundFromSubmission = findAssignmentEndDate(latestSubmission);
     const maybeEnd = foundFromDetail ?? foundFromSubmission ?? null;
-    const inputVal = toDateTimeLocalValue(maybeEnd);
+    const inputVal = isoToBangkokInput(maybeEnd);
     if (inputVal) {
       setNewDueDate(inputVal);
       validateNewDueDate(inputVal);
@@ -224,7 +196,7 @@ export default function GiveFeedbackLecturer({
         }
       }
 
-      const isoDueDate = mappedStatus === "FINAL" ? null : (newDueDate ? parseInputToISOString(newDueDate) : null);
+      const isoDueDate = mappedStatus === "FINAL" ? null : (newDueDate ? bangkokInputToIso(newDueDate) : null);
 
       const feedbackRes = await giveFeedbackAPI(
         latestSubmission.id,
@@ -307,7 +279,7 @@ export default function GiveFeedbackLecturer({
   if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
   if (latestSubmissionFinal?.status === "FINAL") {
     return (
-      <div className="p-6 text-green-700">
+      <div className="p-6 text-green-700 text-lg font-semibold">
         This group assignment is already approved.
       </div>
     );
@@ -472,7 +444,7 @@ export default function GiveFeedbackLecturer({
                       const foundFromDetail = findAssignmentEndDate(detail);
                       const foundFromSubmission = findAssignmentEndDate(latestSubmission);
                       const maybeEnd = foundFromDetail ?? foundFromSubmission ?? null;
-                      const auto = toDateTimeLocalValue(maybeEnd);
+                      const auto = isoToBangkokInput(maybeEnd);
                       if (auto) {
                         setNewDueDate(auto);
                         validateNewDueDate(auto);
