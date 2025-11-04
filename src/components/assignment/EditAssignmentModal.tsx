@@ -6,6 +6,7 @@ import DeliverableFields, { Deliverable, FileType } from "@/components/deliverab
 import { FileUpload } from "@/components/uploadFile";
 import { getAssignmentByIdAPI } from "@/api/assignment/getAssignmentById";
 import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type EditAssignmentModalProps = {
     open: boolean;
@@ -53,25 +54,6 @@ export default function EditAssignmentModal({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [existingFiles, setExistingFiles] = useState<any[]>([]);
     const [keepFileIds, setKeepFileIds] = useState<string[]>([]);
-
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    const isoToBangkokInput = (iso?: string | null) => {
-        if (!iso) return "";
-        const d = new Date(iso);
-        const thMs = d.getTime() + 7 * 3600 * 1000; // shift UTC -> Bangkok
-        const t = new Date(thMs);
-        return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
-    };
-    const bangkokInputToIso = (input?: string) => {
-        if (!input) return null;
-        const [date, time] = input.split("T");
-        if (!date || !time) return null;
-        const [y, m, d] = date.split("-").map(Number);
-        const [hh, mm] = time.split(":").map(Number);
-        // Treat input as Bangkok local -> compute UTC ms by subtracting +7h
-        const utcMs = Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0) - 7 * 3600 * 1000;
-        return new Date(utcMs).toISOString();
-    };
 
     useEffect(() => {
         if (!open || !assignmentId) return;

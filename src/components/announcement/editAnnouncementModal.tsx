@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { Announcement } from "@/types/api/announcement";
 import { FileUpload } from "@/components/uploadFile";
 import { useToast } from "@/components/toast";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type Props = {
   open: boolean;
@@ -30,9 +31,11 @@ export default function EditAnnouncementModal({
   const [name, setName] = useState(announcement.name);
   const [description, setDescription] = useState(announcement.description ?? "");
   const [scheduleAt, setScheduleAt] = useState(
-    announcement.schedule && announcement.schedule !== "1970-01-01T00:00:00.000Z"
-      ? announcement.schedule.slice(0, 16)
-      : ""
+    isoToBangkokInput(
+      announcement.schedule && announcement.schedule !== "1970-01-01T00:00:00.000Z"
+        ? announcement.schedule
+        : null
+    )
   );
   const [isScheduled, setIsScheduled] = useState(
     !!(
@@ -57,10 +60,11 @@ export default function EditAnnouncementModal({
       )
     );
     setScheduleAt(
-      announcement.schedule &&
-        announcement.schedule !== "1970-01-01T00:00:00.000Z"
-        ? announcement.schedule.slice(0, 16)
-        : ""
+      isoToBangkokInput(
+        announcement.schedule && announcement.schedule !== "1970-01-01T00:00:00.000Z"
+          ? announcement.schedule
+          : null
+      )
     );
     setKeepUrls(announcement.files?.map((f) => f.filepath) ?? []);
     setNewFile(undefined);
@@ -79,7 +83,7 @@ export default function EditAnnouncementModal({
     try {
       const scheduleISO =
         isScheduled && scheduleAt
-          ? new Date(scheduleAt).toISOString()
+          ? bangkokInputToIso(scheduleAt) ?? new Date().toISOString()
           : new Date().toISOString();
       const descToSend = (description || "").trim();
       await onSubmit({
@@ -238,7 +242,7 @@ export default function EditAnnouncementModal({
                         value={scheduleAt}
                         onChange={(e) => setScheduleAt(e.target.value)}
                         className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={isoToBangkokInput(new Date().toISOString())}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Select when you want this announcement to post

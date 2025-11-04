@@ -6,6 +6,7 @@ import { X, Plus } from "lucide-react";
 import { Deliverable } from "@/components/deliverableField";
 import { FileUpload } from "../uploadFile";
 import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 export type AssignmentPayload = {
   title: string;
@@ -47,9 +48,9 @@ export default function AssignmentModal({
   const [deliverables, setDeliverables] = useState<Deliverable[]>(
     defaultValue?.deliverables?.length ? defaultValue!.deliverables! : [newDeliverable()]
   );
-  const [dueAt, setDueAt] = useState(defaultValue?.dueAt ?? "");
-  const [endAt, setEndAt] = useState(defaultValue?.endAt ?? "");
-  const [scheduleAt, setScheduleAt] = useState(defaultValue?.scheduleAt ?? "");
+  const [dueAt, setDueAt] = useState(() => isoToBangkokInput(defaultValue?.dueAt ?? ""));
+  const [endAt, setEndAt] = useState(() => isoToBangkokInput(defaultValue?.endAt ?? ""));
+  const [scheduleAt, setScheduleAt] = useState(() => isoToBangkokInput(defaultValue?.scheduleAt ?? ""));
   const [submitting, setSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -65,8 +66,10 @@ export default function AssignmentModal({
     const nowTs = Date.now();
     let datesValid = false;
     if (hasDates) {
-      const dueTs = new Date(dueAt!).getTime();
-      const endTs = new Date(endAt!).getTime();
+      const dueIso = bangkokInputToIso(dueAt);
+      const endIso = bangkokInputToIso(endAt);
+      const dueTs = dueIso ? new Date(dueIso).getTime() : NaN;
+      const endTs = endIso ? new Date(endIso).getTime() : NaN;
       // both dates must be valid and not before now, and end must be >= due
       datesValid =
         !isNaN(dueTs) &&
@@ -95,15 +98,15 @@ export default function AssignmentModal({
     setSubmitting(true);
     try {
       const scheduleValue = scheduleAt && scheduleAt.trim()
-        ? scheduleAt
+        ? bangkokInputToIso(scheduleAt) ?? new Date().toISOString()
         : new Date().toISOString();
       const descTrim = (descriptionHtml || "").trim();
       const basePayload: any = {
         title,
-        descriptionHtml: descTrim, // may be "" (empty)
+        descriptionHtml: descTrim,
         deliverables,
-        dueAt,
-        endAt,
+        dueAt: bangkokInputToIso(dueAt),
+        endAt: bangkokInputToIso(endAt),
         scheduleAt: scheduleValue,
       };
 
@@ -236,9 +239,12 @@ export default function AssignmentModal({
                   onChange={(e) => setDueAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
-                {dueAt && new Date(dueAt).getTime() < Date.now() && (
-                  <p className="text-md text-red-500 mt-1">Due date cannot be before today/time</p>
-                )}
+                {dueAt && (() => {
+                  const iso = bangkokInputToIso(dueAt);
+                  return iso && new Date(iso).getTime() < Date.now() ? (
+                    <p className="text-md text-red-500 mt-1">Due date cannot be before today/time</p>
+                  ) : null;
+                })()}
               </div>
 
               <div>
@@ -251,12 +257,19 @@ export default function AssignmentModal({
                   onChange={(e) => setEndAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
-                {endAt && new Date(endAt).getTime() < Date.now() && (
-                 <p className="text-md text-red-500 mt-1">End date cannot be before today/time</p>
-                )}
-                {dueAt && endAt && new Date(endAt).getTime() < new Date(dueAt).getTime() && (
-                  <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
-                )}
+                {endAt && (() => {
+                  const iso = bangkokInputToIso(endAt);
+                  return iso && new Date(iso).getTime() < Date.now() ? (
+                    <p className="text-md text-red-500 mt-1">End date cannot be before today/time</p>
+                  ) : null;
+                })()}
+                {dueAt && endAt && (() => {
+                  const dueIso = bangkokInputToIso(dueAt);
+                  const endIso = bangkokInputToIso(endAt);
+                  return dueIso && endIso && new Date(endIso).getTime() < new Date(dueIso).getTime() ? (
+                    <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
+                  ) : null;
+                })()}
               </div>
 
               <div>
