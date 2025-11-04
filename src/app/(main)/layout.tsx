@@ -13,7 +13,7 @@ export default function MainLayout({ children }: { children: ReactNode }) {
         <Suspense fallback={<div className="w-64 shrink-0 bg-white shadow-inner" />}>
           <Sidebar />
         </Suspense>
-        <main className="p-6 flex-1 overflow-auto">{children}</main>
+  <main className="p-6 flex-1 overflow-auto main-content">{children}</main>
       </div>
     </div>
   );

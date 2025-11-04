@@ -417,9 +417,6 @@ function AssignmentPageContent() {
                     ? data.deliverables
                     : (prev as any).deliverables ?? [];
 
-                    console.log("Deliverables to send:", deliverables);
-
-
                   if (data.files && Array.isArray(data.files) && data.files.length > 0) {
                     for (const file of data.files) {
                       await updateAssignmentAPI(
