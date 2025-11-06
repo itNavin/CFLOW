@@ -30,7 +30,7 @@ const AuthHandler: FC<{ children: ReactNode }> = ({ children }) => {
         setUserToken(token);
 
         verifyResponse();
-    }, []);
+    }, [path]);
 
     if (!userToken && path !== "/auth/login" && path !== "/auth/register") {
         return <></>;
