@@ -124,7 +124,7 @@ export default function ViewSubmittedAssignment({ data }: Props) {
         <>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-black">Your submission</h2>
+              <h2 className="text-2xl font-semibold text-black">Your submission</h2>
             </div>
           </div>
 

@@ -82,6 +82,13 @@ export default function AssignmentDetailContent() {
     await Promise.all([fetchDetail(), fetchBase()]);
   }, [fetchDetail, fetchBase]);
 
+  const assignmentEndISO =
+    (detail as any)?.endDate ??
+    (data as any)?.endDate ??
+    (data as any)?.assignmentDueDates?.[0]?.endDate ??
+    undefined;
+  const isPastEnd = assignmentEndISO ? Date.parse(assignmentEndISO) < Date.now() : false;
+
   return (
     <div>
       <AssignmentInformation
@@ -110,7 +117,15 @@ export default function AssignmentDetailContent() {
             ? <div className="p-6 text-gray-500">Loading assignment details…</div>
             : waitingReview
               ? <ViewSubmission data={data} />
-              : <SubmitAssignment data={data} onSubmitted={handleSubmitted} />
+              : isPastEnd
+                ? (
+                  <div className="p-6">
+                    <div className="p-2 text-red-700 text-lg font-semibold">
+                      The submission period has ended, submissions are closed.
+                    </div>
+                  </div>
+                )
+                : <SubmitAssignment data={data} onSubmitted={handleSubmitted} />
           }
         </>
       )}

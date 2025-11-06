@@ -100,9 +100,9 @@ export default function Navbar() {
 
   return (
     <>
-      <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
-        <div className="flex items-center gap-4">
-          {/* Mobile hamburger: visible on small screens only */}
+      <div className="w-full flex items-center px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
+        {/* LEFT: logo + hamburger */}
+        <div className="flex items-center gap-4 shrink-0 hidden lg:block">
           {courseId && (
             <button
               type="button"
@@ -116,43 +116,49 @@ export default function Navbar() {
               <span aria-hidden className="text-2xl leading-none">☰</span>
             </button>
           )}
-          {!courseId ? (
-            <div className="flex items-center gap-4">
-              <Image
-                src="/image/blue-logo.svg"
-                alt="CFLOW Logo"
-                width={160}
-                height={48}
-                className="h-18 w-auto"
-              />
-            </div>
-          ) : (
-            <>
-              <div className="hidden lg:flex items-center gap-4">
-                <Image src="/image/blue-logo.svg" alt="CFLOW Logo" width={24} height={16} style={{ width: "200px", height: "auto" }} />
-              </div>
-              <span className="text-4xl font-semibold">
-                {courseData?.coursename ?? ""}
-              </span>
-            </>
-          )}
+
+          <Image
+            src="/image/blue-logo.svg"
+            alt="CFLOW Logo"
+            width={160}
+            height={48}
+            className="h-18 w-auto"
+          />
         </div>
 
-        <div className="flex items-center gap-5">
+        {/* MIDDLE: course title (only when courseId) */}
+        {courseId && (
+          <div className="flex-1 min-w-0 px-4">
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-semibold overflow-hidden whitespace-nowrap text-ellipsis">
+              {courseData?.coursename ?? ""}
+            </div>
+          </div>
+        )}
+
+        {/* RIGHT: user + icons */}
+        <div className="flex items-center gap-5 shrink-0">
           {userName && (
             <span className="hidden md:inline text-3xl font-bold text-slate-700 pr-2 border-r border-slate-100">
               {userName}
             </span>
           )}
-          {(userRole === "staff") && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
-          <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
+          {userRole === "staff" && (
+            <Settings
+              className="w-6 h-6 text-black cursor-pointer"
+              onClick={() => router.push("/settings")}
+            />
+          )}
+          <div
+            className="relative cursor-pointer"
+            onClick={() => setShowNotification(!showNotification)}
+          >
             <Bell className="w-6 h-6 text-black" />
-            {/* <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span> */}
           </div>
           <Home className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/course")} />
           <User className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/profile")} />
         </div>
       </div>
+
 
       {/* Mobile sidebar instance (slide-in) */}
       {courseId && <Sidebar mobile open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />}
