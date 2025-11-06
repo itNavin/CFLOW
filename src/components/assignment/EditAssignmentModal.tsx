@@ -138,10 +138,37 @@ export default function EditAssignmentModal({
         if (!canSubmit) return;
         setSubmitting(true);
         try {
-            const keepUrls = existingFiles
-                .filter((f) => keepFileIds.includes(f.id))
+            const keptIds = keepFileIds.slice();
+            const keptUrls = existingFiles
+                .filter((f) => keptIds.includes(f.id))
                 .map((f) => f.filepath);
-            const keepIds = keepFileIds.slice();
+
+            // upload new files first and collect their ids/filepaths
+            const newlyUploaded: { id?: string; filepath?: string }[] = [];
+            if (selectedFiles.length > 0) {
+                if (!assignmentCourseId) {
+                    console.warn("Missing courseId for file upload before edit");
+                }
+                for (const f of selectedFiles) {
+                    if (!assignmentCourseId) continue;
+                    try {
+                        const res = await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
+                        // try to extract file object from common response shapes
+                        const fileObj =
+                            (res && (res.files || res.assignmentFile || res.files)) ||
+                            (res && res.assignmentFile) ||
+                            res;
+                        if (fileObj) {
+                            newlyUploaded.push({ id: fileObj.originalName, filepath: fileObj.url || fileObj.url });
+                        }
+                    } catch (err) {
+                        console.warn("Failed to upload a file", err);
+                    }
+                }
+            }
+
+            const keepIds = [...keptIds, ...newlyUploaded.map((f) => f.id).filter(Boolean)];
+            const keepUrls = [...keptUrls, ...newlyUploaded.map((f) => f.filepath).filter(Boolean)];
             const EXTENSION_TO_MIME: Record<string, string> = {
                 pdf: "application/pdf",
                 docx: "application/docx",
