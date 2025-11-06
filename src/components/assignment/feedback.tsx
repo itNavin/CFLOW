@@ -276,7 +276,7 @@ export default function GiveFeedbackLecturer({
 
   if (loading) return <div className="p-6">Loading assignment detail…</div>;
   if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-  if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
+  if (!latestSubmission) return <div className="p-3 ml-5 text-gray-500">No submissions found.</div>;
   if (latestSubmissionFinal?.status === "FINAL") {
     return (
       <div className="p-6 text-green-700 text-lg font-semibold">
@@ -481,7 +481,7 @@ export default function GiveFeedbackLecturer({
 
             <div className="flex justify-end mt-6">
               <button
-                className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow disabled:opacity-50"
+                className="px-6 py-3 text-white text-lg rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295] active:scale-[0.98] transition cursor-pointer"
                 onClick={handleSubmitFeedback}
                 disabled={submitting || !!dueDateError}
               >

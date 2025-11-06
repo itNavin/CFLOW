@@ -797,7 +797,7 @@ function SettingsPageContent() {
                 >
                   <option value="STAFF">Staff</option>
                   <option value="LECTURER">Lecturer</option>
-                  <option value="SOLAR_LECTURER">Solar Lecturer</option>
+                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
                 </select>
               </div>
             </div>

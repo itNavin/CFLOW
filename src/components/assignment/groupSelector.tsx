@@ -61,7 +61,7 @@ export default function AssignmentGroup({
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginLeft: "2rem" }}>
-      <label htmlFor="group-select" style={{ fontWeight: "bold", fontSize: "1.2rem" }}>
+      <label htmlFor="group-select" style={{ fontWeight: "bold", fontSize: "1.3rem" }}>
         Group :
       </label>
 
