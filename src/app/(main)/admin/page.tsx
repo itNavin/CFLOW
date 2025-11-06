@@ -16,20 +16,22 @@ export default function AdminPage() {
 
   return (
     <main className="min-h-screen bg-white p-6 font-dbheavent">
-      <div className="flex gap-6 border-b text-2xl font-semibold mb-6">
-        {TABS.map((t) => (
-          <button
-            key={t}
-            onClick={() => setActive(t)}
-            className={`pb-2 transition ${
-              active === t
-                ? "border-b-2 border-black text-black"
-                : "text-gray-500 hover:text-black"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
+      <div className="border-b mb-6">
+        <div className="flex gap-6 text-2xl font-semibold flex-nowrap overflow-x-auto px-4 sm:px-0">
+          {TABS.map((t) => (
+            <button
+              key={t}
+              onClick={() => setActive(t)}
+              className={`pb-2 transition whitespace-nowrap min-w-max ${
+                active === t
+                  ? "border-b-2 border-black text-black"
+                  : "text-gray-500 hover:text-black"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
       </div>
 
       {active === "Course" && <CourseTab />}

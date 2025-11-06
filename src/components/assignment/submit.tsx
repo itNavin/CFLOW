@@ -297,7 +297,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
 
       <div className="flex justify-end mt-6">
         <button
-          className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow disabled:opacity-50"
+          className="px-6 py-3 text-white text-lg rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295] active:scale-[0.98] transition cursor-pointer"
           onClick={handleSubmit}
           disabled={submitting || !assignmentId || !canSubmit}
         >
