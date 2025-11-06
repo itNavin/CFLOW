@@ -413,7 +413,7 @@ export default function GiveFeedbackLecturer({
                               onClick={() => removeFeedbackFile(del.id, idx)}
                               className="text-red-600 text-sm underline"
                             >
-                              remove
+                              Remove
                             </button>
                           </span>
                         );

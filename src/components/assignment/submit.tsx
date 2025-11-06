@@ -11,11 +11,10 @@ import type { assignmentDetail } from "@/types/api/assignment";
 import { submitAssignmentFileAPI } from "@/api/assignment/submitAssignmentFile";
 import { changeFileName } from "@/util/fileName";
 import { useToast } from "@/components/toast";
-// ...existing code...
 
 type SubmitAssignmentProps = {
   data: getAllAssignments.getAssignmentWithSubmission | undefined;
-  onSubmitted?: () => void; // <-- NEW
+  onSubmitted?: () => void; 
 };
 
 const clean = (v: string | null | undefined) =>
@@ -55,6 +54,8 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
   const latestFinal = useMemo(() => getLatestSubmission(detail?.submissions), [detail?.submissions]);
+  const assignmentEndISO = detail?.endDate ?? (data as any)?.endDate ?? null;
+  const isPastEnd = assignmentEndISO ? Date.parse(assignmentEndISO) < Date.now() : false;
 
   useEffect(() => {
     if (!isClient || !courseId || !assignmentId) return;
@@ -84,7 +85,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
 
   const deliverables = detail?.deliverables ?? data?.deliverables ?? [];
   const latest = getLatestSubmission(detail?.submissions);
-  const canSubmit = !latest || latest.status !== "SUBMITTED"; // gate
+  const canSubmit = !latest || latest.status !== "SUBMITTED" && !isPastEnd;
 
   const [drafts, setDrafts] = useState<DraftState>({});
   const onDraftSelect =
@@ -101,6 +102,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
         }));
         e.target.value = "";
       };
+      
   const removeDraft = (deliverableId: string, aftId: string) => {
     setDrafts((prev) => {
       const next = { ...prev };
@@ -118,6 +120,12 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
   const [submission, setSubmission] = useState<SubmissionPayload | null>(null);
 
   const handleSubmit = async () => {
+    if (isPastEnd) {
+      const msg = "Submission window has ended; you cannot submit after the assignment end date.";
+      setSubmitError(msg);
+      showToast({ variant: "error", message: msg });
+      return;
+    }
     try {
       setSubmitting(true);
       setUploadingFiles(false);
@@ -213,8 +221,14 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
 
   return (
     <div className="p-6 space-y-6">
+      {isPastEnd && (
+        <div className="p-6 text-red-700 text-lg font-semibold">
+          The submission period has ended, you can no longer submit this assignment.
+        </div>
+      )}
+
       {!canSubmit && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-3 text-sm">
+        <div className="rounded-md border border-amber-300 bg-amber-50 text-amber-800 p-3 text-lg">
           You’ve already submitted this version. Please wait for review (status: <b>SUBMITTED</b>).
           You’ll be able to submit again after it changes to <b>REJECT</b> or <b>APPROVE_WITH_FEEDBACK</b>.
         </div>
@@ -253,7 +267,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
                                   groupNumber:
                                     detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0",
                                   deliverableName: del.name,
-                                  version: latest?.version ? latest.version + 1 : 1, // next version
+                                  version: latest?.version ? latest.version + 1 : 1,
                                   mime: aft.mime,
                                 })
                               }
@@ -263,7 +277,7 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
                               onClick={() => removeDraft(del.id, aft.id)}
                               className="text-red-600 text-sm underline cursor-pointer"
                             >
-                              remove
+                              Remove
                             </button>
                           </>
                         ) : (
