@@ -63,8 +63,15 @@ function CoursePageContent() {
       setError(null);
 
       if (userRole === "staff" || userRole === "SUPER_ADMIN") {
-        const res = await getStaffCourseAPI();
-        const list = pickArray<Course>(res, "course");
+        let list: Course[] = [];
+        try {
+          const res = await getCourseAPI();
+          const memberships = pickArray<any>(res, "course");
+          list = memberships.map((m) => m?.course ?? m).filter(Boolean);
+        } catch (err) {
+          console.warn("getCourseAPI failed for staff, will fallback to getStaffCourseAPI", err);
+        }
+
         setCourses(list);
       } else {
         const res = await getCourseAPI();
