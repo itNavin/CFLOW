@@ -117,13 +117,20 @@ export default function Navbar() {
             </button>
           )}
 
-          <Image
-            src="/image/blue-logo.svg"
-            alt="CFLOW Logo"
-            width={160}
-            height={48}
-            className="h-18 w-auto"
-          />
+          <button
+            type="button"
+            onClick={() => router.push("/course")}
+            aria-label="Go to home"
+            className="inline-flex items-center cursor-pointer"
+          >
+            <Image
+              src="/image/blue-logo.svg"
+              alt="CFLOW Logo"
+              width={160}
+              height={48}
+              className="h-18 w-auto"
+            />
+          </button>
         </div>
 
         {/* MIDDLE: course title (only when courseId) */}
