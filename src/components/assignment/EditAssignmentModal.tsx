@@ -54,6 +54,7 @@ export default function EditAssignmentModal({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [existingFiles, setExistingFiles] = useState<any[]>([]);
     const [keepFileIds, setKeepFileIds] = useState<string[]>([]);
+    const [assignmentCourseId, setAssignmentCourseId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!open || !assignmentId) return;
@@ -61,6 +62,7 @@ export default function EditAssignmentModal({
         getAssignmentByIdAPI(assignmentId)
             .then((res) => {
                 const a = res.assignment;
+                setAssignmentCourseId(a.courseId ?? null);
                 setTitle(a.name ?? "");
                 setDescriptionHtml(a.description ?? "");
                 setDeliverables(
@@ -178,10 +180,18 @@ export default function EditAssignmentModal({
                 keepUrls,
             };
 
+            await onSubmit(payload);
+
+            // then upload each new file separately so backend can append (not replace)
             if (selectedFiles.length > 0) {
-                await onSubmit({ ...payload, files: selectedFiles });
-            } else {
-                await onSubmit(payload);
+                if (!assignmentCourseId) {
+                    console.warn("Missing courseId for file upload after edit");
+                }
+                for (const f of selectedFiles) {
+                    if (assignmentCourseId) {
+                        await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
+                    }
+                }
             }
             onClose();
         } finally {

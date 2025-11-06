@@ -191,7 +191,7 @@ export default function AssignmentModal({
               />
             </div>
             <FileUpload
-              onFilesChange={setSelectedFiles}
+              onFilesChange={(files: File[]) => setSelectedFiles(files)}
               acceptedTypes={["image/*", "application/pdf", ".doc", ".docx", ".txt"]}
             />
 
