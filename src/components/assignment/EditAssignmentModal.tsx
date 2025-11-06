@@ -143,23 +143,30 @@ export default function EditAssignmentModal({
                 .filter((f) => keptIds.includes(f.id))
                 .map((f) => f.filepath);
 
-            // upload new files first and collect their ids/filepaths
+            // upload new files first and collect accurate ids/filepaths from server response
             const newlyUploaded: { id?: string; filepath?: string }[] = [];
             if (selectedFiles.length > 0) {
                 if (!assignmentCourseId) {
                     console.warn("Missing courseId for file upload before edit");
                 }
-                for (const f of selectedFiles) {
+                for (const file of selectedFiles) {
                     if (!assignmentCourseId) continue;
                     try {
-                        const res = await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
-                        // try to extract file object from common response shapes
+                        const res = await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, file);
                         const fileObj =
-                            (res && (res.files || res.assignmentFile || res.files)) ||
-                            (res && res.assignmentFile) ||
-                            res;
-                        if (fileObj) {
-                            newlyUploaded.push({ id: fileObj.originalName, filepath: fileObj.url || fileObj.url });
+                            res?.assignmentFile ??
+                            res?.files ??
+                            res?.assignmentFile ??
+                            (res && typeof res === "object" ? res : undefined);
+
+                        const id = fileObj?.id ?? fileObj?.fileUrl;
+                        const filepath = fileObj?.fileUrl;
+
+                        if (id || filepath) {
+                            newlyUploaded.push({ id, filepath });
+                        } else {
+                            // if server returned unexpected shape, try to inspect it
+                            console.warn("Unexpected upload response shape", res);
                         }
                     } catch (err) {
                         console.warn("Failed to upload a file", err);
@@ -167,8 +174,8 @@ export default function EditAssignmentModal({
                 }
             }
 
-            const keepIds = [...keptIds, ...newlyUploaded.map((f) => f.id).filter(Boolean)];
-            const keepUrls = [...keptUrls, ...newlyUploaded.map((f) => f.filepath).filter(Boolean)];
+            const keepIds = [...keptIds, ...newlyUploaded.map((f) => f.id).filter(Boolean as any)];
+            const keepUrls = [...keptUrls, ...newlyUploaded.map((f) => f.filepath).filter(Boolean as any)];
             const EXTENSION_TO_MIME: Record<string, string> = {
                 pdf: "application/pdf",
                 docx: "application/docx",
@@ -212,21 +219,11 @@ export default function EditAssignmentModal({
             await onSubmit(payload);
 
             // then upload each new file separately so backend can append (not replace)
-            if (selectedFiles.length > 0) {
-                if (!assignmentCourseId) {
-                    console.warn("Missing courseId for file upload after edit");
-                }
-                for (const f of selectedFiles) {
-                    if (assignmentCourseId) {
-                        await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
-                    }
-                }
-                try {
-                    const refreshed = await getAssignmentByIdAPI(assignmentId);
-                    setExistingFiles(refreshed.assignment?.assignmentFiles ?? []);
-                } catch (err) {
-                    console.warn("Failed to refresh assignment files after upload", err);
-                }
+            try {
+                const refreshed = await getAssignmentByIdAPI(assignmentId);
+                setExistingFiles(refreshed.assignment?.assignmentFiles ?? []);
+            } catch (err) {
+                console.warn("Failed to refresh assignment files after edit", err);
             }
             onClose();
         } finally {
