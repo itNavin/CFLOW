@@ -141,6 +141,7 @@ export default function EditAssignmentModal({
             const keepUrls = existingFiles
                 .filter((f) => keepFileIds.includes(f.id))
                 .map((f) => f.filepath);
+            const keepIds = keepFileIds.slice();
             const EXTENSION_TO_MIME: Record<string, string> = {
                 pdf: "application/pdf",
                 docx: "application/docx",
@@ -178,6 +179,7 @@ export default function EditAssignmentModal({
                     )),
                 })),
                 keepUrls,
+                keepFileIds: keepIds,
             };
 
             await onSubmit(payload);
@@ -191,6 +193,12 @@ export default function EditAssignmentModal({
                     if (assignmentCourseId) {
                         await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
                     }
+                }
+                try {
+                    const refreshed = await getAssignmentByIdAPI(assignmentId);
+                    setExistingFiles(refreshed.assignment?.assignmentFiles ?? []);
+                } catch (err) {
+                    console.warn("Failed to refresh assignment files after upload", err);
                 }
             }
             onClose();
