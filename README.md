@@ -188,6 +188,8 @@ NEXT_PUBLIC_API_BASE=http://localhost:8000/api
 ```bash
 bun dev
 ```
-
+## Group Member
+65130500211 Navin Dansaikul itdansaikul@gmail.com 0655324151
+65130500241 Mananchai Chankhuong mark110447@gmail.com 0985614651
 
 
