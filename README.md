@@ -133,8 +133,6 @@ The capstone report submission system is designed to streamline and simplify the
 ### Storage
 - **MinIO (S3-compatible object storage)** (vRELEASE.2024+)
 
-## Repository Structure
-
 ## Frontend Repository Structure
 
 ```text
