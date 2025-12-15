@@ -181,6 +181,11 @@ CLOW/
 bun install
 ```
 
+### Configure environment variables
+```bash
+NEXT_PUBLIC_API_BASE=http://localhost:8000/api
+```
+
 ### Run the Frontend
 ```bash
 bun dev
