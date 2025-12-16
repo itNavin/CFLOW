@@ -23,6 +23,43 @@ const clean = (v: string | null | undefined) =>
 
 type DraftState = Record<string, Record<string, { file: File; mime: string }>>;
 
+const MIME_EXTENSION_MAP: Record<string, string[]> = {
+  "application/pdf": ["pdf"],
+  "text/plain": ["txt"],
+  "text/csv": ["csv"],
+  "text/markdown": ["md"],
+  "application/json": ["json"],
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [
+    "docx",
+  ],
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": [
+    "pptx",
+  ],
+  "image/png": ["png"],
+  "image/jpeg": ["jpg", "jpeg"],
+  "image/webp": ["webp"],
+  "image/gif": ["gif"],
+  "application/zip": ["zip"],
+};
+
+const normalizeMime = (mime?: string) => (mime ?? "").trim().toLowerCase();
+const getExtension = (filename: string) => {
+  const idx = filename.lastIndexOf(".");
+  if (idx < 0) return "";
+  return filename.slice(idx + 1).toLowerCase();
+};
+const isAllowedFileType = (file: File, allowedMime: string) => {
+  const targetMime = normalizeMime(allowedMime);
+  if (!targetMime) return true;
+  const fileMime = normalizeMime(file.type);
+  if (fileMime && fileMime === targetMime) return true;
+  const allowedExts = MIME_EXTENSION_MAP[targetMime];
+  if (!allowedExts || allowedExts.length === 0) return false;
+  const ext = getExtension(file.name);
+  return ext ? allowedExts.includes(ext) : false;
+};
+
 const getLatestSubmission = (subs: any[] | undefined) => {
   if (!Array.isArray(subs) || subs.length === 0) return null;
   return [...subs].sort((a, b) => {
@@ -88,10 +125,20 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
 
   const [drafts, setDrafts] = useState<DraftState>({});
   const onDraftSelect =
-    (deliverableId: string, aftId: string, mime: string) =>
+    (deliverableId: string, aftId: string, mime: string, label?: string) =>
       (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        if (!isAllowedFileType(file, mime)) {
+          const readable = label || mime;
+          const err =
+            readable && readable !== mime
+              ? `Only ${readable} files are allowed for this deliverable.`
+              : "Selected file type is not allowed for this deliverable.";
+          showToast({ variant: "error", message: err });
+          e.target.value = "";
+          return;
+        }
         setDrafts((prev) => ({
           ...prev,
           [deliverableId]: {
@@ -147,9 +194,14 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
       const groupNumber =
         detail?.assignmentDueDates?.[0]?.group?.codeNumber ||
         "0";
-      const uploads: Promise<any>[] = [];
+      type UploadTask = {
+        deliverableId: string;
+        aftId: string;
+        promise: Promise<any>;
+      };
+      const uploadTasks: UploadTask[] = [];
       for (const [deliverableId, aftMap] of Object.entries(drafts)) {
-        for (const { file, mime } of Object.values(aftMap)) {
+        for (const [aftId, { file, mime }] of Object.entries(aftMap)) {
           const deliverableName = deliverables.find((d) => d.id === deliverableId)?.name || "Deliverable";
           const version = res.submission.version;
           const formattedFileName = changeFileName({
@@ -158,33 +210,54 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
             version,
             mime,
           });
-          uploads.push(
-            submitAssignmentFileAPI(submissionId, file, deliverableId, formattedFileName)
-          );
+          uploadTasks.push({
+            deliverableId,
+            aftId,
+            promise: submitAssignmentFileAPI(submissionId, file, deliverableId, formattedFileName),
+          });
         }
       }
 
-      if (uploads.length > 0) {
+      if (uploadTasks.length > 0) {
         setUploadingFiles(true);
-        const results = await Promise.allSettled(uploads);
+        const results = await Promise.allSettled(uploadTasks.map((t) => t.promise));
         setUploadingFiles(false);
-        const failures = results.filter((r) => r.status === "rejected");
-        if (failures.length > 0) {
-          const msg = `Uploaded with ${failures.length} error(s).`;
+        const failureMessages: string[] = [];
+        results.forEach((result, idx) => {
+          if (result.status === "rejected") {
+            const responseData = (result.reason as any)?.response?.data;
+            const message =
+              responseData?.message ||
+              (result.reason as Error)?.message ||
+              "Failed to upload file.";
+            failureMessages.push(message);
+            if (responseData?.shouldRemoveClientFile) {
+              const { deliverableId, aftId } = uploadTasks[idx];
+              removeDraft(deliverableId, aftId);
+            }
+          }
+        });
+        if (failureMessages.length > 0) {
+          const remaining = failureMessages.length - 1;
+          const msg =
+            failureMessages.length === 1
+              ? failureMessages[0]
+              : `${failureMessages[0]} (and ${remaining} more error${remaining === 1 ? "" : "s"}).`;
           setSubmitError(msg);
-          showToast({ variant: "warning", message: msg });
+          showToast({ variant: "error", message: msg });
+          setDrafts({});
         } else {
           const msg = res.message || "Submitted successfully.";
           setSubmitSuccess(msg);
           showToast({ variant: "success", message: msg });
+          setDrafts({});
         }
       } else {
         const msg = res.message || "Submitted successfully.";
         setSubmitSuccess(msg);
         showToast({ variant: "success", message: msg });
+        setDrafts({});
       }
-
-      setDrafts({});
 
       // tell parent to re-fetch and swap to the view
       onSubmitted?.();
@@ -235,15 +308,15 @@ export default function SubmitAssignment({ data, onSubmitted }: SubmitAssignment
                     return (
                       <div className="text-lg flex items-center gap-3 flex-wrap" key={aft.id}>
                         <span className="font-bold">{aft.type}</span>
-                        <label className="text-blue-600 underline cursor-pointer">
-                          {chosen ? "Replace" : "Upload"}
-                          <input
-                            type="file"
-                            accept={aft.mime}
-                            onChange={onDraftSelect(del.id, aft.id, aft.mime)}
-                            className="hidden"
-                          />
-                        </label>
+                            <label className="text-blue-600 underline cursor-pointer">
+                              {chosen ? "Replace" : "Upload"}
+                              <input
+                                type="file"
+                                accept={aft.mime}
+                                onChange={onDraftSelect(del.id, aft.id, aft.mime, aft.type)}
+                                className="hidden"
+                              />
+                            </label>
 
                         {chosen ? (
                           <>
