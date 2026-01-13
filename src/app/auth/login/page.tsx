@@ -27,12 +27,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await LoginAPI(email, password)
+      const response = await LoginAPI(email, password);
       if (response.status != 200) {
-        throw new Error(response.data.message)
+        throw new Error(response.data.message);
       }
-      setAuthToken(response.data.token)
-      setUserRole(response.data.user.role)
+      setAuthToken(response.data.token);
+      setUserRole(response.data.user.role);
       startTokenRefresh();
       router.push("/course");
     } catch (e: any) {
@@ -44,120 +44,120 @@ export default function LoginPage() {
 
   return (
     <>
-    <main className="relative min-h-screen flex items-center justify-center p-4">
-      <Image
-        src="/image/Background.png"
-        alt="Background"
-        fill
-        className="object-cover z-0"
-        priority
-      />
-      <div className="relative z-20 w-full max-w-md bg-white rounded-2xl shadow border border-neutral-200">
-        <div className="p-8 sm:p-10">
-          <div className="flex justify-center items-center gap-x-4 flex-wrap mb-6">
-            <Image
-              src="/image/SIT-LOGO2.png"
-              alt="SIT Logo"
-              width={125}
-              height={30}
-              style={{ width: "auto", height: "auto" }}
-              className="max-w-[80px] sm:max-w-[80px] h-auto"
-            />
-            <Image
-              src="/image/blue-logo.svg"
-              alt="CFLOW Logo"
-              width={96}
-              height={64}
-              style={{ width: "190px", height: "auto" }}
-              // className="max-w-[96px] sm:max-w-[60px] h-auto"
-            />
-          </div>
-          <h1 className="text-4xl font-semibold leading-snug text-neutral-900 font-dbheavent flex">
-            Login to C-Flow System
-          </h1>
-          <form onSubmit={onSubmit} className="mt-5 space-y-5">
-            <input
-              type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Username"
-              autoComplete="username"
-              className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-xl outline-none focus:border-neutral-400"
-            />
-
-            <div className="relative">
-              <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                autoComplete="current-password"
-                className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 pr-11 text-xl outline-none focus:border-neutral-400"
+      <main className="relative min-h-screen flex items-center justify-center p-4">
+        <Image
+          src="/image/Background.png"
+          alt="Background"
+          fill
+          className="object-cover z-0"
+          priority
+        />
+        <div className="relative z-20 w-full max-w-md bg-white rounded-2xl shadow border border-neutral-200">
+          <div className="p-8 sm:p-10">
+            <div className="flex justify-center items-center gap-x-4 flex-wrap mb-6">
+              <Image
+                src="/image/SIT-LOGO2.png"
+                alt="SIT Logo"
+                width={125}
+                height={30}
+                style={{ width: "auto", height: "auto" }}
+                className="max-w-[80px] sm:max-w-[80px] h-auto"
               />
-              <button
-                type="button"
-                onClick={() => setShowPw((s) => !s)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-neutral-100"
-                aria-label={showPw ? "Hide password" : "Show password"}
-              >
-                {showPw ? (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="h-5 w-5 text-gray-600"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M3.98 8.223A10.477 10.477 0 001.458 12c1.632 3.876 5.786 7 10.542 7 
+              <Image
+                src="/image/blue-logo.svg"
+                alt="CFLOW Logo"
+                width={96}
+                height={64}
+                style={{ width: "190px", height: "auto" }}
+                // className="max-w-[96px] sm:max-w-[60px] h-auto"
+              />
+            </div>
+            <h1 className="text-4xl font-semibold leading-snug text-neutral-900 font-dbheavent flex">
+              Login to C-Flow System
+            </h1>
+            <form onSubmit={onSubmit} className="mt-5 space-y-5">
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Username"
+                autoComplete="username"
+                className="w-full rounded-lg border border-neutral-300 px-4 py-2 text-xl outline-none focus:border-neutral-400"
+              />
+
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  autoComplete="current-password"
+                  className="w-full rounded-lg border border-neutral-300 px-4 py-2.5 pr-11 text-xl outline-none focus:border-neutral-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((s) => !s)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-neutral-100"
+                  aria-label={showPw ? "Hide password" : "Show password"}
+                >
+                  {showPw ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      className="h-5 w-5 text-gray-600"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M3.98 8.223A10.477 10.477 0 001.458 12c1.632 3.876 5.786 7 10.542 7 
                       1.7 0 3.3-.35 4.73-.98M6.228 6.228A10.45 10.45 0 0112 5c4.756 0 8.91 
                       3.124 10.542 7-.387.958-.939 1.842-1.635 2.61M6.228 6.228 3 3m3.228 
                       3.228l11.544 11.544M21 21l-3.093-3.093"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    className="h-5 w-5 text-gray-600"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M2.458 12C4.09 8.124 8.244 5 12 5c3.756 0 7.91 3.124 
+                      />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      className="h-5 w-5 text-gray-600"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M2.458 12C4.09 8.124 8.244 5 12 5c3.756 0 7.91 3.124 
                       9.542 7-1.632 3.876-5.786 7-9.542 7-3.756 
                       0-7.91-3.124-9.542-7z"
-                    />
-                    <circle cx="12" cy="12" r="3" strokeWidth="1.5" />
-                  </svg>
-                )}
+                      />
+                      <circle cx="12" cy="12" r="3" strokeWidth="1.5" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+
+              {err && <p className="text-sm text-red-600">{err}</p>}
+
+              {/* <ErrorPopUp message={err || ""} onClose={() => setErr(null)} /> */}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-full bg-[#3B5C86] px-5 py-2.5 text-white text-xl font-medium hover:opacity-95 disabled:opacity-60"
+              >
+                {loading ? "Logging in..." : "Login"}
               </button>
-            </div>
-
-            {err && <p className="text-sm text-red-600">{err}</p>}
-
-            {/* <ErrorPopUp message={err || ""} onClose={() => setErr(null)} /> */}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-full bg-[#3B5C86] px-5 py-2.5 text-white text-xl font-medium hover:opacity-95 disabled:opacity-60"
-            >
-              {loading ? "Logging in..." : "Login"}
-            </button>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
-    </main>
-    <span className="fixed bottom-2 right-4 z-30 text-base text-white opacity-80 pointer-events-none select-none">
-      Generated By Gemini
-    </span>
+      </main>
+      <span className="fixed bottom-2 right-4 z-30 text-base text-white opacity-80 pointer-events-none select-none">
+        Generated By Gemini
+      </span>
     </>
   );
 }
