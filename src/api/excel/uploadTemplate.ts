@@ -1,10 +1,11 @@
 import { Axios } from "@/util/AxiosInstance";
 import { uploadTemplate } from "@/types/api/import";
+import { AxiosResponse } from "axios";
 
 export const uploadTemplateAPI = async (
   courseId: string,
   files: File[]
-): Promise<uploadTemplate.UploadTemplatePayload> => {
+): Promise<AxiosResponse<uploadTemplate.UploadTemplatePayload>> => {
   const formData = new FormData();
   if (files.length > 0) {
     formData.append("file", files[0]);
@@ -17,5 +18,5 @@ export const uploadTemplateAPI = async (
   );
   console.log("courseId", courseId);
   console.log("response", response);
-  return response.data;
-}
+  return response;
+};

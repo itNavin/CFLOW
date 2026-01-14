@@ -143,18 +143,19 @@ function StudentTabContent() {
 
       const res = await uploadTemplateAPI(courseId, files);
 
-      const status = (res && (res as any).status) ?? (res && (res as any).statusCode) ?? null;
-      const data = (res && (res as any).data) ?? (res as any) ?? {};
+      const status = typeof res?.status === "number" ? res.status : null;
+      const data = (res && (res as any).data) ?? {};
 
       if (typeof status === "number" && status >= 400) {
-        console.error("[uploadTemplate] http status error:", status, data);
-        showToast({ variant: "error", message: "Upload failed. Please try again." });
+        console.warn("[uploadTemplate] http status error:", status, data);
+        const backendMsg = data?.message || data?.error || "Upload failed. Please try again.";
+        showToast({ variant: "error", message: String(backendMsg), duration: 60000 });
         return;
       }
 
       const bodyMsg = data?.message ?? data?.error ?? "";
       if (bodyMsg && /error|invalid|failed|forbidden|required/i.test(String(bodyMsg))) {
-        showToast({ variant: "error", message: "Upload failed. Please try again." });
+        showToast({ variant: "error", message: String(bodyMsg), duration: 60000 });
         return;
       }
 
@@ -162,7 +163,7 @@ function StudentTabContent() {
       const hasFailures = details.some((d: any) => d?.error || d?.ok === false);
       if (hasFailures) {
         console.log("[uploadTemplate] validation details:", details);
-        showToast({ variant: "error", message: "Upload failed due to validation errors. Check console for details." });
+        showToast({ variant: "error", message: "Upload failed due to validation errors. Check console for details.", duration: 30000 });
         return;
       }
 
@@ -170,11 +171,11 @@ function StudentTabContent() {
 
       await fetchStudents();
       if (openCreate) await fetchStudentNotInCourse(courseId);
-
-      if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error: any) {
-      showToast({ variant: "error", message: "Upload failed. Please try again." });
+      const backendMsg = error?.response?.data?.message || error?.message || "Upload failed. Please try again.";
+      showToast({ variant: "error", message: String(backendMsg), duration: 30000 });
     } finally {
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setUploadingExcel(false);
       setLoading(false);
     }
