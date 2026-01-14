@@ -59,22 +59,7 @@ function getDisplayFileName({
   isFeedback?: boolean;
 }) {
   try {
-    const mime = file.mime || inferMimeType(file.name);
-    if (isFeedback && username) {
-      return changeFeedbackFileName({
-        username,
-        groupNumber,
-        deliverableName,
-        version,
-        mime,
-      });
-    }
-    return changeFileName({
-      groupNumber,
-      deliverableName,
-      version,
-      mime,
-    });
+    return file.name
   } catch {
     return file.name;
   }
@@ -126,22 +111,22 @@ export function Version({
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
-        <h1 className="text-[18px] font-semibold text-[#000000] ml-6">{versionLabel}</h1>
-        <p className="mt-1 text-sm ml-6" style={{ color }}>
+        <h1 className="text-xl font-semibold text-[#000000] ml-6">{versionLabel}</h1>
+        <p className="mt-1 text-lg ml-6" style={{ color }}>
           Status: {statusText === "FINAL" ? "APPROVED" : statusText === "REJECTED" ? "NOT APPROVED" : statusText}
         </p>
       </div>
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-6">
         <section className="p-6 border-b">
-          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Feedback</h2>
           {feedback.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-lg text-gray-500">
               {statusText === "FINAL" || statusText === "APPROVED"
                 ? "No feedback provided."
                 : "No feedback yet."}
             </p>
           ) : (
-            <div className="space-y-5 text-[14px] leading-relaxed text-gray-800">
+            <div className="space-y-5 text-lg leading-relaxed text-gray-800">
               {feedback.map((f, idx) => {
                     const comments = arr(f.comments);
                     const files = arr(f.files);
@@ -151,12 +136,16 @@ export function Version({
                           {f.title ? <span className="mx-1">: {f.title}</span> : null}
                         </div>
                         {comments.length > 0 ? (
-                          <ul className="mt-2 list-disc list-inside space-y-1">
+                          <div className="mt-2 space-y-1">
                             {comments.map((c, i) => (
-                              <li key={i}>{c}</li>
+                              <p key={i} className="text-base text-gray-800">
+                                {c}
+                              </p>
                             ))}
-                          </ul>
-                        ) : null}
+                          </div>
+                        ) : (
+                          <p className="mt-2 text-base text-gray-500">No comments.</p>
+                        )}
                         {f.files !== undefined && (
                           <div className="mt-4">
                             <div className="font-medium text-[16px]">{f.chapter}</div>
@@ -191,30 +180,23 @@ export function Version({
               )}
         </section>
         <section className="p-6">
-          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Your work</h2>
-          <p className="text-[14px] text-gray-800 mb-4">{workDescription || "—"}</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Your work</h2>
+          <p className="text-lg text-gray-800 mb-4">{workDescription || "—"}</p>
           {work.length === 0 ? (
-            <p className="text-sm text-gray-500"></p>
+            <p className="text-lg text-gray-500"></p>
           ) : (
-            <div className="space-y-4 text-[14px]">
+            <div className="space-y-4 text-lg">
               {work.map((w, idx) => {
                 const files = arr(w.files);
                 return (
                   <div key={idx}>
-                    <div className="font-medium text-[16px]">{w.chapter}</div>
+                    <div className="font-medium text-lg">{w.chapter}</div>
                     <div className="mt-1 space-y-1">
                       {files.length > 0 ? (
                         files.map((file, i) => (
                           <div key={i} className="flex items-center gap-2">
                             <a href={file.href} className="block text-[#326295] hover:underline">
-                              {getDisplayFileName({
-                                file,
-                                groupNumber,
-                                deliverableName: w.chapter,
-                                version,
-                                username,
-                                isFeedback: false,
-                              })}
+                              {file.name}
                             </a>
                             {file.id && (
                               <button
@@ -322,7 +304,20 @@ export default function ViewSubmissionVersions({ data }: Props) {
     visible = [];
     hasMore = false;
   } else if (showAll) {
-    visible = allVersions;
+    const latestHasFeedback =
+      Array.isArray(latestSub?.feedbacks) && latestSub.feedbacks.length > 0;
+    const latestAlwaysShow =
+      latestSub?.status === "FINAL" || latestSub?.status === "APPROVED";
+
+    visible = allVersions.filter((sub) => {
+      if (
+        sub === latestSub &&
+        !latestHasFeedback &&
+        !latestAlwaysShow
+      )
+        return false;
+      return true;
+    });
     hasMore = false;
   } else if (latestSub?.status === "FINAL") {
     const finalList = latestSub && latestSub.id
@@ -345,12 +340,18 @@ export default function ViewSubmissionVersions({ data }: Props) {
         visible = allVersions.slice(1);
       }
     }
-
     hasMore = visible.length > 0 && allVersions.length > visible.length;
   }
 
-  const showToggle = showAll || (visible.length > 0 && allVersions.length > visible.length);
+  const relevantVersions = allVersions.filter(
+    (s) =>
+      Array.isArray(s.feedbacks) && s.feedbacks.length > 0 ||
+      s.status === "FINAL" ||
+      s.status === "APPROVED"
+  );
 
+  const showToggle = visible.length > 1 || relevantVersions.length > 1;
+  
   return (
     <div className="space-y-3">
       {visible.filter(sub => sub && sub.id).map((sub: any) => {
@@ -418,7 +419,7 @@ export default function ViewSubmissionVersions({ data }: Props) {
           <button
             type="button"
             onClick={() => setShowAll((s) => !s)}
-            className="text-sm text-blue-700 underline cursor-pointer"
+            className="text-base text-blue-700 underline cursor-pointer"
           >
             {showAll ? "See less ▲" : "See more ▼"}
           </button>

@@ -112,19 +112,30 @@ function AdvisorTabContent() {
     }
 
     const q = query.trim().toLowerCase();
-    if (!q) return rows;
+    const base = Array.from(rows);
 
-    return rows.filter((r) => {
-      if (!r) return false;
+    // filter if query provided
+    const matched = q
+      ? base.filter((r) => {
+          if (!r) return false;
+          return (
+            (r.user?.name?.toLowerCase() ?? "").includes(q) ||
+            (r.user?.email?.toLowerCase() ?? "").includes(q) ||
+            (r.name?.toLowerCase() ?? "").includes(q) ||
+            (r.email?.toLowerCase() ?? "").includes(q) ||
+            (Array.isArray(r.projects) && r.projects.some((p: any) => (p.projectName ?? "").toLowerCase().includes(q)))
+          );
+        })
+      : base;
 
-      return (
-        r.user?.name?.toLowerCase().includes(q) ||
-        r.user?.email?.toLowerCase().includes(q) ||
-        r.name?.toLowerCase().includes(q) ||
-        r.email?.toLowerCase().includes(q) ||
-        (Array.isArray(r.projects) && r.projects.some((p: any) => p.projectName?.toLowerCase().includes(q)))
-      );
+    // sort by display name (user.name then name) ascending, case-insensitive
+    matched.sort((a, b) => {
+      const na = (a?.user?.name || a?.name || "").toLowerCase();
+      const nb = (b?.user?.name || b?.name || "").toLowerCase();
+      return na.localeCompare(nb);
     });
+
+    return matched;
   }, [query, rows]);
 
   const safeFiltered = Array.isArray(filtered) ? filtered : [];
@@ -612,9 +623,9 @@ function AddAdvisorModal({
                               className="accent-[#326295] cursor-pointer"
                             />
                           </td>
-                          <td className="py-3 text-gray-900">{advisor.id}</td>
-                          <td className="py-3 text-gray-900">{advisor.name}</td>
-                          <td className="py-3 text-gray-900">{advisor.email}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.id}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.name}</td>
+                          <td className="py-3 text-gray-900 text-lg">{advisor.email}</td>
                         </tr>
                       ))
                     ) : (

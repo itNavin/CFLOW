@@ -84,7 +84,7 @@ export default function CourseInfo({
       program: (info.program as "CS" | "DSI") || "CS",
     };
     setCourseData(next);
-    setShowCourseModal(true);
+    setShowCourseModal(true);    
   };
 
   const handleUpdateCourse = async (updatedCourse: Omit<Course, "id">) => {
@@ -105,6 +105,7 @@ export default function CourseInfo({
       showToast({ variant: "error", message: String(msg) });
       throw error;
     }
+    window.location.reload();
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AssignmentInformation from "@/components/assignment/information";
 import SubmitAssignment from "@/components/assignment/submit";
@@ -12,8 +12,6 @@ import ViewSubmissionVersions from "@/components/assignment/versionStd";
 import GiveFeedback from "@/components/assignment/feedback";
 import GiveFeedbackLecturer from "@/components/assignment/feedback";
 import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail";
-
-export const dynamic = "force-dynamic";
 
 const clean = (v: string | null | undefined) =>
   v && v !== "null" && v !== "undefined" && v !== "0" ? v : undefined;
@@ -27,7 +25,7 @@ const latestOf = (subs?: any[]) => {
   })[0];
 };
 
-function AssignmentDetailContent() {
+export default function AssignmentDetailContent() {
   const router = useRouter();
   const sp = useSearchParams();
 
@@ -84,6 +82,13 @@ function AssignmentDetailContent() {
     await Promise.all([fetchDetail(), fetchBase()]);
   }, [fetchDetail, fetchBase]);
 
+  const assignmentEndISO =
+    (detail as any)?.endDate ??
+    (data as any)?.endDate ??
+    (data as any)?.assignmentDueDates?.[0]?.endDate ??
+    undefined;
+  const isPastEnd = assignmentEndISO ? Date.parse(assignmentEndISO) < Date.now() : false;
+
   return (
     <div>
       <AssignmentInformation
@@ -112,18 +117,18 @@ function AssignmentDetailContent() {
             ? <div className="p-6 text-gray-500">Loading assignment details…</div>
             : waitingReview
               ? <ViewSubmission data={data} />
-              : <SubmitAssignment data={data} onSubmitted={handleSubmitted} />
+              : isPastEnd
+                ? (
+                  <div className="p-6">
+                    <div className="p-2 text-red-700 text-lg font-semibold">
+                      The submission period has ended, submissions are closed.
+                    </div>
+                  </div>
+                )
+                : <SubmitAssignment data={data} onSubmitted={handleSubmitted} />
           }
         </>
       )}
     </div>
-  );
-}
-
-export default function AssignmentDetailPage() {
-  return (
-    <Suspense fallback={<div className="p-6 text-gray-500">Loading assignment…</div>}>
-      <AssignmentDetailContent />
-    </Suspense>
   );
 }

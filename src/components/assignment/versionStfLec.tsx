@@ -89,92 +89,89 @@ function Version({
   return (
     <div className={`font-dbheavent ${className}`}>
       <div className="mb-3">
-        <h1 className="text-[18px] font-semibold text-[#000000]">{versionLabel}</h1>
-        <p className="mt-1 text-sm" style={{ color }}>
+        <h1 className="text-xl font-semibold text-[#000000] ml-8">{versionLabel}</h1>
+        <p className="mt-1 text-lg ml-8" style={{ color }}>
           Status: {statusText === "FINAL" ? "APPROVED" : statusText === "REJECTED" ? "NOT APPROVED" : statusText}
         </p>
       </div>
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden ml-7">
         <section className="p-6 border-b">
-          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Feedback</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Feedback</h2>
           {feedback.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-lg text-gray-500">
               {statusText === "FINAL" || statusText === "APPROVED"
                 ? "No feedback provided."
                 : "No feedback yet."}
             </p>
           ) : (
-            <div className="space-y-5 text-[14px] leading-relaxed text-gray-800">
+            <div className="space-y-5 text-lg leading-relaxed text-gray-800">
               {feedback.map((f, idx) => {
-                    const comments = arr(f.comments);
-                    const files = arr(f.files);
-                    return (
-                      <div key={idx}>
-                        <div className="text-gray-800">
-                          {f.title ? <span className="mx-1">: {f.title}</span> : null}
-                        </div>
-                        {comments.length > 0 ? (
-                          <div className="mt-2 list-disc list-inside space-y-1">
-                            {comments.map((c, i) => (
-                              <div key={i}>{c}</div>
-                            ))}
-                          </div>
-                        ) : null}
-                        {f.files !== undefined && (
-                          <div className="mt-4">
-                            <div className="font-medium text-[16px]">{f.chapter}</div>
-                            <div className="mt-1 space-y-1">
-                              {files.length > 0 ? (
-                                files.map((file, i) => (
-                                  <div key={i} className="flex items-center gap-2">
-                                    <a href={file.href} className="text-[#326295] hover:underline">
-                                      {file.name}
-                                    </a>
-                                    {file.id && (
-                                      <button
-                                        className="text-blue-600 underline"
-                                        onClick={() => handleDownloadFeedback(file.id!, file.name)}
-                                        title="Download file"
-                                      >
-                                        Download
-                                      </button>
-                                    )}
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="text-gray-400">-</span>
-                              )}
-                            </div>
-                          </div>
-                        )}
+                const comments = arr(f.comments);
+                const files = arr(f.files);
+                return (
+                  <div key={idx}>
+                    <div className="text-gray-800">
+                      {f.title ? <span className="mx-1">: {f.title}</span> : null}
+                    </div>
+                    {comments.length > 0 ? (
+                      <div className="mt-2 list-disc list-inside space-y-1">
+                        {comments.map((c, i) => (
+                          <div key={i}>{c}</div>
+                        ))}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+                    ) : (
+                      <p className="mt-2 text-base text-gray-500">No comments.</p>
+                    )}
+                    {f.files !== undefined && (
+                      <div className="mt-4">
+                        <div className="font-medium text-lg">{f.chapter}</div>
+                        <div className="mt-1 space-y-1">
+                          {files.length > 0 ? (
+                            files.map((file, i) => (
+                              <div key={i} className="flex items-center gap-2">
+                                <a href={file.href} className="text-[#326295] hover:underline">
+                                  {file.name}
+                                </a>
+                                {file.id && (
+                                  <button
+                                    className="text-blue-600 underline cursor-pointer"
+                                    onClick={() => handleDownloadFeedback(file.id!, file.name)}
+                                    title="Download file"
+                                  >
+                                    Download
+                                  </button>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </section>
         <section className="p-6">
-          <h2 className="text-[18px] font-semibold text-gray-900 mb-3">Submission</h2>
-          <p className="text-[14px] text-gray-800 mb-4">{workDescription || "—"}</p>
+          <h2 className="text-xl font-semibold text-gray-900 mb-3">Submission</h2>
+          <p className="text-lg text-gray-800 mb-4">{workDescription || "—"}</p>
           {work.length === 0 ? (
-            <p className="text-sm text-gray-500">No submissions yet.</p>
+            <p className="text-lg text-gray-500">No submissions yet.</p>
           ) : (
-            <div className="space-y-4 text-[14px]">
+            <div className="space-y-4 text-lg">
               {work.map((w, idx) => {
                 const files = arr(w.files);
                 return (
                   <div key={idx}>
-                    <div className="font-medium text-[16px]">{w.chapter}</div>
+                    <div className="font-medium text-lg">{w.chapter}</div>
                     <div className="mt-1 space-y-1">
                       {files.length > 0 ? (
                         files.map((file, i) => {
                           const mime = inferMimeType(file.name);
-                          const displayName = changeFileName({
-                            groupNumber: groupNumber,
-                            deliverableName: w.chapter,
-                            version,
-                            mime,
-                          });
+                          const displayName = file.name;
                           return (
                             <div key={i} className="flex items-center gap-2">
                               <a href={file.href} className="text-[#326295] hover:underline">
@@ -182,7 +179,7 @@ function Version({
                               </a>
                               {file.id && (
                                 <button
-                                  className="text-blue-600 underline"
+                                  className="text-blue-600 underline cursor-pointer"
                                   onClick={() => handleDownloadSubmission(file.id!, displayName)}
                                   title="Download file"
                                 >
@@ -274,7 +271,7 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
   const feedbackVersions = subs.filter((sub: any) => Array.isArray(sub.feedbacks) && sub.feedbacks.length > 0);
   const latestSub = subs[0];
 
-  const allVersions = subs; // subs sorted newest-first
+  const allVersions = subs;
 
   let visible: any[] = [];
   let hasMore = false;
@@ -284,7 +281,14 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
     hasMore = false;
   } else if (showAll) {
     // expanded -> show everything
-    visible = allVersions;
+    const latestHasFeedback = Array.isArray(latestSub?.feedbacks) && latestSub.feedbacks.length > 0;
+    const latestAlwaysShow = latestSub?.status === "FINAL" || latestSub?.status === "APPROVED";
+
+    visible = allVersions.filter((sub) => {
+      if (sub === latestSub && !latestHasFeedback && !latestAlwaysShow) return false;
+      return true;
+    });
+
     hasMore = false;
   } else if (latestSub?.status === "FINAL" || latestSub?.status === "APPROVED") {
     // preserve FINAL/APPROVED behavior but show only latest by default
@@ -317,7 +321,15 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
 
     hasMore = visible.length > 0 && allVersions.length > visible.length;
   }
-  const showToggle = showAll || (visible.length > 0 && allVersions.length > visible.length);
+
+  const relevantVersions = allVersions.filter(
+    (s) =>
+      (Array.isArray(s.feedbacks) && s.feedbacks.length > 0) ||
+      s.status === "FINAL" ||
+      s.status === "APPROVED"
+  );
+  
+  const showToggle = visible.length > 1 || relevantVersions.length > 1;
 
   return (
     <div className="space-y-3">
@@ -353,7 +365,7 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
         const workGrouped: Record<string, FileLink[]> = {};
         (sub?.submissionFiles ?? []).forEach((sf: any) => {
           const links = urls(sf?.fileUrl).map((u) => ({
-            name: fileName(u),
+            name: sf?.name || fileName(u),
             href: u,
             id: sf?.id,
           }));
@@ -372,7 +384,7 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
             versionLabel={padV(sub?.version)}
             statusText={sub?.status ?? "—"}
             feedback={feedbackItems}
-            workDescription={sub?.comment || "No description from your submission."}
+            workDescription={sub?.comment || "No comments from the submission."}
             work={workItems}
             deliverables={detail?.deliverables ?? []}
             groupNumber={groupNumber}
@@ -385,7 +397,7 @@ export default function ViewSubmissionVersionsStfLec({ groupId, courseId, assign
           <button
             type="button"
             onClick={() => setShowAll((s) => !s)}
-            className="text-sm text-blue-700 underline cursor-pointer"
+            className="text-base text-blue-700 underline cursor-pointer"
           >
             {showAll ? "See less ▲" : "See more ▼"}
           </button>
