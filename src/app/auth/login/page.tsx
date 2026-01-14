@@ -34,7 +34,12 @@ export default function LoginPage() {
       setAuthToken(response.data.token);
       setUserRole(response.data.user.role);
       startTokenRefresh();
-      router.push("/course");
+
+      console.log("Login success, token set (snippet):", response.data.token?.slice?.(0, 20));
+      console.log("Cookies after login:", document.cookie);
+      
+      // router.push("/course");
+      router.replace("/course");
     } catch (e: any) {
       setErr(e?.message || "Login failed");
     } finally {

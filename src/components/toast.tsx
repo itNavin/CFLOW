@@ -26,10 +26,8 @@ export const useToast = (): ToastContextValue => {
   if (ctx) return ctx;
   return {
     showToast: (t) => {
-      console.warn("[Toast] showToast called without ToastProvider:", t);
     },
     dismissToast: (id: string) => {
-      console.warn("[Toast] dismissToast called without ToastProvider:", id);
     },
   };
 };
@@ -70,11 +68,10 @@ function ToastPortal({ toasts, onClose }: { toasts: Toast[]; onClose: (id: strin
   useEffect(() => {
     setMounted(true);
   }, []);
-
   if (!mounted) return null;
 
   return createPortal(
-    <div aria-live="polite" className="fixed top-6 right-6 z-[9999] flex flex-col gap-4 max-w-md">
+    <div aria-live="polite" className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-4 max-w-md">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} onClose={() => onClose(t.id)} />
       ))}

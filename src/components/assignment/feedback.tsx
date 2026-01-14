@@ -5,11 +5,12 @@ import { getLecStfAssignmentDetailAPI } from "@/api/assignment/assignmentDetail"
 import { giveFeedbackAPI } from "@/api/assignment/giveFeedback";
 import { uploadFeedbackFileAPI } from "@/api/assignment/uploadFeedbackFile";
 import type { assignmentDetail } from "@/types/api/assignment";
-import { Upload } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { changeFeedbackFileName } from "@/util/fileName";
 import { getProfileAPI } from "@/api/profile/getProfile";
 import { downloadSubmissionFileAPI } from "@/api/assignment/downloadSubmissionFile";
 import { useToast } from "../toast";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type Props = {
   courseId: string;
@@ -39,6 +40,10 @@ export default function GiveFeedbackLecturer({
   const [newStatus, setNewStatus] = useState("FINAL");
   const [newDueDate, setNewDueDate] = useState("");
   const [username, setUsername] = useState<string>("");
+
+  // validation state
+  const [assignmentEndISO, setAssignmentEndISO] = useState<string | null>(null);
+  const [dueDateError, setDueDateError] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -106,6 +111,71 @@ export default function GiveFeedbackLecturer({
     });
   };
 
+  const findAssignmentEndDate = (dt: any): string | null => {
+    if (!dt) return null;
+
+    const arr = dt?.assignmentDueDates;
+    if (Array.isArray(arr) && arr.length) {
+      for (const item of arr) {
+        if (!item || typeof item !== "object") continue;
+        if (item.endDate) return item.endDate;
+        if (item.end_at) return item.end_at;
+        if (item.end) return item.end;
+        for (const k of Object.keys(item)) {
+          if (/^end/i.test(k) && item[k]) return item[k];
+        }
+      }
+    }
+
+    if (dt?.endDate) return dt.endDate;
+    if (dt?.end_at) return dt.end_at;
+    if (dt?.end) return dt.end;
+    return null;
+  };
+
+  // keep canonical ISO end date for validation (prefer detail then submission)
+  useEffect(() => {
+    const foundFromDetail = findAssignmentEndDate(detail);
+    const foundFromSubmission = findAssignmentEndDate(latestSubmission);
+    const maybeEnd = foundFromDetail ?? foundFromSubmission ?? null;
+    setAssignmentEndISO(maybeEnd ? new Date(maybeEnd).toISOString() : null);
+  }, [detail, latestSubmission]);
+
+  const validateNewDueDate = (inputVal: string | null | undefined) => {
+    setDueDateError(null);
+    if (!inputVal) return true;
+    const iso = bangkokInputToIso(inputVal);
+    if (!iso) {
+      setDueDateError("Invalid date/time");
+      return false;
+    }
+    if (assignmentEndISO) {
+      try {
+        if (new Date(iso).getTime() > new Date(assignmentEndISO).getTime()) {
+          setDueDateError("New due date must not be after assignment end date");
+          return false;
+        }
+      } catch {
+        setDueDateError("Invalid date/time");
+        return false;
+      }
+    }
+    setDueDateError(null);
+    return true;
+  };
+
+  useEffect(() => {
+    if (newStatus !== "APPROVED_WITH_FEEDBACK") return;
+    const foundFromDetail = findAssignmentEndDate(detail);
+    const foundFromSubmission = findAssignmentEndDate(latestSubmission);
+    const maybeEnd = foundFromDetail ?? foundFromSubmission ?? null;
+    const inputVal = isoToBangkokInput(maybeEnd);
+    if (inputVal) {
+      setNewDueDate(inputVal);
+      validateNewDueDate(inputVal);
+    }
+  }, [newStatus, detail, latestSubmission]);
+
   const handleSubmitFeedback = async () => {
     if (!latestSubmission) return;
     setSubmitting(true);
@@ -115,9 +185,18 @@ export default function GiveFeedbackLecturer({
     try {
       const mappedStatus = newStatus === "APPROVED" ? "FINAL" : newStatus;
 
-      const isoDueDate =
-        mappedStatus === "FINAL" ? null : (newDueDate ? new Date(newDueDate).toISOString() : null);
-      console.log("Feedback payload:", latestSubmission.id, comment, isoDueDate, newStatus);
+      // validate before submit
+      if (mappedStatus !== "FINAL") {
+        const ok = validateNewDueDate(newDueDate);
+        if (!ok) {
+          setSubmitting(false);
+          setSubmitError("Please fix due date before submitting.");
+          showToast({ variant: "error", message: "Please fix due date before submitting." });
+          return;
+        }
+      }
+
+      const isoDueDate = mappedStatus === "FINAL" ? null : (newDueDate ? bangkokInputToIso(newDueDate) : null);
 
       const feedbackRes = await giveFeedbackAPI(
         latestSubmission.id,
@@ -156,7 +235,7 @@ export default function GiveFeedbackLecturer({
 
       if (uploads.length > 0) {
         const results = await Promise.allSettled(uploads);
-        const failures = results.filter((r) => r.status === "rejected");
+        const failures = results.filter((r) => (r as any).status === "rejected");
         if (failures.length > 0) {
           const msg = `Uploaded with ${failures.length} error(s).`;
           setSubmitError(msg);
@@ -197,10 +276,10 @@ export default function GiveFeedbackLecturer({
 
   if (loading) return <div className="p-6">Loading assignment detail…</div>;
   if (error) return <div className="p-6 text-red-600">Error: {error}</div>;
-  if (!latestSubmission) return <div className="p-6 text-gray-500">No submissions found.</div>;
+  if (!latestSubmission) return <div className="p-3 ml-5 text-gray-500">No submissions found.</div>;
   if (latestSubmissionFinal?.status === "FINAL") {
     return (
-      <div className="p-6 text-green-700">
+      <div className="p-6 text-green-700 text-lg font-semibold">
         This group assignment is already approved.
       </div>
     );
@@ -218,7 +297,7 @@ export default function GiveFeedbackLecturer({
     <div className="rounded-xl border border-gray-200 bg-white shadow-sm p-6 ml-6 mt-3">
       <div className="border-b pb-6 mb-6">
         <div className="font-bold text-xl mb-2">Student Work</div>
-        <div className="mb-4">
+        <div className="mb-4 text-lg">
           <div className="font-semibold">Comment:</div>
           <div>{latestSubmission.comment || "No comment"}</div>
         </div>
@@ -228,8 +307,8 @@ export default function GiveFeedbackLecturer({
           );
           return (
             <div key={del.id} className="mb-4">
-              <div className="font-semibold">{del.name}</div>
-              <div className="flex flex-col gap-1 mt-1">
+              <div className="font-semibold text-lg">{del.name}</div>
+              <div className="flex flex-col gap-1 mt-1 text-lg">
                 {del.allowedFileTypes?.map((t: any, idx: number) => (
                   <div key={idx}>
                     {t.type}
@@ -247,12 +326,12 @@ export default function GiveFeedbackLecturer({
                             )
                           )
                           .map((url: string, i: number) => (
-                            <span key={i} className="inline-flex items-center gap-2 px-2 py-1 rounded text-sm">
+                            <span key={i} className="inline-flex items-center gap-2 px-2 py-1 rounded text-lg">
                               <a
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-[#326295] hover:underline truncate"
+                                className="text-[#326295] hover:underline truncate text-lg"
                                 title={sf.name}
                               >
                                 {sf.name}
@@ -288,7 +367,7 @@ export default function GiveFeedbackLecturer({
         {role !== "staff" && (
           <>
             <div className="mb-4">
-              <label htmlFor="feedbackComment" className="font-semibold mb-1 block">
+              <label htmlFor="feedbackComment" className="font-semibold mb-1 block text-lg">
                 Comment
               </label>
               <textarea
@@ -304,7 +383,7 @@ export default function GiveFeedbackLecturer({
               const groupNumber =
                 detail?.assignmentDueDates?.[0]?.group?.codeNumber || "0";
               return (
-                <div className="text-lg flex items-center gap-3 flex-wrap" key={del.id}>
+                <div className="text-lg flex items-center gap-3 flex-wrap text-lg" key={del.id}>
                   <span className="font-bold">{del.name}</span>
                   <label className="text-blue-600 underline cursor-pointer">
                     {(files[del.id]?.length ?? 0) > 0 ? "Replace" : "Upload"}
@@ -334,20 +413,20 @@ export default function GiveFeedbackLecturer({
                               onClick={() => removeFeedbackFile(del.id, idx)}
                               className="text-red-600 text-sm underline"
                             >
-                              remove
+                              Remove
                             </button>
                           </span>
                         );
                       })}
                     </>
                   ) : (
-                    <span className="text-sm text-gray-500">No file selected</span>
+                    <span className="text-sm text-gray-500 text-lg">No file selected</span>
                   )}
                 </div>
               );
             })}
 
-            <div className="mt-4 flex gap-4 items-center">
+            <div className="mt-4 flex gap-4 items-center text-lg">
               <div>
                 <label className="font-semibold">Status:</label>
                 <select
@@ -355,7 +434,22 @@ export default function GiveFeedbackLecturer({
                   onChange={e => {
                     const v = e.target.value;
                     setNewStatus(v);
-                    if (v === "APPROVED") setNewDueDate("");
+                    if (v === "APPROVED") {
+                      setNewDueDate("");
+                      setDueDateError(null);
+                      return;
+                    }
+
+                    if (v === "APPROVED_WITH_FEEDBACK") {
+                      const foundFromDetail = findAssignmentEndDate(detail);
+                      const foundFromSubmission = findAssignmentEndDate(latestSubmission);
+                      const maybeEnd = foundFromDetail ?? foundFromSubmission ?? null;
+                      const auto = isoToBangkokInput(maybeEnd);
+                      if (auto) {
+                        setNewDueDate(auto);
+                        validateNewDueDate(auto);
+                      }
+                    }
                   }}
                   className="ml-2 border rounded px-2 py-1"
                 >
@@ -368,11 +462,16 @@ export default function GiveFeedbackLecturer({
                 <div>
                   <label className="font-semibold">Set new due date:</label>
                   <input
-                    type="date"
+                    type="datetime-local"
                     value={newDueDate}
-                    onChange={e => setNewDueDate(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewDueDate(val);
+                      validateNewDueDate(val);
+                    }}
                     className="ml-2 border rounded px-2"
                   />
+                  {dueDateError && <div className="text-red-600 text-base">{dueDateError}</div>}
                 </div>
               )}
             </div>
@@ -382,11 +481,11 @@ export default function GiveFeedbackLecturer({
 
             <div className="flex justify-end mt-6">
               <button
-                className="px-6 py-3 bg-[#305071] text-white text-lg rounded-md shadow disabled:opacity-50"
+                className="px-6 py-3 text-white text-lg rounded-md shadow disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-[#326295] to-[#0a1c30] hover:from-[#28517c] hover:to-[#071320] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295] active:scale-[0.98] transition cursor-pointer"
                 onClick={handleSubmitFeedback}
-                disabled={submitting}
+                disabled={submitting || !!dueDateError}
               >
-                {submitting ? "Submitting…" : "Send"}
+                {submitting ? "Submitting…" : "Confirm Feedback"}
               </button>
             </div>
           </>

@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Upload, Search, UserPlus, Filter, ListOrdered, SortAsc, SortDesc, Pencil } from "lucide-react";
+import { Upload, Search, UserPlus, Pencil } from "lucide-react";
 import { getAllUsersAPI } from "@/api/user/getAllUser";
 import type { getAllUsers } from "@/types/api/user";
 import Navbar from "@/components/navbar";
@@ -67,7 +67,7 @@ function SettingsPageContent() {
   const [studentData, setStudentData] = useState<fetchStudentData.data[]>([]);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED">("ACTIVE");
+  const [bulkStatus, setBulkStatus] = useState<"ACTIVE" | "INACTIVE" | "GRADUATED">("ACTIVE");
   const [bulkUpdating, setBulkUpdating] = useState(false);
   const selectedUsers = useMemo(() => users.filter((u) => selected.has(u.id)), [users, selected]);
 
@@ -81,7 +81,7 @@ function SettingsPageContent() {
     "student" | "staff" | "lecturer" | "advisor" | "admin" | "super_admin" | "solar_lecturer"
   >("staff");
   const [editIsStudent, setEditIsStudent] = useState(false);
-  const [editStatus, setEditStatus] = useState<string>("ACTIVE");
+  const [editStatus, setEditStatus] = useState<"ACTIVE" | "INACTIVE" | "GRADUATED">("ACTIVE");
   const lockProgramRole = editIsStudent || ["staff", "lecturer", "solar_lecturer"].includes(String(editRole).toLowerCase());
 
   const fetchUsers = async () => {
@@ -101,15 +101,33 @@ function SettingsPageContent() {
     fetchUsers();
   }, []);
 
+  const serverToUIStatus = (s?: string | null) => {
+    if (!s) return "ACTIVE";
+    const up = String(s).toUpperCase();
+    if (up === "ACTIVE") return "ACTIVE";
+    if (up === "GRADUATED") return "GRADUATED";
+    if (["RESIGNED", "RETIRED", "INACTIVE"].includes(up)) return "INACTIVE";
+    return up;
+  };
+  const uiToServerStatus = (ui: string) => {
+    const u = String(ui).toUpperCase();
+    if (u === "ACTIVE") return "ACTIVE";
+    if (u === "GRADUATED") return "GRADUATED";
+    if (u === "INACTIVE") {
+      return "INACTIVE";
+    }
+    return u;
+  };
+
   const allowedForRole = (r: string) => {
     const k = (r || "").toLowerCase();
     if (k === "student") return ["ACTIVE", "GRADUATED"];
-    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "RESIGNED", "RETIRED"];
+    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "INACTIVE"];
     return ["ACTIVE"];
   };
 
   const commonAllowedStatuses = useMemo(() => {
-    if (selectedUsers.length === 0) return ["ACTIVE", "RESIGNED", "RETIRED", "GRADUATED"];
+    if (selectedUsers.length === 0) return ["ACTIVE", "INACTIVE", "GRADUATED"];
     let common = new Set(allowedForRole(selectedUsers[0].role));
     for (let i = 1; i < selectedUsers.length; i++) {
       const s = new Set(allowedForRole(selectedUsers[i].role));
@@ -120,7 +138,7 @@ function SettingsPageContent() {
 
   useEffect(() => {
     if (!commonAllowedStatuses.includes(bulkStatus)) {
-      setBulkStatus((commonAllowedStatuses[0] ?? "ACTIVE") as "ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED");
+      setBulkStatus((commonAllowedStatuses[0] ?? "ACTIVE") as "ACTIVE" | "INACTIVE" | "GRADUATED");
     }
   }, [commonAllowedStatuses, bulkStatus]);
 
@@ -144,7 +162,7 @@ function SettingsPageContent() {
   const filtered = useMemo(() => {
     const text = q.trim().toLowerCase();
     const yearFilter = studentYearFilter.trim();
-    const mapUiToApi = (r: RoleFilter) => {
+    const mapUiToApiRole = (r: RoleFilter) => {
       if (r === "LECTURER") return "lecturer";
       if (r === "SOLAR_LECTURER") return "advisor";
       if (r === "STAFF") return "staff";
@@ -161,7 +179,7 @@ function SettingsPageContent() {
           u.name?.toLowerCase().includes(text) ||
           u.email?.toLowerCase().includes(text) ||
           u.id?.toLowerCase().includes(text);
-        const apiRoleTarget = mapUiToApi(role);
+        const apiRoleTarget = mapUiToApiRole(role);
         const matchRole = role === "ALL" ? true : u.role.toLowerCase() === apiRoleTarget;
         const roleUsesProgramFilter = role === "STUDENT" || role === "LECTURER";
         const matchProgram = roleUsesProgramFilter
@@ -315,7 +333,6 @@ function SettingsPageContent() {
       showToast({ variant: "success", message: "User created" });
       await fetchUsers();
     } catch (e: any) {
-      console.error("Create user error response:", e?.response || e);
       const serverMsg = e?.response?.data?.message || e?.message || "Create failed";
       showToast({ variant: "error", message: String(serverMsg) });
     } finally {
@@ -323,32 +340,25 @@ function SettingsPageContent() {
     }
   };
 
-  // compute available status options based on role
   const getStatusOptions = (r: string) => {
     const k = (r || "").toLowerCase();
     if (k === "student") return ["ACTIVE", "GRADUATED"];
-    // employment roles (staff/lecturer/solar/advisor)
-    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "RESIGNED", "RETIRED"];
-    // fallback: only ACTIVE
+    if (["staff", "lecturer", "advisor", "solar_lecturer"].includes(k)) return ["ACTIVE", "INACTIVE"];
     return ["ACTIVE"];
   };
 
-  // open edit modal and populate fields
   const openEdit = (u: any) => {
     setEditUserId(u.id);
     setEditName(u.name || "");
     setEditEmail(u.email || "");
     setEditProgram((u.program && (u.program === "CS" || u.program === "DSI") ? u.program : "CS") as "CS" | "DSI");
-    // map role to one of expected values (best-effort)
     const r = (u.role || "").toLowerCase();
     setEditRole((r as any) || "staff");
     setEditIsStudent(r === "student");
-    // set status from user or default ACTIVE
-    setEditStatus(u.status || "ACTIVE");
+    setEditStatus(serverToUIStatus(u.status) as "ACTIVE" | "INACTIVE" | "GRADUATED");
     setEditOpen(true);
   };
 
-  // refresh currently opened user's data from server (re-fetch all users then pick)
   const refreshEditUser = async () => {
     if (!editUserId) return;
     try {
@@ -364,7 +374,7 @@ function SettingsPageContent() {
         const r = (updated.role || "").toLowerCase();
         setEditRole((r as any) || "staff");
         setEditIsStudent(r === "student");
-        setEditStatus(updated.status || "ACTIVE");
+        setEditStatus(serverToUIStatus(updated.status) as "ACTIVE" | "INACTIVE" | "GRADUATED");
       }
     } catch (err) {
     } finally {
@@ -385,18 +395,16 @@ function SettingsPageContent() {
         try {
           await updateStfAndLecApi(editUserId, editName.trim(), editEmail.trim());
         } catch (apiErr: any) {
-          console.error("Update staff/lecturer error:", apiErr?.response ?? apiErr);
           const msg = apiErr?.response?.data?.message || apiErr?.message || "Failed to update user";
           showToast({ variant: "error", message: String(msg) });
           return;
         }
       }
 
-      // update status for any role (API expects array of ids)
       try {
-        await updateUserStatusApi([editUserId], editStatus as "ACTIVE" | "RESIGNED" | "RETIRED" | "GRADUATED");
+        const serverStatus = uiToServerStatus(editStatus);
+        await updateUserStatusApi([editUserId], serverStatus as any);
       } catch (statusErr: any) {
-        console.error("Update status error:", statusErr?.response ?? statusErr);
         const msg = statusErr?.response?.data?.message || statusErr?.message || "Failed to update status";
         showToast({ variant: "error", message: String(msg) });
         return;
@@ -405,6 +413,7 @@ function SettingsPageContent() {
       setEditOpen(false);
       setEditUserId(null);
       await fetchUsers();
+  showToast({ variant: "success", message: "User updated" });
     } catch (err: any) {
       const msg = err?.response?.data?.message || err?.message || "Update failed";
       showToast({ variant: "error", message: String(msg) });
@@ -592,7 +601,8 @@ function SettingsPageContent() {
                         if (!confirm(`Apply status "${bulkStatus}" to ${selected.size} users?`)) return;
                         try {
                           setBulkUpdating(true);
-                          await updateUserStatusApi(Array.from(selected), bulkStatus);
+                          const serverStatus = uiToServerStatus(bulkStatus);
+                          await updateUserStatusApi(Array.from(selected), serverStatus as any);
                           await fetchUsers();
                           setSelected(new Set());
                         } catch (err: any) {
@@ -659,55 +669,58 @@ function SettingsPageContent() {
                 )}
                 {!loading &&
                   !error &&
-                  pageItems.map((u) => (
-                    <tr key={u.id} className="border-t hover:bg-gray-50/60 text-xl">
-                      <td className="px-4 py-5 align-top">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(u.id)}
-                          onChange={() => toggleRow(u.id)}
-                          className="h-4 w-4 accent-[#326295]"
-                          aria-label={`Select user ${u.id}`}
-                        />
-                      </td>
-                      <td className="px-6 py-5 align-top">{u.id}</td>
-                      <td className="px-6 py-5 align-top">
-                        <div>{u.name || "—"}</div>
-                      </td>
-                      <td className="px-6 py-5 align-top">{u.email || "—"}</td>
-                      <td className="px-6 py-5 align-top">
-                        <span className={cx("inline-flex rounded-full border px-3 py-1", badge(u.role))}>
-                          {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-5 align-top">{u.program || "—"}</td>
-                      <td className="px-6 py-5 align-top">
-                        {u.status ? (
-                          <span
-                            className={cx(
-                              "text-md font-medium",
-                              u.status === "ACTIVE" ? "text-[#4CBB17]" : "text-red-600"
-                            )}
-                          >
-                            {u.status}
+                  pageItems.map((u) => {
+                    const uiStatus = serverToUIStatus(u.status);
+                    return (
+                      <tr key={u.id} className="border-t hover:bg-gray-50/60 text-xl">
+                        <td className="px-4 py-5 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(u.id)}
+                            onChange={() => toggleRow(u.id)}
+                            className="h-4 w-4 accent-[#326295]"
+                            aria-label={`Select user ${u.id}`}
+                          />
+                        </td>
+                        <td className="px-6 py-5 align-top">{u.id}</td>
+                        <td className="px-6 py-5 align-top">
+                          <div>{u.name || "—"}</div>
+                        </td>
+                        <td className="px-6 py-5 align-top">{u.email || "—"}</td>
+                        <td className="px-6 py-5 align-top">
+                          <span className={cx("inline-flex rounded-full border px-3 py-1", badge(u.role))}>
+                            {u.role.charAt(0).toUpperCase() + u.role.slice(1)}
                           </span>
-                        ) : (
-                          "—"
-                        )}
-                      </td>
-                      <td className="px-6 py-5 align-top">{formatDate(u.createdAt)}</td>
-                      <td className="px-6 py-5 align-top text-right">
-                        <button
-                          title="Edit"
-                          className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50 cursor-pointer"
-                          onClick={() => openEdit(u)}
-                          aria-label={`Edit ${u.id}`}
-                        >
-                          <Pencil className="h-4 w-6" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-6 py-5 align-top">{u.program || "—"}</td>
+                        <td className="px-6 py-5 align-top">
+                          {uiStatus ? (
+                            <span
+                              className={cx(
+                                "text-md font-medium",
+                                uiStatus === "ACTIVE" ? "text-[#4CBB17]" : "text-red-600"
+                              )}
+                            >
+                              {uiStatus}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="px-6 py-5 align-top">{formatDate(u.createdAt)}</td>
+                        <td className="px-6 py-5 align-top text-right">
+                          <button
+                            title="Edit"
+                            className="inline-flex items-center justify-center rounded-md border bg-white p-2 text-gray-600 hover:bg-gray-50 cursor-pointer"
+                            onClick={() => openEdit(u)}
+                            aria-label={`Edit ${u.id}`}
+                          >
+                            <Pencil className="h-4 w-6" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -784,7 +797,7 @@ function SettingsPageContent() {
                 >
                   <option value="STAFF">Staff</option>
                   <option value="LECTURER">Lecturer</option>
-                  <option value="SOLAR_LECTURER">Solar Lecturer</option>
+                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
                 </select>
               </div>
             </div>
@@ -868,7 +881,7 @@ function SettingsPageContent() {
                 <label className="block text-left mb-1">Status</label>
                 <select
                   value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
+                  onChange={(e) => setEditStatus(e.target.value as any)}
                   className="w-full rounded-xl border px-3 py-2 focus:outline-none cursor-pointer"
                 >
                   {getStatusOptions(editRole).map((s) => (
@@ -942,8 +955,14 @@ function SettingsPageContent() {
                     setStudentData(res.data);
                     await fetchUsers();
                     setAddStudentOpen(false);
+
+                    const _data: any = (res as any)?.data;
+                    const count = Array.isArray(_data) ? _data.length : (_data?.length ?? 0);
+                    showToast({ variant: "success", message: count > 0 ? `Synced ${count} students` : "Students synced" });
                   } catch (err: any) {
-                    setStudentError(err?.response?.data?.message || err?.message || "Fetch failed");
+                    const msg = err?.response?.data?.message || err?.message || "Fetch failed";
+                    setStudentError(msg);
+                    showToast({ variant: "error", message: String(msg) });
                   } finally {
                     setStudentLoading(false);
                   }

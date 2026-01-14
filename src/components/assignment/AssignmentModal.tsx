@@ -2,10 +2,11 @@
 
 import React, { useMemo, useState } from "react";
 import DeliverableFields from "@/components/deliverableField";
-import { X } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { Deliverable } from "@/components/deliverableField";
 import { FileUpload } from "../uploadFile";
 import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 export type AssignmentPayload = {
   title: string;
@@ -47,9 +48,9 @@ export default function AssignmentModal({
   const [deliverables, setDeliverables] = useState<Deliverable[]>(
     defaultValue?.deliverables?.length ? defaultValue!.deliverables! : [newDeliverable()]
   );
-  const [dueAt, setDueAt] = useState(defaultValue?.dueAt ?? "");
-  const [endAt, setEndAt] = useState(defaultValue?.endAt ?? "");
-  const [scheduleAt, setScheduleAt] = useState(defaultValue?.scheduleAt ?? "");
+  const [dueAt, setDueAt] = useState(() => isoToBangkokInput(defaultValue?.dueAt ?? ""));
+  const [endAt, setEndAt] = useState(() => isoToBangkokInput(defaultValue?.endAt ?? ""));
+  const [scheduleAt, setScheduleAt] = useState(() => isoToBangkokInput(defaultValue?.scheduleAt ?? ""));
   const [submitting, setSubmitting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -65,8 +66,10 @@ export default function AssignmentModal({
     const nowTs = Date.now();
     let datesValid = false;
     if (hasDates) {
-      const dueTs = new Date(dueAt!).getTime();
-      const endTs = new Date(endAt!).getTime();
+      const dueIso = bangkokInputToIso(dueAt);
+      const endIso = bangkokInputToIso(endAt);
+      const dueTs = dueIso ? new Date(dueIso).getTime() : NaN;
+      const endTs = endIso ? new Date(endIso).getTime() : NaN;
       // both dates must be valid and not before now, and end must be >= due
       datesValid =
         !isNaN(dueTs) &&
@@ -95,15 +98,15 @@ export default function AssignmentModal({
     setSubmitting(true);
     try {
       const scheduleValue = scheduleAt && scheduleAt.trim()
-        ? scheduleAt
+        ? bangkokInputToIso(scheduleAt) ?? new Date().toISOString()
         : new Date().toISOString();
       const descTrim = (descriptionHtml || "").trim();
       const basePayload: any = {
         title,
-        descriptionHtml: descTrim, // may be "" (empty)
+        descriptionHtml: descTrim,
         deliverables,
-        dueAt,
-        endAt,
+        dueAt: bangkokInputToIso(dueAt),
+        endAt: bangkokInputToIso(endAt),
         scheduleAt: scheduleValue,
       };
 
@@ -188,7 +191,7 @@ export default function AssignmentModal({
               />
             </div>
             <FileUpload
-              onFilesChange={setSelectedFiles}
+              onFilesChange={(files: File[]) => setSelectedFiles(files)}
               acceptedTypes={["image/*", "application/pdf", ".doc", ".docx", ".txt"]}
             />
 
@@ -213,9 +216,14 @@ export default function AssignmentModal({
               <button
                 type="button"
                 onClick={addDeliverable}
-                className="mt-3 px-4 py-2 text-sm font-medium bg-[#326295] text-white rounded shadow hover:bg-[#25446b] transition"
+                className="inline-flex items-center gap-2 mt-3 px-4 py-2 text-sm font-medium rounded-full shadow
+                  bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white
+                  hover:from-[#28517c] hover:to-[#071320]
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                  active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                + Add deliverable
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline text-base">Add deliverable</span>
               </button>
             </div>
 
@@ -231,9 +239,12 @@ export default function AssignmentModal({
                   onChange={(e) => setDueAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
-                {dueAt && new Date(dueAt).getTime() < Date.now() && (
-                  <p className="text-md text-red-500 mt-1">Due date cannot be before today/time</p>
-                )}
+                {dueAt && (() => {
+                  const iso = bangkokInputToIso(dueAt);
+                  return iso && new Date(iso).getTime() < Date.now() ? (
+                    <p className="text-md text-red-500 mt-1">Due date cannot be before today/time</p>
+                  ) : null;
+                })()}
               </div>
 
               <div>
@@ -246,12 +257,19 @@ export default function AssignmentModal({
                   onChange={(e) => setEndAt(e.target.value)}
                   className="w-full rounded border border-gray-300 px-3 py-2"
                 />
-                {endAt && new Date(endAt).getTime() < Date.now() && (
-                 <p className="text-md text-red-500 mt-1">End date cannot be before today/time</p>
-                )}
-                {dueAt && endAt && new Date(endAt).getTime() < new Date(dueAt).getTime() && (
-                  <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
-                )}
+                {endAt && (() => {
+                  const iso = bangkokInputToIso(endAt);
+                  return iso && new Date(iso).getTime() < Date.now() ? (
+                    <p className="text-md text-red-500 mt-1">End date cannot be before today/time</p>
+                  ) : null;
+                })()}
+                {dueAt && endAt && (() => {
+                  const dueIso = bangkokInputToIso(dueAt);
+                  const endIso = bangkokInputToIso(endAt);
+                  return dueIso && endIso && new Date(endIso).getTime() < new Date(dueIso).getTime() ? (
+                    <p className="text-md text-red-500 mt-1">End date must be after Due date</p>
+                  ) : null;
+                })()}
               </div>
 
               <div>

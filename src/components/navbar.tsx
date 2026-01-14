@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Bell, Home, User, Settings } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import NotificationPopup from "./notification";
+import Sidebar from "./sidebar";
 import { getCourse, Course } from "@/types/api/course";
 import { getCourseAPI } from "@/api/course/getCourseByUser";
 import { getUserRole } from "@/util/cookies";
@@ -31,6 +32,7 @@ export default function Navbar() {
   const [notifLoading, setNotifLoading] = useState(false);
   const [notifError, setNotifError] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const fetchCourses = useCallback(async () => {
     if (!userRole || !courseId || courseId.trim() === "") {
@@ -99,30 +101,74 @@ export default function Navbar() {
   return (
     <>
       <div className="w-full flex items-center justify-between px-6 py-3 bg-white border-b shadow-sm font-dbheavent">
-        <div className="flex items-center gap-4">
-          {/* <Image src="/image/SIT-LOGO.png" alt="SIT Logo" width={100} height={40} style={{ width: "auto", height: "auto" }} /> */}
-          {/* <h1 className="text-4xl font-semibold">Capstone Report Submission System</h1> */}
-          <Image src="/image/blue-logo.svg" alt="CFLOW Logo" width={24} height={16} style={{ width: "200px", height: "auto" }} />
-          <span className="text-4xl font-semibold">
-            {courseData?.coursename ?? ""}
-          </span>
+        {/* LEFT: logo + hamburger */}
+        <div className="flex items-center gap-4 shrink-0 hidden lg:block">
+          {courseId && (
+            <button
+              type="button"
+              className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              aria-label="Open main menu"
+              aria-controls="mobile-sidebar"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen(true)}
+            >
+              <span className="sr-only">Open main menu</span>
+              <span aria-hidden className="text-2xl leading-none">☰</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={() => router.push("/course")}
+            aria-label="Go to home"
+            className="inline-flex items-center cursor-pointer"
+          >
+            <Image
+              src="/image/blue-logo.svg"
+              alt="CFLOW Logo"
+              width={160}
+              height={48}
+              className="h-18 w-auto"
+            />
+          </button>
         </div>
 
-        <div className="flex items-center gap-5">
+        {/* MIDDLE: course title (only when courseId) */}
+        {courseId && (
+          <div className="flex-1 min-w-0 px-4">
+            <div className="text-2xl sm:text-3xl lg:text-4xl font-semibold overflow-hidden whitespace-nowrap text-ellipsis">
+              {courseData?.coursename ?? ""}
+            </div>
+          </div>
+        )}
+
+        {/* RIGHT: user + icons */}
+        <div className="flex items-center gap-5 shrink-0">
           {userName && (
             <span className="hidden md:inline text-3xl font-bold text-slate-700 pr-2 border-r border-slate-100">
               {userName}
             </span>
           )}
-          {(userRole === "staff") && (<Settings className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/settings")} />)}
-          <div className="relative cursor-pointer" onClick={() => setShowNotification(!showNotification)}>
+          {userRole === "staff" && (
+            <Settings
+              className="w-6 h-6 text-black cursor-pointer"
+              onClick={() => router.push("/settings")}
+            />
+          )}
+          <div
+            className="relative cursor-pointer"
+            onClick={() => setShowNotification(!showNotification)}
+          >
             <Bell className="w-6 h-6 text-black" />
-            {/* <span className="absolute -top-1 -right-2 text-[10px] px-1 bg-red-600 text-white rounded-full">15</span> */}
           </div>
           <Home className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/course")} />
           <User className="w-6 h-6 text-black cursor-pointer" onClick={() => router.push("/profile")} />
         </div>
       </div>
+
+
+      {/* Mobile sidebar instance (slide-in) */}
+      {courseId && <Sidebar mobile open={mobileMenuOpen} onClose={() => setMobileMenuOpen(false)} />}
 
       {showNotification && (
         <div className="absolute right-6 top-16 z-50 bg-white rounded-lg shadow-lg w-96 max-h-[60vh] overflow-y-auto border">

@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import DeliverableFields, { Deliverable, FileType } from "@/components/deliverableField";
 import { FileUpload } from "@/components/uploadFile";
 import { getAssignmentByIdAPI } from "@/api/assignment/getAssignmentById";
 import { uploadAssignmentFileAPI } from "@/api/assignment/uploadAssignmentFile";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type EditAssignmentModalProps = {
     open: boolean;
@@ -53,25 +54,7 @@ export default function EditAssignmentModal({
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [existingFiles, setExistingFiles] = useState<any[]>([]);
     const [keepFileIds, setKeepFileIds] = useState<string[]>([]);
-
-    const pad = (n: number) => n.toString().padStart(2, "0");
-    const isoToBangkokInput = (iso?: string | null) => {
-        if (!iso) return "";
-        const d = new Date(iso);
-        const thMs = d.getTime() + 7 * 3600 * 1000; // shift UTC -> Bangkok
-        const t = new Date(thMs);
-        return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`;
-    };
-    const bangkokInputToIso = (input?: string) => {
-        if (!input) return null;
-        const [date, time] = input.split("T");
-        if (!date || !time) return null;
-        const [y, m, d] = date.split("-").map(Number);
-        const [hh, mm] = time.split(":").map(Number);
-        // Treat input as Bangkok local -> compute UTC ms by subtracting +7h
-        const utcMs = Date.UTC(y, (m || 1) - 1, d || 1, hh || 0, mm || 0) - 7 * 3600 * 1000;
-        return new Date(utcMs).toISOString();
-    };
+    const [assignmentCourseId, setAssignmentCourseId] = useState<string | null>(null);
 
     useEffect(() => {
         if (!open || !assignmentId) return;
@@ -79,6 +62,7 @@ export default function EditAssignmentModal({
         getAssignmentByIdAPI(assignmentId)
             .then((res) => {
                 const a = res.assignment;
+                setAssignmentCourseId(a.courseId ?? null);
                 setTitle(a.name ?? "");
                 setDescriptionHtml(a.description ?? "");
                 setDeliverables(
@@ -154,9 +138,37 @@ export default function EditAssignmentModal({
         if (!canSubmit) return;
         setSubmitting(true);
         try {
-            const keepUrls = existingFiles
-                .filter((f) => keepFileIds.includes(f.id))
+            const keptIds = keepFileIds.slice();
+            const keptUrls = existingFiles
+                .filter((f) => keptIds.includes(f.id))
                 .map((f) => f.filepath);
+
+            // upload new files first and collect their ids/filepaths
+            const newlyUploaded: { id?: string; filepath?: string }[] = [];
+            if (selectedFiles.length > 0) {
+                if (!assignmentCourseId) {
+                    console.warn("Missing courseId for file upload before edit");
+                }
+                for (const f of selectedFiles) {
+                    if (!assignmentCourseId) continue;
+                    try {
+                        const res = await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
+                        // try to extract file object from common response shapes
+                        const fileObj =
+                            (res && (res.files || res.assignmentFile || res.files)) ||
+                            (res && res.assignmentFile) ||
+                            res;
+                        if (fileObj) {
+                            newlyUploaded.push({ id: fileObj.originalName, filepath: fileObj.url || fileObj.url });
+                        }
+                    } catch (err) {
+                        console.warn("Failed to upload a file", err);
+                    }
+                }
+            }
+
+            const keepIds = [...keptIds, ...newlyUploaded.map((f) => f.id).filter(Boolean)];
+            const keepUrls = [...keptUrls, ...newlyUploaded.map((f) => f.filepath).filter(Boolean)];
             const EXTENSION_TO_MIME: Record<string, string> = {
                 pdf: "application/pdf",
                 docx: "application/docx",
@@ -194,12 +206,27 @@ export default function EditAssignmentModal({
                     )),
                 })),
                 keepUrls,
+                keepFileIds: keepIds,
             };
 
+            await onSubmit(payload);
+
+            // then upload each new file separately so backend can append (not replace)
             if (selectedFiles.length > 0) {
-                await onSubmit({ ...payload, files: selectedFiles });
-            } else {
-                await onSubmit(payload);
+                if (!assignmentCourseId) {
+                    console.warn("Missing courseId for file upload after edit");
+                }
+                for (const f of selectedFiles) {
+                    if (assignmentCourseId) {
+                        await uploadAssignmentFileAPI(assignmentCourseId, assignmentId, f);
+                    }
+                }
+                try {
+                    const refreshed = await getAssignmentByIdAPI(assignmentId);
+                    setExistingFiles(refreshed.assignment?.assignmentFiles ?? []);
+                } catch (err) {
+                    console.warn("Failed to refresh assignment files after upload", err);
+                }
             }
             onClose();
         } finally {
@@ -337,9 +364,14 @@ export default function EditAssignmentModal({
                                     <button
                                         type="button"
                                         onClick={addDeliverable}
-                                        className="mt-3 px-4 py-2 text-sm font-medium bg-[#326295] text-white rounded shadow hover:bg-[#25446b] transition"
+                                        className="inline-flex items-center gap-2 mt-3 px-4 py-2 text-sm font-medium rounded-full shadow
+                  bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white
+                  hover:from-[#28517c] hover:to-[#071320]
+                  focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#326295]
+                  active:scale-[0.98] transition disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        + Add more deliverable
+                                        <Plus className="h-4 w-4" />
+                                        <span className="hidden sm:inline text-base">Add deliverable</span>
                                     </button>
                                 </div>
 

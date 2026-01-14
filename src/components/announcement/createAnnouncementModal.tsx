@@ -6,6 +6,7 @@ import { createAnnouncementByCourseIdAPI } from "@/api/announcement/createAnnoun
 import { FileUpload } from "@/components/uploadFile";
 import { uploadAnnouncementFileAPI } from "@/api/storage/uploadAnnouncementFile";
 import { useToast } from "@/components/toast";
+import { isoToBangkokInput, bangkokInputToIso } from "@/util/bangkokDate";
 
 type Props = {
   open: boolean;
@@ -35,7 +36,8 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
     setError(null);
 
     try {
-      const scheduleDate = isScheduled && scheduleAt ? new Date(scheduleAt).toISOString() : null;
+      const scheduleDate =
+        isScheduled && scheduleAt ? bangkokInputToIso(scheduleAt) : null;
       const descToSend = (description || "").trim();
       let res;
       try {
@@ -185,7 +187,7 @@ export default function CreateAnnouncementModal({ open, onClose, courseId, onSub
                         value={scheduleAt}
                         onChange={(e) => setScheduleAt(e.target.value)}
                         className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#326295]"
-                        min={new Date().toISOString().slice(0, 16)}
+                        min={isoToBangkokInput(new Date().toISOString())}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Select when you want this announcement to post

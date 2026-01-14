@@ -1,5 +1,6 @@
 "use client";
 import React, { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Pencil, Plus, Trash2 } from "lucide-react";
@@ -27,6 +28,7 @@ type CardAssignment = {
 
 function AssignmentPageContent() {
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
   useEffect(() => setMounted(true), []);
   const sp = useSearchParams();
   const [courseId, setCourseId] = useState("");
@@ -84,33 +86,30 @@ function AssignmentPageContent() {
     console.log("assignment Id to edit:", task.id);
   };
 
-  useEffect(() => {
+  const fetchAssignments = React.useCallback(async () => {
     if (!mounted || !courseId) return;
-    const run = async () => {
-      try {
-        if (isStudent) {
-          const res = await getStudentAssignmentAPI(courseId);
-          const a = res?.data?.assignment;
-          if (a && typeof a === "object") {
-            setStudentAssignment(a as getAllAssignments.studentAssignment);
-          } else {
-            setStudentAssignment(null);
-          }
-        } else if (role) {
-          setLoading(true);
-          const res = await getAllAssignmentsStfLecAPI(courseId);
-          setLecturerData(res.data.assignments);
-        }
-        setActiveTab("open");
-      } catch (e) {
-        console.error("Failed to fetch assignments", e);
-        if (isStudent) setStudentAssignment(null);
-      } finally {
-        setLoading(false);
+    try {
+      setLoading(true);
+      if (isStudent) {
+        const res = await getStudentAssignmentAPI(courseId);
+        const a = res?.data?.assignment;
+        setStudentAssignment(a && typeof a === "object" ? (a as getAllAssignments.studentAssignment) : null);
+      } else if (role) {
+        const res = await getAllAssignmentsStfLecAPI(courseId);
+        setLecturerData(res?.data?.assignments ?? []);
       }
-    };
-    run();
+      setActiveTab("open");
+    } catch (e) {
+      console.error("Failed to fetch assignments", e);
+      if (isStudent) setStudentAssignment(null);
+    } finally {
+      setLoading(false);
+    }
   }, [mounted, courseId, isStudent, role]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
 
   const pickDueISO = (obj: { dueDate?: string | null; endDate?: string | null }) =>
     obj.dueDate ?? obj.endDate ?? "";
@@ -373,7 +372,7 @@ function AssignmentPageContent() {
                         courseId: response.assignment.courseId,
                       };
                       setShowCreateModal(false);
-                      window.location.reload();
+                      await fetchAssignments();
                       return result;
                     } catch (e) {
                       console.error("Failed to create assignment:", e);
@@ -417,9 +416,6 @@ function AssignmentPageContent() {
                     ? data.deliverables
                     : (prev as any).deliverables ?? [];
 
-                    console.log("Deliverables to send:", deliverables);
-
-
                   if (data.files && Array.isArray(data.files) && data.files.length > 0) {
                     for (const file of data.files) {
                       await updateAssignmentAPI(
@@ -448,7 +444,7 @@ function AssignmentPageContent() {
                     );
                   }
                   setShowEditModal(false);
-                  window.location.reload();
+                  await router.refresh();
                 } catch (err) {
                   alert("Failed to update assignment");
                 }
