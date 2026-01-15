@@ -758,6 +758,19 @@ function SettingsPageContent() {
 
             <div className="space-y-4">
               <div>
+                <label className="block text-left mb-1">Role</label>
+                <select
+                  value={addRole}
+                  onChange={(e) => setAddRole(e.target.value as any)}
+                  className="w-full rounded-xl border px-3 py-2 focus:outline-none"
+                >
+                  <option value="STAFF">Staff</option>
+                  <option value="LECTURER">Lecturer</option>
+                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-left mb-1">Name</label>
                 <input
                   value={addName}
@@ -785,19 +798,6 @@ function SettingsPageContent() {
                 >
                   <option value="CS">CS</option>
                   <option value="DSI">DSI</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-left mb-1">Role</label>
-                <select
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as any)}
-                  className="w-full rounded-xl border px-3 py-2 focus:outline-none"
-                >
-                  <option value="STAFF">Staff</option>
-                  <option value="LECTURER">Lecturer</option>
-                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
                 </select>
               </div>
             </div>
