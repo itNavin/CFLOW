@@ -63,6 +63,7 @@ function SettingsPageContent() {
   const addEmailDomain = addRole === "SOLAR_LECTURER" ? "kmutt.ac.th" : "sit.kmutt.ac.th";
   const addEmailExample = `Example: example@${addEmailDomain}`;
   const [creating, setCreating] = useState(false);
+  const [addConfirmOpen, setAddConfirmOpen] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
   const [studentLoading, setStudentLoading] = useState(false);
@@ -311,25 +312,35 @@ function SettingsPageContent() {
     }
   };
 
+  const onOpenAddConfirm = () => {
+    if (!addName.trim() || !addEmailLocal.trim()) {
+      showToast({ variant: "error", message: "Please fill name and email" });
+      return;
+    }
+    setAddConfirmOpen(true);
+  };
+
   const onCreate = async () => {
     if (!addName.trim() || !addEmailLocal.trim()) {
       showToast({ variant: "error", message: "Please fill name and email" });
       return;
     }
     const addEmail = `${addEmailLocal.trim()}@${addEmailDomain}`;
+    const addNameUpper = addName.trim().toUpperCase();
     try {
       setCreating(true);
 
       let response;
       if (addRole === "STAFF") {
-        response = await createStaffUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+        response = await createStaffUserAPI(addEmail, addNameUpper, addProgram as "CS" | "DSI");
       } else if (addRole === "LECTURER") {
-        response = await createLecturerUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+        response = await createLecturerUserAPI(addEmail, addNameUpper, addProgram as "CS" | "DSI");
       } else if (addRole === "SOLAR_LECTURER") {
-        response = await createSolarLecturerUserAPI(addEmail, addName, addProgram as "CS" | "DSI");
+        response = await createSolarLecturerUserAPI(addEmail, addNameUpper, addProgram as "CS" | "DSI");
       }
 
       setAddOpen(false);
+      setAddConfirmOpen(false);
       setAddName("");
       setAddEmailLocal("");
       setAddRole("STAFF");
@@ -343,6 +354,8 @@ function SettingsPageContent() {
       setCreating(false);
     }
   };
+
+  const addEmailFull = addEmailLocal.trim() ? `${addEmailLocal.trim()}@${addEmailDomain}` : "";
 
   const getStatusOptions = (r: string) => {
     const k = (r || "").toLowerCase();
@@ -820,7 +833,7 @@ function SettingsPageContent() {
                 Cancel
               </button>
               <button
-                onClick={onCreate}
+                onClick={onOpenAddConfirm}
                 disabled={creating}
                 className={cx(
                   "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg px-5 py-2 rounded-xl shadow hover:from-[#28517c] hover:to-[#071320]",
@@ -828,6 +841,53 @@ function SettingsPageContent() {
                 )}
               >
                 {creating ? "Creating…" : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h2 className="text-2xl font-semibold mb-2">Confirm Create</h2>
+            <p className="text-sm text-gray-600">Recheck the information carefully because it cannot be edited anymore.</p>
+
+            <div className="mt-4 space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-gray-600">Role</span>
+                <span className="font-medium">{addRole.replace(/_/g, " " )}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-gray-600">Name</span>
+                <span className="font-medium">{addName || "-"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-gray-600">Email</span>
+                <span className="font-medium">{addEmailFull || "-"}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-gray-600">Program</span>
+                <span className="font-medium">{addProgram}</span>
+              </div>
+            </div>
+
+            <div className="mt-6 flex items-center justify-start gap-3">
+              <button
+                onClick={() => setAddConfirmOpen(false)}
+                className="rounded-xl border px-5 py-2 text-lg"
+              >
+                Edit
+              </button>
+              <button
+                onClick={onCreate}
+                disabled={creating}
+                className={cx(
+                  "flex items-center bg-gradient-to-r from-[#326295] to-[#0a1c30] text-white text-lg px-5 py-2 rounded-xl shadow hover:from-[#28517c] hover:to-[#071320]",
+                  creating && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {creating ? "Creating???" : "Create"}
               </button>
             </div>
           </div>
