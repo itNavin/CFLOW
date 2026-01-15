@@ -56,9 +56,12 @@ function SettingsPageContent() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [addName, setAddName] = useState("");
-  const [addEmail, setAddEmail] = useState("");
+  const [addEmailLocal, setAddEmailLocal] = useState("");
   const [addProgram, setAddProgram] = useState<"CS" | "DSI">("CS");
   const [addRole, setAddRole] = useState<"STAFF" | "LECTURER" | "SOLAR_LECTURER">("STAFF");
+  const addNameExample = "Example: Vitida Chongsuphajaisiddhi";
+  const addEmailDomain = addRole === "SOLAR_LECTURER" ? "kmutt.ac.th" : "sit.kmutt.ac.th";
+  const addEmailExample = `Example: example@${addEmailDomain}`;
   const [creating, setCreating] = useState(false);
   const [addStudentOpen, setAddStudentOpen] = useState(false);
   const [academicYear, setAcademicYear] = useState("");
@@ -309,10 +312,11 @@ function SettingsPageContent() {
   };
 
   const onCreate = async () => {
-    if (!addName.trim() || !addEmail.trim()) {
+    if (!addName.trim() || !addEmailLocal.trim()) {
       showToast({ variant: "error", message: "Please fill name and email" });
       return;
     }
+    const addEmail = `${addEmailLocal.trim()}@${addEmailDomain}`;
     try {
       setCreating(true);
 
@@ -327,7 +331,7 @@ function SettingsPageContent() {
 
       setAddOpen(false);
       setAddName("");
-      setAddEmail("");
+      setAddEmailLocal("");
       setAddRole("STAFF");
       setAddProgram("CS");
       showToast({ variant: "success", message: "User created" });
@@ -758,22 +762,41 @@ function SettingsPageContent() {
 
             <div className="space-y-4">
               <div>
+                <label className="block text-left mb-1">Role</label>
+                <select
+                  value={addRole}
+                  onChange={(e) => setAddRole(e.target.value as any)}
+                  className="w-full rounded-xl border px-3 py-2 focus:outline-none"
+                >
+                  <option value="STAFF">Staff</option>
+                  <option value="LECTURER">Lecturer</option>
+                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-left mb-1">Name</label>
                 <input
                   value={addName}
                   onChange={(e) => setAddName(e.target.value)}
                   className="w-full rounded-xl border px-3 py-2 focus:outline-none"
                 />
+                <div className="mt-1 text-sm text-gray-500">{addNameExample}</div>
               </div>
 
               <div>
                 <label className="block text-left mb-1">Email</label>
-                <input
-                  type="email"
-                  value={addEmail}
-                  onChange={(e) => setAddEmail(e.target.value)}
-                  className="w-full rounded-xl border px-3 py-2 focus:outline-none"
-                />
+                <div className="flex items-center rounded-xl border px-3 py-2 focus-within:outline-none">
+                  <input
+                    type="text"
+                    value={addEmailLocal}
+                    onChange={(e) => setAddEmailLocal(e.target.value)}
+                    className="w-full focus:outline-none"
+              
+                  />
+                  <span className="text-gray-500 whitespace-nowrap">@{addEmailDomain}</span>
+                </div>
+                <div className="mt-1 text-sm text-gray-500">{addEmailExample}</div>
               </div>
 
               <div>
@@ -785,19 +808,6 @@ function SettingsPageContent() {
                 >
                   <option value="CS">CS</option>
                   <option value="DSI">DSI</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-left mb-1">Role</label>
-                <select
-                  value={addRole}
-                  onChange={(e) => setAddRole(e.target.value as any)}
-                  className="w-full rounded-xl border px-3 py-2 focus:outline-none"
-                >
-                  <option value="STAFF">Staff</option>
-                  <option value="LECTURER">Lecturer</option>
-                  <option value="SOLAR_LECTURER">SoLA Lecturer</option>
                 </select>
               </div>
             </div>
